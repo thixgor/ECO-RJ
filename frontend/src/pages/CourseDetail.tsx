@@ -201,7 +201,6 @@ const CourseDetail: React.FC = () => {
     const canAccess = isAdmin || (canViewLessons && isEnrolled);
 
     return (
-    return (
       <div key={lesson._id} className="group w-full">
         {canAccess ? (
           <Link
