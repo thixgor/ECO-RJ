@@ -6,6 +6,7 @@ import Sidebar from './Sidebar';
 import { Menu, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useScrollToTop } from '../../hooks/useScrollToTop';
+import ErrorBoundary from '../common/ErrorBoundary';
 
 // Layout público (sem sidebar)
 export const PublicLayout: React.FC = () => {
@@ -16,7 +17,9 @@ export const PublicLayout: React.FC = () => {
     <div className="min-h-screen flex flex-col">
       <Header />
       <main className="flex-1">
-        <Outlet />
+        <ErrorBoundary>
+          <Outlet />
+        </ErrorBoundary>
       </main>
       <Footer />
     </div>
@@ -147,7 +150,9 @@ export const AuthenticatedLayout: React.FC = () => {
 
           {/* Main content - Responsive padding */}
           <main className="flex-1 p-4 sm:p-6 bg-background dark:bg-dark-bg/50 safe-area-bottom">
-            <Outlet />
+            <ErrorBoundary>
+              <Outlet />
+            </ErrorBoundary>
           </main>
         </div>
       </div>
@@ -239,7 +244,9 @@ export const AdminLayout: React.FC = () => {
 
           {/* Main content - Responsive padding */}
           <main className="flex-1 p-4 sm:p-6 bg-background dark:bg-dark-bg/50 safe-area-bottom">
-            <Outlet />
+            <ErrorBoundary>
+              <Outlet />
+            </ErrorBoundary>
           </main>
         </div>
       </div>
