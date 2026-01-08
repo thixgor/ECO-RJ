@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { BookOpen, Calendar, User, PlayCircle, Clock, Lock, CheckCircle, ArrowLeft, FolderOpen, ChevronDown, ChevronRight, FileText, Video, Layers } from 'lucide-react';
+import { BookOpen, Calendar, User, PlayCircle, Clock, Lock, CheckCircle, ArrowLeft, FolderOpen, ChevronDown, FileText, Video, Layers } from 'lucide-react';
 import { courseService, lessonService, courseTopicService, courseSubtopicService } from '../services/api';
 import { Course, Lesson, User as UserType, CourseTopic, CourseSubtopic } from '../types';
 import { useAuth } from '../contexts/AuthContext';
@@ -396,7 +396,7 @@ const CourseDetail: React.FC = () => {
                 {/* Topic header */}
                 <button
                   onClick={(e) => toggleTopic(e, topic._id)}
-                  className="w-full p-4 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
+                  className="w-full p-4 flex items-center gap-3 bg-white dark:bg-white/[0.02] hover:bg-gray-50 dark:hover:bg-white/5 transition-all duration-200 active:scale-[0.99]"
                 >
                   <div className="w-10 h-10 rounded-lg bg-primary-100 dark:bg-primary-500/20 flex items-center justify-center flex-shrink-0">
                     <FolderOpen className="w-5 h-5 text-primary-500" />
@@ -412,18 +412,16 @@ const CourseDetail: React.FC = () => {
                       {lessonsNotInSubtopic.length + subtopics.reduce((acc, s) => acc + s.lessons.length, 0)} aulas
                     </p>
                   </div>
-                  {expandedTopics.has(topic._id) ? (
-                    <ChevronDown className="w-5 h-5 text-[var(--color-text-muted)]" />
-                  ) : (
-                    <ChevronRight className="w-5 h-5 text-[var(--color-text-muted)]" />
-                  )}
+                  <ChevronDown
+                    className={`w-5 h-5 text-[var(--color-text-muted)] transition-transform duration-200 ${expandedTopics.has(topic._id) ? 'rotate-180' : ''}`}
+                  />
                 </button>
 
                 {/* Topic content (Lessons and Subtopics) */}
                 <div
                   className={`grid transition-[grid-template-rows] duration-200 ease-in-out bg-gray-50/50 dark:bg-white/[0.02] ${expandedTopics.has(topic._id) ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}
                 >
-                  <div className="overflow-hidden">
+                  <div className="overflow-hidden min-h-0">
                     {/* Lessons directly in topic */}
                     {lessonsNotInSubtopic.length > 0 && (
                       <div className="divide-y divide-[var(--glass-border)]">
@@ -441,7 +439,7 @@ const CourseDetail: React.FC = () => {
                         {/* Subtopic header */}
                         <button
                           onClick={(e) => toggleSubtopic(e, subtopic._id)}
-                          className="w-full p-3 flex items-center gap-3 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
+                          className="w-full p-3 flex items-center gap-3 hover:bg-gray-100 dark:hover:bg-white/5 transition-all duration-200 active:scale-[0.99] rounded-lg"
                         >
                           <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-500/10 flex items-center justify-center flex-shrink-0">
                             <Layers className="w-4 h-4 text-amber-500" />
@@ -454,11 +452,9 @@ const CourseDetail: React.FC = () => {
                               {subtopicLessons.length} aula{subtopicLessons.length > 1 ? 's' : ''}
                             </p>
                           </div>
-                          {expandedSubtopics.has(subtopic._id) ? (
-                            <ChevronDown className="w-4 h-4 text-[var(--color-text-muted)]" />
-                          ) : (
-                            <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)]" />
-                          )}
+                          <ChevronDown
+                            className={`w-4 h-4 text-[var(--color-text-muted)] transition-transform duration-200 ${expandedSubtopics.has(subtopic._id) ? 'rotate-180' : ''}`}
+                          />
                         </button>
 
                         {/* Subtopic lessons */}
