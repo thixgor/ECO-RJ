@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { BookOpen, CheckCircle, Clock, MessageSquare, TrendingUp, AlertCircle, ArrowRight, Sparkles, User, Video, Bell, Calendar, PlayCircle, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { BookOpen, CheckCircle, Clock, MessageSquare, TrendingUp, AlertCircle, ArrowRight, Sparkles, User, Video, Calendar, PlayCircle, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { courseService, lessonService } from '../services/api';
 import { Course, Lesson } from '../types';
@@ -17,7 +17,6 @@ interface LiveLessonEvent {
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const [courses, setCourses] = useState<Course[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [progress, setProgress] = useState<Record<string, number>>({});

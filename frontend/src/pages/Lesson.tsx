@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Clock, CheckCircle, BookOpen, FileText, Play, ExternalLink, Download, Layers, X, ChevronRight, ChevronLeft, Award, Target, RotateCcw, AlertTriangle, Check, XCircle, Video, File, PlayCircle } from 'lucide-react';
 import { lessonService, exerciseService } from '../services/api';
