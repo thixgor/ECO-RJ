@@ -100,21 +100,44 @@ const Lesson: React.FC = () => {
 
     if (!embedCode) return '';
 
-    // If it's a YouTube URL, convert to embed
-    if (embedCode.includes('youtube.com/watch')) {
-      const videoId = embedCode.split('v=')[1]?.split('&')[0];
-      embedCode = `<iframe width="100%" height="100%" src="https://www.youtube.com/embed/${videoId}" frameborder="0" allowfullscreen style="position:absolute;top:0;left:0;width:100%;height:100%;"></iframe>`;
-    } else if (embedCode.includes('youtu.be/')) {
-      const videoId = embedCode.split('youtu.be/')[1]?.split('?')[0];
-      embedCode = `<iframe width="100%" height="100%" src="https://www.youtube.com/embed/${videoId}" frameborder="0" allowfullscreen style="position:absolute;top:0;left:0;width:100%;height:100%;"></iframe>`;
-    } else if (embedCode.includes('vimeo.com/')) {
-      const videoId = embedCode.split('vimeo.com/')[1]?.split(/[?\/]/)[0];
-      embedCode = `<iframe src="https://player.vimeo.com/video/${videoId}" frameborder="0" allowfullscreen style="position:absolute;top:0;left:0;width:100%;height:100%;"></iframe>`;
-    } else {
-      // Process existing iframe embeds
-      embedCode = embedCode.replace(/<iframe/gi, '<iframe style="position:absolute;top:0;left:0;width:100%;height:100%;"');
+    // 1. Priority: Check if it's already an iframe
+    if (embedCode.trim().startsWith('<iframe')) {
+      // Add responsive styles if they don't exist
+      if (!embedCode.includes('position:absolute')) {
+        return embedCode.replace(/<iframe/gi, '<iframe style="position:absolute;top:0;left:0;width:100%;height:100%;"');
+      }
+      return embedCode;
     }
 
+    // 2. YouTube Regex (Handles standard, short, and embed URLs)
+    const ytRegex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+    const ytMatch = embedCode.match(ytRegex);
+    if (ytMatch && ytMatch[1]) {
+      return `<iframe width="100%" height="100%" src="https://www.youtube.com/embed/${ytMatch[1]}" frameborder="0" allowfullscreen style="position:absolute;top:0;left:0;width:100%;height:100%;"></iframe>`;
+    }
+
+    // 3. Vimeo Regex
+    const vimeoRegex = /(?:vimeo\.com\/|player\.vimeo\.com\/video\/)([0-9]+)/;
+    const vimeoMatch = embedCode.match(vimeoRegex);
+    if (vimeoMatch && vimeoMatch[1]) {
+      return `<iframe src="https://player.vimeo.com/video/${vimeoMatch[1]}" frameborder="0" allowfullscreen style="position:absolute;top:0;left:0;width:100%;height:100%;"></iframe>`;
+    }
+
+    // 4. Panda Video (example pattern, adjust if needed) or other generic URL handling
+    if (embedCode.includes('pandavideo.com')) {
+      // Assuming it's a direct link or something that needs an iframe, but better safe to return as is if unsure, 
+      // OR wrap it in an iframe if it looks like a URL
+      if (embedCode.startsWith('http')) {
+        return `<iframe src="${embedCode}" frameborder="0" allowfullscreen style="position:absolute;top:0;left:0;width:100%;height:100%;"></iframe>`;
+      }
+    }
+
+    // 5. Fallback: If it's just a URL but didn't match specific providers, try unwrapped
+    if (embedCode.startsWith('http') && !embedCode.includes('<')) {
+      return `<iframe src="${embedCode}" frameborder="0" allowfullscreen style="position:absolute;top:0;left:0;width:100%;height:100%;"></iframe>`;
+    }
+
+    // 6. Return original if nothing else matched (generic HTML or embed code)
     return embedCode;
   };
 

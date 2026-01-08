@@ -30,6 +30,35 @@ const CourseDetail: React.FC = () => {
   const isAdmin = user?.cargo === 'Administrador';
   const canViewLessons = isAdmin || ['Aluno', 'Instrutor'].includes(user?.cargo || '');
 
+  // Toggle functions - MUST be defined before any conditional returns
+  const toggleTopic = useCallback((e: React.MouseEvent, topicId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setExpandedTopics(prev => {
+      const newExpanded = new Set(prev);
+      if (newExpanded.has(topicId)) {
+        newExpanded.delete(topicId);
+      } else {
+        newExpanded.add(topicId);
+      }
+      return newExpanded;
+    });
+  }, []);
+
+  const toggleSubtopic = useCallback((e: React.MouseEvent, subtopicId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setExpandedSubtopics(prev => {
+      const newExpanded = new Set(prev);
+      if (newExpanded.has(subtopicId)) {
+        newExpanded.delete(subtopicId);
+      } else {
+        newExpanded.add(subtopicId);
+      }
+      return newExpanded;
+    });
+  }, []);
+
   useEffect(() => {
     if (id) loadCourse();
   }, [id]);
@@ -164,34 +193,6 @@ const CourseDetail: React.FC = () => {
       }))
     };
   });
-
-  const toggleTopic = useCallback((e: React.MouseEvent, topicId: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setExpandedTopics(prev => {
-      const newExpanded = new Set(prev);
-      if (newExpanded.has(topicId)) {
-        newExpanded.delete(topicId);
-      } else {
-        newExpanded.add(topicId);
-      }
-      return newExpanded;
-    });
-  }, []);
-
-  const toggleSubtopic = useCallback((e: React.MouseEvent, subtopicId: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setExpandedSubtopics(prev => {
-      const newExpanded = new Set(prev);
-      if (newExpanded.has(subtopicId)) {
-        newExpanded.delete(subtopicId);
-      } else {
-        newExpanded.add(subtopicId);
-      }
-      return newExpanded;
-    });
-  }, []);
 
   // Render a single lesson item
   const renderLessonItem = (lesson: Lesson, index: number, showNumber = true) => {
