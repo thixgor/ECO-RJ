@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Clock, CheckCircle, BookOpen, FileText, Play, ExternalLink, Download, Layers } from 'lucide-react';
+import { ArrowLeft, Clock, CheckCircle, BookOpen, FileText, Play, ExternalLink, Download, Layers, X, ChevronRight, ChevronLeft, Award, Target, RotateCcw, AlertTriangle, Check, XCircle } from 'lucide-react';
 import { lessonService, exerciseService } from '../services/api';
 import { Lesson as LessonType, Exercise, Course } from '../types';
 import { useAuth } from '../contexts/AuthContext';
@@ -8,6 +8,22 @@ import { generateExercisePDF } from '../utils/pdfGenerator';
 import { LoadingPage } from '../components/common/Loading';
 import VideoWatermark from '../components/common/VideoWatermark';
 import toast from 'react-hot-toast';
+
+// Interface for exercise result
+interface ExerciseResult {
+  nota: number;
+  tentativa: number;
+  tentativasRestantes: number;
+  questoes: Array<{
+    pergunta: string;
+    suaResposta: any;
+    respostaCorreta: any;
+    correto: boolean;
+    imagem?: string;
+    respostaComentada?: string;
+    fonteBibliografica?: string;
+  }>;
+}
 
 const Lesson: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -18,6 +34,14 @@ const Lesson: React.FC = () => {
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isMarking, setIsMarking] = useState(false);
+
+  // Exercise modal states
+  const [activeExercise, setActiveExercise] = useState<Exercise | null>(null);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [answers, setAnswers] = useState<(number | string | null)[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [result, setResult] = useState<ExerciseResult | null>(null);
+  const [showConfirmSubmit, setShowConfirmSubmit] = useState(false);
 
   const isWatched = user?.aulasAssistidas?.includes(id || '');
 
@@ -76,6 +100,78 @@ const Lesson: React.FC = () => {
       setIsMarking(false);
     }
   };
+
+  // ========== Exercise Modal Functions ==========
+  const startExercise = useCallback(async (exercise: Exercise) => {
+    try {
+      const response = await exerciseService.getById(exercise._id);
+      const fullExercise = response.data;
+      setActiveExercise(fullExercise);
+      setCurrentQuestionIndex(0);
+      setAnswers(new Array(fullExercise.questoes.length).fill(null));
+      setResult(null);
+      setShowConfirmSubmit(false);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Erro ao carregar exercício');
+    }
+  }, []);
+
+  const closeExercise = useCallback(() => {
+    if (result) {
+      setActiveExercise(null);
+      setResult(null);
+      refreshUser?.();
+    } else if (answers.some(a => a !== null)) {
+      if (confirm('Tem certeza que deseja sair? Suas respostas serão perdidas.')) {
+        setActiveExercise(null);
+        setResult(null);
+      }
+    } else {
+      setActiveExercise(null);
+      setResult(null);
+    }
+  }, [result, answers, refreshUser]);
+
+  const selectAnswer = useCallback((questionIndex: number, answer: number | string) => {
+    setAnswers(prev => {
+      const newAnswers = [...prev];
+      newAnswers[questionIndex] = answer;
+      return newAnswers;
+    });
+  }, []);
+
+  const goToQuestion = useCallback((index: number) => {
+    if (index >= 0 && index < (activeExercise?.questoes.length || 0)) {
+      setCurrentQuestionIndex(index);
+    }
+  }, [activeExercise]);
+
+  const submitExercise = useCallback(async () => {
+    if (!activeExercise) return;
+
+    const unansweredCount = answers.filter(a => a === null).length;
+    if (unansweredCount > 0 && !showConfirmSubmit) {
+      setShowConfirmSubmit(true);
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const response = await exerciseService.answer(activeExercise._id, answers);
+      setResult(response.data);
+      toast.success('Exercício enviado com sucesso!');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Erro ao enviar respostas');
+    } finally {
+      setIsSubmitting(false);
+      setShowConfirmSubmit(false);
+    }
+  }, [activeExercise, answers, showConfirmSubmit]);
+
+  // Calculate progress for exercise modal
+  const answeredCount = answers.filter(a => a !== null).length;
+  const totalQuestions = activeExercise?.questoes.length || 0;
+  const progressPercent = totalQuestions > 0 ? (answeredCount / totalQuestions) * 100 : 0;
 
   if (isLoading) {
     return <LoadingPage text="Carregando aula..." />;
@@ -302,9 +398,9 @@ const Lesson: React.FC = () => {
               {exercises.length > 0 ? (
                 exercises.map((exercise) => (
                   <div key={exercise._id} className="flex items-center hover:bg-gray-50 dark:hover:bg-white/5 transition-colors group">
-                    <Link
-                      to={`/exercicios/${exercise._id}`}
-                      className="p-4 flex-1"
+                    <button
+                      onClick={() => startExercise(exercise)}
+                      className="p-4 flex-1 text-left"
                     >
                       <p className="font-medium text-[var(--color-text-primary)] group-hover:text-primary-500 transition-colors">{exercise.titulo}</p>
                       <p className="text-sm text-[var(--color-text-muted)] mt-1">
@@ -314,7 +410,7 @@ const Lesson: React.FC = () => {
                         {' · '}
                         {exercise.questoes.length} questões
                       </p>
-                    </Link>
+                    </button>
                     <button
                       onClick={(e) => {
                         e.preventDefault();
@@ -336,6 +432,313 @@ const Lesson: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Exercise Modal */}
+      {activeExercise && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#1a1c1e] rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col animate-fade-in shadow-2xl border border-transparent dark:border-white/10">
+
+            {/* Header do Modal */}
+            <div className="bg-gradient-to-r from-primary-500 to-primary-600 text-white p-6">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h2 className="text-xl font-bold">{activeExercise.titulo}</h2>
+                  <p className="text-primary-100 text-sm mt-1">
+                    {result ? 'Resultado do Exercício' : `Questão ${currentQuestionIndex + 1} de ${totalQuestions}`}
+                  </p>
+                </div>
+                <button
+                  onClick={closeExercise}
+                  className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Barra de Progresso */}
+              {!result && (
+                <div className="mt-4">
+                  <div className="flex justify-between text-xs text-primary-100 mb-1">
+                    <span>{answeredCount} de {totalQuestions} respondidas</span>
+                    <span>{Math.round(progressPercent)}%</span>
+                  </div>
+                  <div className="h-2 bg-primary-400/50 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-white transition-all duration-300 rounded-full"
+                      style={{ width: `${progressPercent}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Corpo do Modal */}
+            <div className="flex-1 overflow-y-auto">
+              {result ? (
+                // Tela de Resultado
+                <div className="p-6 space-y-6">
+                  {/* Score Card */}
+                  <div className={`text-center p-8 rounded-2xl ${result.nota >= 70
+                    ? 'bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-500/10 dark:to-emerald-500/20 border border-green-100 dark:border-green-500/20'
+                    : result.nota >= 50
+                      ? 'bg-gradient-to-br from-amber-50 to-yellow-100 dark:from-amber-500/10 dark:to-yellow-500/20 border border-amber-100 dark:border-amber-500/20'
+                      : 'bg-gradient-to-br from-red-50 to-rose-100 dark:from-red-500/10 dark:to-rose-500/20 border border-red-100 dark:border-red-500/20'
+                    }`}>
+                    <div className={`w-24 h-24 mx-auto rounded-full flex items-center justify-center mb-4 ${result.nota >= 70
+                      ? 'bg-green-500'
+                      : result.nota >= 50
+                        ? 'bg-amber-500'
+                        : 'bg-red-500'
+                      }`}>
+                      {result.nota >= 70 ? (
+                        <Award className="w-12 h-12 text-white" />
+                      ) : result.nota >= 50 ? (
+                        <Target className="w-12 h-12 text-white" />
+                      ) : (
+                        <RotateCcw className="w-12 h-12 text-white" />
+                      )}
+                    </div>
+
+                    <h3 className="text-4xl font-bold text-[var(--color-text-primary)]">{result.nota}%</h3>
+                    <p className={`text-lg font-medium mt-2 ${result.nota >= 70
+                      ? 'text-green-600 dark:text-green-400'
+                      : result.nota >= 50
+                        ? 'text-amber-600 dark:text-amber-400'
+                        : 'text-red-600 dark:text-red-400'
+                      }`}>
+                      {result.nota >= 70
+                        ? 'Excelente! Você mandou bem!'
+                        : result.nota >= 50
+                          ? 'Bom trabalho! Continue praticando.'
+                          : 'Não desista! Tente novamente.'}
+                    </p>
+
+                    <div className="flex justify-center gap-6 mt-6 text-sm">
+                      <div className="text-center">
+                        <p className="text-[var(--color-text-muted)]">Tentativa</p>
+                        <p className="text-xl font-bold text-[var(--color-text-primary)]">{result.tentativa}</p>
+                      </div>
+                      <div className="w-px bg-gray-300 dark:bg-white/20" />
+                      <div className="text-center">
+                        <p className="text-[var(--color-text-muted)]">Restantes</p>
+                        <p className="text-xl font-bold text-[var(--color-text-primary)]">
+                          {result.tentativasRestantes > 999900 ? '∞' : result.tentativasRestantes}
+                        </p>
+                      </div>
+                      <div className="w-px bg-gray-300 dark:bg-white/20" />
+                      <div className="text-center">
+                        <p className="text-[var(--color-text-muted)]">Acertos</p>
+                        <p className="text-xl font-bold text-[var(--color-text-primary)]">
+                          {result.questoes.filter(q => q.correto).length}/{result.questoes.length}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Detalhes das Respostas */}
+                  <div>
+                    <h4 className="font-bold text-[var(--color-text-primary)] mb-4">Detalhamento das Respostas</h4>
+                    <div className="space-y-3">
+                      {result.questoes.map((q, idx) => (
+                        <div
+                          key={idx}
+                          className={`p-4 rounded-xl border-2 ${q.correto
+                            ? 'border-green-200 dark:border-green-500/30 bg-green-50 dark:bg-green-500/10'
+                            : 'border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10'
+                            }`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${q.correto ? 'bg-green-500' : 'bg-red-500'
+                              }`}>
+                              {q.correto ? (
+                                <Check className="w-5 h-5 text-white" />
+                              ) : (
+                                <XCircle className="w-5 h-5 text-white" />
+                              )}
+                            </div>
+                            <div className="flex-1">
+                              <p className="font-medium text-[var(--color-text-primary)] text-sm">
+                                Questão {idx + 1}: {q.pergunta}
+                              </p>
+                              {!q.correto && (
+                                <p className="text-sm text-[var(--color-text-secondary)] mt-1">
+                                  Sua resposta: <span className="text-red-600 dark:text-red-400 font-medium">
+                                    {activeExercise.questoes[idx]?.opcoes?.[q.suaResposta as number] || q.suaResposta || 'Não respondida'}
+                                  </span>
+                                </p>
+                              )}
+                              {(q.respostaComentada || q.fonteBibliografica) && (
+                                <div className="mt-3 pt-3 border-t border-[var(--glass-border)]">
+                                  {q.respostaComentada && (
+                                    <div className="mb-2">
+                                      <p className="text-xs font-bold text-[var(--color-text-muted)] uppercase flex items-center gap-1">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                                        Comentário
+                                      </p>
+                                      <div className="text-sm text-[var(--color-text-secondary)] mt-1 pl-2.5 border-l-2 border-blue-500/30 italic">
+                                        {q.respostaComentada}
+                                      </div>
+                                    </div>
+                                  )}
+                                  {q.fonteBibliografica && (
+                                    <div className="mt-2">
+                                      <p className="text-xs font-bold text-[var(--color-text-muted)] uppercase flex items-center gap-1">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-gray-400"></span>
+                                        Fonte
+                                      </p>
+                                      <p className="text-xs text-[var(--color-text-muted)] mt-0.5 pl-2.5">
+                                        {q.fonteBibliografica}
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                // Tela de Questão
+                <div className="p-6">
+                  {/* Navegação por Questões */}
+                  <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+                    {activeExercise.questoes.map((_, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => goToQuestion(idx)}
+                        className={`w-10 h-10 rounded-lg font-medium text-sm transition-all flex-shrink-0 ${currentQuestionIndex === idx
+                          ? 'bg-primary-500 text-white shadow-md'
+                          : answers[idx] !== null
+                            ? 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400 border-2 border-green-300 dark:border-green-500/30'
+                            : 'bg-gray-100 dark:bg-white/5 text-[var(--color-text-muted)] hover:bg-gray-200 dark:hover:bg-white/10'
+                          }`}
+                      >
+                        {idx + 1}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Questão Atual */}
+                  {activeExercise.questoes[currentQuestionIndex] && (
+                    <div>
+                      <div className="mb-6">
+                        <span className="text-xs font-semibold text-primary-500 uppercase tracking-wide">
+                          Questão {currentQuestionIndex + 1}
+                        </span>
+                        <h3 className="text-xl font-semibold text-[var(--color-text-primary)] mt-2">
+                          {activeExercise.questoes[currentQuestionIndex].pergunta}
+                        </h3>
+
+                        {/* Imagem da Questão */}
+                        {activeExercise.questoes[currentQuestionIndex].imagem && (
+                          <div className="mt-4 rounded-xl overflow-hidden shadow-sm border border-[var(--glass-border)]">
+                            <img
+                              src={activeExercise.questoes[currentQuestionIndex].imagem}
+                              alt={`Imagem da questão ${currentQuestionIndex + 1}`}
+                              className="w-full max-h-[300px] object-contain bg-gray-50 dark:bg-black/20"
+                              loading="lazy"
+                              decoding="async"
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Opções */}
+                      <div className="space-y-3">
+                        {activeExercise.questoes[currentQuestionIndex].opcoes?.map((opcao, optIdx) => (
+                          <button
+                            key={optIdx}
+                            onClick={() => selectAnswer(currentQuestionIndex, optIdx)}
+                            className={`w-full p-4 rounded-xl border-2 text-left transition-all ${answers[currentQuestionIndex] === optIdx
+                              ? 'border-primary-500 bg-primary-50 dark:bg-primary-500/10 text-primary-700 dark:text-primary-300'
+                              : 'border-gray-200 dark:border-white/10 hover:border-primary-300 dark:hover:border-primary-500/50 hover:bg-gray-50 dark:hover:bg-white/5'
+                              }`}
+                          >
+                            <div className="flex items-center gap-4">
+                              <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center font-medium text-sm ${answers[currentQuestionIndex] === optIdx
+                                ? 'border-primary-500 bg-primary-500 text-white'
+                                : 'border-gray-300 dark:border-white/20 text-[var(--color-text-muted)]'
+                                }`}>
+                                {String.fromCharCode(65 + optIdx)}
+                              </div>
+                              <span className="flex-1">{opcao}</span>
+                              {answers[currentQuestionIndex] === optIdx && (
+                                <Check className="w-5 h-5 text-primary-500" />
+                              )}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Confirmação de Envio */}
+                  {showConfirmSubmit && (
+                    <div className="mt-6 p-4 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-xl flex items-start gap-3">
+                      <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-medium text-amber-800 dark:text-amber-400">
+                          Você tem {answers.filter(a => a === null).length} questão(ões) não respondida(s).
+                        </p>
+                        <p className="text-sm text-amber-700 dark:text-amber-300/80 mt-1">
+                          Deseja enviar mesmo assim?
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Footer do Modal */}
+            <div className="border-t border-[var(--glass-border)] bg-gray-50 dark:bg-white/5 p-4 flex items-center justify-between">
+              {result ? (
+                <button
+                  onClick={closeExercise}
+                  className="btn btn-primary w-full"
+                >
+                  Fechar e Voltar
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={() => goToQuestion(currentQuestionIndex - 1)}
+                    disabled={currentQuestionIndex === 0}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg text-[var(--color-text-secondary)] hover:bg-gray-200 dark:hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    Anterior
+                  </button>
+
+                  <div className="flex gap-2">
+                    {currentQuestionIndex < totalQuestions - 1 ? (
+                      <button
+                        onClick={() => goToQuestion(currentQuestionIndex + 1)}
+                        className="flex items-center gap-2 px-6 py-2 rounded-lg bg-primary-500 text-white hover:bg-primary-600 transition-colors"
+                      >
+                        Próxima
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    ) : (
+                      <button
+                        onClick={submitExercise}
+                        disabled={isSubmitting}
+                        className="flex items-center gap-2 px-6 py-2 rounded-lg bg-green-500 text-white hover:bg-green-600 disabled:opacity-50 transition-colors"
+                      >
+                        {isSubmitting ? 'Enviando...' : 'Finalizar'}
+                        <Check className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
