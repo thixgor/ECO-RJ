@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { BookOpen, Calendar, User, PlayCircle, Clock, Lock, CheckCircle, ArrowLeft, FolderOpen, ChevronDown, ChevronRight, FileText, Video, Layers } from 'lucide-react';
 import { courseService, lessonService, courseTopicService, courseSubtopicService } from '../services/api';
 import { Course, Lesson, User as UserType, CourseTopic, CourseSubtopic } from '../types';
 import { useAuth } from '../contexts/AuthContext';
-import Loading from '../components/common/Loading';
+import { LoadingPage } from '../components/common/Loading';
 import toast from 'react-hot-toast';
 
 const CourseDetail: React.FC = () => {
@@ -123,11 +123,7 @@ const CourseDetail: React.FC = () => {
   };
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loading size="lg" text="Carregando curso..." />
-      </div>
-    );
+    return <LoadingPage text="Carregando curso..." />;
   }
 
   if (!course) {
@@ -169,25 +165,33 @@ const CourseDetail: React.FC = () => {
     };
   });
 
-  const toggleTopic = (topicId: string) => {
-    const newExpanded = new Set(expandedTopics);
-    if (newExpanded.has(topicId)) {
-      newExpanded.delete(topicId);
-    } else {
-      newExpanded.add(topicId);
-    }
-    setExpandedTopics(newExpanded);
-  };
+  const toggleTopic = useCallback((e: React.MouseEvent, topicId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setExpandedTopics(prev => {
+      const newExpanded = new Set(prev);
+      if (newExpanded.has(topicId)) {
+        newExpanded.delete(topicId);
+      } else {
+        newExpanded.add(topicId);
+      }
+      return newExpanded;
+    });
+  }, []);
 
-  const toggleSubtopic = (subtopicId: string) => {
-    const newExpanded = new Set(expandedSubtopics);
-    if (newExpanded.has(subtopicId)) {
-      newExpanded.delete(subtopicId);
-    } else {
-      newExpanded.add(subtopicId);
-    }
-    setExpandedSubtopics(newExpanded);
-  };
+  const toggleSubtopic = useCallback((e: React.MouseEvent, subtopicId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setExpandedSubtopics(prev => {
+      const newExpanded = new Set(prev);
+      if (newExpanded.has(subtopicId)) {
+        newExpanded.delete(subtopicId);
+      } else {
+        newExpanded.add(subtopicId);
+      }
+      return newExpanded;
+    });
+  }, []);
 
   // Render a single lesson item
   const renderLessonItem = (lesson: Lesson, index: number, showNumber = true) => {
@@ -390,7 +394,7 @@ const CourseDetail: React.FC = () => {
               <div key={topic._id} className="border-t border-[var(--glass-border)]">
                 {/* Topic header */}
                 <button
-                  onClick={() => toggleTopic(topic._id)}
+                  onClick={(e) => toggleTopic(e, topic._id)}
                   className="w-full p-4 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
                 >
                   <div className="w-10 h-10 rounded-lg bg-primary-100 dark:bg-primary-500/20 flex items-center justify-center flex-shrink-0">
@@ -433,7 +437,7 @@ const CourseDetail: React.FC = () => {
                       <div key={subtopic._id} className="border-t border-[var(--glass-border)] ml-6 border-l border-amber-500/20">
                         {/* Subtopic header */}
                         <button
-                          onClick={() => toggleSubtopic(subtopic._id)}
+                          onClick={(e) => toggleSubtopic(e, subtopic._id)}
                           className="w-full p-3 flex items-center gap-3 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
                         >
                           <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-500/10 flex items-center justify-center flex-shrink-0">

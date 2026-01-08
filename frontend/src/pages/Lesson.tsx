@@ -5,7 +5,7 @@ import { lessonService, exerciseService } from '../services/api';
 import { Lesson as LessonType, Exercise, Course } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { generateExercisePDF } from '../utils/pdfGenerator';
-import Loading from '../components/common/Loading';
+import { LoadingPage } from '../components/common/Loading';
 import VideoWatermark from '../components/common/VideoWatermark';
 import toast from 'react-hot-toast';
 
@@ -78,11 +78,7 @@ const Lesson: React.FC = () => {
   };
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loading size="lg" text="Carregando aula..." />
-      </div>
-    );
+    return <LoadingPage text="Carregando aula..." />;
   }
 
   if (!lesson) {
