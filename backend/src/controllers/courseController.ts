@@ -82,13 +82,20 @@ export const getCourseById = async (req: AuthRequest, res: Response) => {
       temAcessoConteudo = userCargo === 'Aluno';
     }
 
-    // Contar total de aulas
+    // Contar total de aulas e materiais
     const totalAulas = await Lesson.countDocuments({ cursoId: course._id });
+    const totalMateriais = await Lesson.countDocuments({ cursoId: course._id, tipo: 'material' });
+    const totalAulasRegulares = await Lesson.countDocuments({
+      cursoId: course._id,
+      tipo: { $in: ['ao_vivo', 'gravada'] }
+    });
 
-    // Retornar curso com info de acesso e total de aulas
+    // Retornar curso com info de acesso e contagens
     const courseObj = course.toObject();
     (courseObj as any).temAcessoConteudo = temAcessoConteudo;
     (courseObj as any).totalAulas = totalAulas;
+    (courseObj as any).totalMateriais = totalMateriais;
+    (courseObj as any).totalAulasRegulares = totalAulasRegulares;
 
     res.json(courseObj);
   } catch (error) {

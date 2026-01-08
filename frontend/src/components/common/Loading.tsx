@@ -29,7 +29,7 @@ const Loading: React.FC<LoadingProps> = React.memo(({ size = 'md', text, classNa
 Loading.displayName = 'Loading';
 
 export const LoadingPage: React.FC = React.memo(() => (
-  <div className="min-h-[70vh] flex items-center justify-center w-full">
+  <div className="min-h-screen flex items-center justify-center w-full">
     <Loading size="lg" text="Carregando conteúdo..." />
   </div>
 ));
@@ -37,7 +37,7 @@ export const LoadingPage: React.FC = React.memo(() => (
 LoadingPage.displayName = 'LoadingPage';
 
 export const LoadingOverlay: React.FC = React.memo(() => (
-  <div className="fixed inset-0 bg-white/80 flex items-center justify-center z-50">
+  <div className="fixed inset-0 bg-white/80 dark:bg-gray-900/80 flex items-center justify-center z-50">
     <Loading size="lg" text="Carregando..." />
   </div>
 ));

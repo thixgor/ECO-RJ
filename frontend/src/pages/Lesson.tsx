@@ -79,7 +79,7 @@ const Lesson: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-12">
+      <div className="min-h-screen flex items-center justify-center">
         <Loading size="lg" text="Carregando aula..." />
       </div>
     );

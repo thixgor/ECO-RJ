@@ -126,7 +126,7 @@ const CourseDetail: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-12">
+      <div className="min-h-screen flex items-center justify-center">
         <Loading size="lg" text="Carregando curso..." />
       </div>
     );
@@ -304,10 +304,18 @@ const CourseDetail: React.FC = () => {
               <Calendar className="w-5 h-5 text-primary-500" />
               <span>Início: {new Date(course.dataInicio).toLocaleDateString('pt-BR')}</span>
             </div>
-            <div className="flex items-center gap-2">
-              <BookOpen className="w-5 h-5 text-primary-500" />
-              <span>{totalAulas || lessons.length} aula{(totalAulas || lessons.length) !== 1 ? 's' : ''}</span>
-            </div>
+            {(course as any).totalAulasRegulares > 0 && (
+              <div className="flex items-center gap-2">
+                <PlayCircle className="w-5 h-5 text-primary-500" />
+                <span>{(course as any).totalAulasRegulares} aula{(course as any).totalAulasRegulares !== 1 ? 's' : ''}</span>
+              </div>
+            )}
+            {(course as any).totalMateriais > 0 && (
+              <div className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-purple-500" />
+                <span>{(course as any).totalMateriais} material{(course as any).totalMateriais !== 1 ? 'is' : ''}</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -363,7 +371,9 @@ const CourseDetail: React.FC = () => {
           <h2 className="font-heading text-xl font-semibold text-[var(--color-text-primary)]">Conteúdo do Curso</h2>
           {topics.length > 0 && (
             <p className="text-sm text-[var(--color-text-muted)] mt-1">
-              {topics.length} tópico{topics.length > 1 ? 's' : ''} • {lessons.length} aula{lessons.length > 1 ? 's' : ''}
+              {topics.length} tópico{topics.length > 1 ? 's' : ''}
+              {(course as any).totalAulasRegulares > 0 && ` • ${(course as any).totalAulasRegulares} aula${(course as any).totalAulasRegulares > 1 ? 's' : ''}`}
+              {(course as any).totalMateriais > 0 && ` • ${(course as any).totalMateriais} material${(course as any).totalMateriais > 1 ? 'is' : ''}`}
             </p>
           )}
         </div>
