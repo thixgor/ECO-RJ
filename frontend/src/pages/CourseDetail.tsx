@@ -205,7 +205,7 @@ const CourseDetail: React.FC = () => {
         {canAccess ? (
           <Link
             to={`/aulas/${lesson._id}`}
-            className="w-full p-4 flex items-center gap-4 transition-all hover:bg-gray-50 dark:hover:bg-white/5"
+            className="w-full p-4 flex items-center gap-4 transition-colors hover:bg-gray-50 dark:hover:bg-white/5"
           >
             <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0">
               {isWatched ? (
@@ -421,7 +421,7 @@ const CourseDetail: React.FC = () => {
 
                 {/* Topic content (Lessons and Subtopics) */}
                 <div
-                  className={`grid transition-[grid-template-rows] duration-300 ease-out bg-gray-50/50 dark:bg-white/[0.02] ${expandedTopics.has(topic._id) ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}
+                  className={`grid transition-[grid-template-rows] duration-200 ease-in-out bg-gray-50/50 dark:bg-white/[0.02] ${expandedTopics.has(topic._id) ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}
                 >
                   <div className="overflow-hidden">
                     {/* Lessons directly in topic */}
@@ -463,7 +463,7 @@ const CourseDetail: React.FC = () => {
 
                         {/* Subtopic lessons */}
                         <div
-                          className={`grid transition-[grid-template-rows] duration-200 ease-out ${expandedSubtopics.has(subtopic._id) ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}
+                          className={`grid transition-[grid-template-rows] duration-200 ease-in-out ${expandedSubtopics.has(subtopic._id) ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}
                         >
                           <div className="overflow-hidden">
                             {subtopicLessons.length > 0 ? (
