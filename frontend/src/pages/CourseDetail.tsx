@@ -201,11 +201,12 @@ const CourseDetail: React.FC = () => {
     const canAccess = isAdmin || (canViewLessons && isEnrolled);
 
     return (
-      <div key={lesson._id} className="group">
+    return (
+      <div key={lesson._id} className="group w-full">
         {canAccess ? (
           <Link
             to={`/aulas/${lesson._id}`}
-            className="p-4 flex items-center gap-4 transition-all hover:bg-gray-50 dark:hover:bg-white/5"
+            className="w-full p-4 flex items-center gap-4 transition-all hover:bg-gray-50 dark:hover:bg-white/5"
           >
             <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0">
               {isWatched ? (
@@ -231,7 +232,7 @@ const CourseDetail: React.FC = () => {
             </div>
 
             <div className="flex-1 min-w-0">
-              <span className="font-medium text-[var(--color-text-primary)] group-hover:text-primary-500 transition-colors">
+              <span className="font-medium text-[var(--color-text-primary)] group-hover:text-primary-500 transition-colors block">
                 {showNumber ? `${index + 1}. ` : ''}{lesson.titulo}
               </span>
               <div className="flex items-center gap-4 text-sm text-[var(--color-text-muted)] mt-1">
@@ -253,7 +254,7 @@ const CourseDetail: React.FC = () => {
             </div>
           </Link>
         ) : (
-          <div className="p-4 flex items-center gap-4 bg-gray-50/30 dark:bg-white/5 opacity-75">
+          <div className="w-full p-4 flex items-center gap-4 bg-gray-50/30 dark:bg-white/5 opacity-75">
             <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0">
               <div className="w-10 h-10 bg-gray-100 dark:bg-white/5 rounded-full flex items-center justify-center">
                 <Lock className="w-5 h-5 text-[var(--color-text-muted)]" />
@@ -261,7 +262,7 @@ const CourseDetail: React.FC = () => {
             </div>
 
             <div className="flex-1 min-w-0">
-              <span className="font-medium text-[var(--color-text-muted)]">
+              <span className="font-medium text-[var(--color-text-muted)] block">
                 {showNumber ? `${index + 1}. ` : ''}{lesson.titulo}
               </span>
               <div className="flex items-center gap-4 text-sm text-[var(--color-text-muted)] mt-1">
@@ -420,8 +421,10 @@ const CourseDetail: React.FC = () => {
                 </button>
 
                 {/* Topic content (Lessons and Subtopics) */}
-                {expandedTopics.has(topic._id) && (
-                  <div className="bg-gray-50/50 dark:bg-white/[0.02]">
+                <div
+                  className={`grid transition-[grid-template-rows] duration-300 ease-out bg-gray-50/50 dark:bg-white/[0.02] ${expandedTopics.has(topic._id) ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}
+                >
+                  <div className="overflow-hidden">
                     {/* Lessons directly in topic */}
                     {lessonsNotInSubtopic.length > 0 && (
                       <div className="divide-y divide-[var(--glass-border)]">
@@ -460,24 +463,29 @@ const CourseDetail: React.FC = () => {
                         </button>
 
                         {/* Subtopic lessons */}
-                        {expandedSubtopics.has(subtopic._id) && subtopicLessons.length > 0 && (
-                          <div className="divide-y divide-[var(--glass-border)]">
-                            {subtopicLessons.map((lesson, index) => (
-                              <div key={lesson._id} className="pl-4">
-                                {renderLessonItem(lesson, index, false)}
+                        <div
+                          className={`grid transition-[grid-template-rows] duration-200 ease-out ${expandedSubtopics.has(subtopic._id) ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}
+                        >
+                          <div className="overflow-hidden">
+                            {subtopicLessons.length > 0 ? (
+                              <div className="divide-y divide-[var(--glass-border)]">
+                                {subtopicLessons.map((lesson, index) => (
+                                  <div key={lesson._id} className="pl-4">
+                                    {renderLessonItem(lesson, index, false)}
+                                  </div>
+                                ))}
                               </div>
-                            ))}
+                            ) : (
+                              <div className="p-3 text-center text-xs text-[var(--color-text-muted)] italic">
+                                Nenhuma aula neste subtópico
+                              </div>
+                            )}
                           </div>
-                        )}
-                        {expandedSubtopics.has(subtopic._id) && subtopicLessons.length === 0 && (
-                          <div className="p-3 text-center text-xs text-[var(--color-text-muted)] italic">
-                            Nenhuma aula neste subtópico
-                          </div>
-                        )}
+                        </div>
                       </div>
                     ))}
                   </div>
-                )}
+                </div>
               </div>
             ))}
           </div>
