@@ -286,7 +286,7 @@ export const markAsWatched = async (req: AuthRequest, res: Response) => {
 // @access  Private/Admin
 export const getAllLessons = async (req: Request, res: Response) => {
   try {
-    const { cursoId, tipo, status, topicoId, subtopicoId, page = 1, limit = 20 } = req.query;
+    const { cursoId, tipo, status, topicoId, subtopicoId, page = 1, limit = 500 } = req.query;
 
     const query: any = {};
     if (cursoId) query.cursoId = cursoId;
