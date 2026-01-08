@@ -38,12 +38,23 @@ const CourseDetail: React.FC = () => {
       const newExpanded = new Set(prev);
       if (newExpanded.has(topicId)) {
         newExpanded.delete(topicId);
+        // Also collapse all subtopics of this topic when closing
+        setExpandedSubtopics(prevSubs => {
+          const newSubs = new Set(prevSubs);
+          subtopics
+            .filter(s => {
+              const tid = typeof s.topicoId === 'string' ? s.topicoId : s.topicoId._id;
+              return tid === topicId;
+            })
+            .forEach(s => newSubs.delete(s._id));
+          return newSubs;
+        });
       } else {
         newExpanded.add(topicId);
       }
       return newExpanded;
     });
-  }, []);
+  }, [subtopics]);
 
   const toggleSubtopic = useCallback((e: React.MouseEvent, subtopicId: string) => {
     e.preventDefault();
@@ -78,11 +89,10 @@ const CourseDetail: React.FC = () => {
       setTopics(topicsResponse.data || []);
       setSubtopics(subtopicsResponse.data || []);
 
-      // Expand all topics and subtopics by default
-      const allTopicIds = (topicsResponse.data || []).map((t: CourseTopic) => t._id);
-      setExpandedTopics(new Set(allTopicIds));
-      const allSubtopicIds = (subtopicsResponse.data || []).map((s: CourseSubtopic) => s._id);
-      setExpandedSubtopics(new Set(allSubtopicIds));
+      // Start with all topics and subtopics collapsed by default
+      // This improves UX for courses with lots of content
+      setExpandedTopics(new Set());
+      setExpandedSubtopics(new Set());
 
       // Update metadata
       const title = `${courseResponse.data.titulo} | ECO RJ`;
@@ -491,7 +501,8 @@ const CourseDetail: React.FC = () => {
         )}
       </div>
 
-      {!canViewLessons && isAuthenticated && (
+      {/* Info for non-enrolled users (both authenticated and not authenticated) */}
+      {!canViewLessons && (
         <div className="mt-8 space-y-6 animate-slide-up">
           {/* Main Warning */}
           <div className="p-4 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-xl flex items-start gap-4">
@@ -500,10 +511,16 @@ const CourseDetail: React.FC = () => {
             </div>
             <div>
               <p className="text-amber-900 dark:text-amber-400 font-medium text-lg">
-                Você precisa ser um Aluno para acessar as aulas.
+                {isAuthenticated
+                  ? 'Você precisa ser um Aluno para acessar as aulas.'
+                  : 'Faça login ou crie uma conta para acessar o conteúdo.'}
               </p>
               <p className="text-amber-800 dark:text-amber-400/80 mt-1">
-                Se você já possui uma Serial Key, <Link to="/perfil" className="underline font-bold hover:text-amber-600 transition-colors">aplique-a no seu perfil</Link> para ter acesso completo.
+                {isAuthenticated ? (
+                  <>Se você já possui uma Serial Key, <Link to="/perfil" className="underline font-bold hover:text-amber-600 transition-colors">aplique-a no seu perfil</Link> para ter acesso completo.</>
+                ) : (
+                  <>Já possui uma conta? <Link to="/login" state={{ from: `/cursos/${id}` }} className="underline font-bold hover:text-amber-600 transition-colors">Faça login</Link> ou <Link to="/cadastro" className="underline font-bold hover:text-amber-600 transition-colors">crie sua conta</Link>.</>
+                )}
               </p>
             </div>
           </div>
@@ -515,7 +532,7 @@ const CourseDetail: React.FC = () => {
                 <div className="w-10 h-10 rounded-xl bg-primary-500/10 flex items-center justify-center text-primary-500">
                   <PlayCircle className="w-5 h-5" />
                 </div>
-                <h3 className="font-heading font-bold text-[var(--color-text-primary)]">Não é um aluno ainda?</h3>
+                <h3 className="font-heading font-bold text-[var(--color-text-primary)]">Como adquirir o curso?</h3>
               </div>
               <div className="space-y-4">
                 <p className="text-[var(--color-text-secondary)] text-sm leading-relaxed">
@@ -537,7 +554,7 @@ const CourseDetail: React.FC = () => {
                 <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
                   <CheckCircle className="w-5 h-5" />
                 </div>
-                <h3 className="font-heading font-bold text-[var(--color-text-primary)]">Como o curso chega a mim?</h3>
+                <h3 className="font-heading font-bold text-[var(--color-text-primary)]">O que é a Serial Key?</h3>
               </div>
               <div className="space-y-4">
                 <p className="text-[var(--color-text-secondary)] text-sm leading-relaxed">
@@ -548,7 +565,9 @@ const CourseDetail: React.FC = () => {
                   <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Serial Key de Ativação</span>
                 </div>
                 <p className="text-[var(--color-text-muted)] text-xs leading-relaxed italic">
-                  Basta inserir essa chave no seu perfil para liberar as aulas instantaneamente.
+                  {isAuthenticated
+                    ? 'Basta inserir essa chave no seu perfil para liberar as aulas instantaneamente.'
+                    : 'Crie sua conta, aplique a chave no perfil e as aulas serão liberadas instantaneamente.'}
                 </p>
               </div>
             </div>
