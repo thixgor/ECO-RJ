@@ -18,7 +18,6 @@ const CourseDetail: React.FC = () => {
   const [subtopics, setSubtopics] = useState<CourseSubtopic[]>([]);
   const [expandedTopics, setExpandedTopics] = useState<Set<string>>(new Set());
   const [expandedSubtopics, setExpandedSubtopics] = useState<Set<string>>(new Set());
-  const [totalAulas, setTotalAulas] = useState(0);
   const [progress, setProgress] = useState({ totalAulas: 0, aulasAssistidas: 0, progresso: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [isEnrolling, setIsEnrolling] = useState(false);
@@ -49,7 +48,6 @@ const CourseDetail: React.FC = () => {
       setLessons(lessonsData);
       setTopics(topicsResponse.data || []);
       setSubtopics(subtopicsResponse.data || []);
-      setTotalAulas(courseResponse.data.totalAulas || lessonsData.length);
 
       // Expand all topics and subtopics by default
       const allTopicIds = (topicsResponse.data || []).map((t: CourseTopic) => t._id);
