@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Clock, CheckCircle, BookOpen, FileText, Play, ExternalLink, Download, Layers, X, ChevronRight, ChevronLeft, Award, Target, RotateCcw, AlertTriangle, Check, XCircle } from 'lucide-react';
+import { ArrowLeft, Clock, CheckCircle, BookOpen, FileText, Play, ExternalLink, Download, Layers, X, ChevronRight, ChevronLeft, Award, Target, RotateCcw, AlertTriangle, Check, XCircle, Video, File, PlayCircle } from 'lucide-react';
 import { lessonService, exerciseService } from '../services/api';
 import { Lesson as LessonType, Exercise, Course } from '../types';
 import { useAuth } from '../contexts/AuthContext';
@@ -32,6 +32,7 @@ const Lesson: React.FC = () => {
 
   const [lesson, setLesson] = useState<LessonType | null>(null);
   const [exercises, setExercises] = useState<Exercise[]>([]);
+  const [relatedLessons, setRelatedLessons] = useState<LessonType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isMarking, setIsMarking] = useState(false);
 
@@ -59,6 +60,15 @@ const Lesson: React.FC = () => {
       setLesson(lessonResponse.data);
       setExercises(exercisesResponse.data);
 
+      // Carregar aulas relacionadas do mesmo curso
+      const cursoId = typeof lessonResponse.data.cursoId === 'string'
+        ? lessonResponse.data.cursoId
+        : (lessonResponse.data.cursoId as any)?._id;
+
+      if (cursoId) {
+        loadRelatedLessons(cursoId, lessonResponse.data);
+      }
+
       // Update metadata
       const title = `${lessonResponse.data.titulo} | ECO RJ`;
       const description = lessonResponse.data.descricao || '';
@@ -83,6 +93,72 @@ const Lesson: React.FC = () => {
       }
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Carregar aulas relacionadas (mesmo subtópico, ou próximos tópicos)
+  const loadRelatedLessons = async (cursoId: string, currentLesson: LessonType) => {
+    try {
+      const response = await lessonService.getByCourse(cursoId);
+      const allLessons: LessonType[] = response.data || [];
+
+      // Excluir a aula atual
+      const otherLessons = allLessons.filter(l => l._id !== currentLesson._id && l.status === 'ativa');
+
+      // Extrair IDs do tópico e subtópico da aula atual
+      const currentSubtopicoId = typeof currentLesson.subtopicoId === 'string'
+        ? currentLesson.subtopicoId
+        : (currentLesson.subtopicoId as any)?._id;
+      const currentTopicoId = typeof currentLesson.topicoId === 'string'
+        ? currentLesson.topicoId
+        : (currentLesson.topicoId as any)?._id;
+
+      // Priorizar aulas:
+      // 1. Do mesmo subtópico (se houver)
+      // 2. Do mesmo tópico
+      // 3. De tópicos seguintes (ordem maior)
+      const related: LessonType[] = [];
+
+      // 1. Aulas do mesmo subtópico
+      if (currentSubtopicoId) {
+        const sameSubtopic = otherLessons.filter(l => {
+          const subId = typeof l.subtopicoId === 'string' ? l.subtopicoId : (l.subtopicoId as any)?._id;
+          return subId === currentSubtopicoId;
+        });
+        related.push(...sameSubtopic);
+      }
+
+      // 2. Aulas do mesmo tópico (que não estejam já adicionadas)
+      if (currentTopicoId) {
+        const sameTopic = otherLessons.filter(l => {
+          const topId = typeof l.topicoId === 'string' ? l.topicoId : (l.topicoId as any)?._id;
+          const subId = typeof l.subtopicoId === 'string' ? l.subtopicoId : (l.subtopicoId as any)?._id;
+          return topId === currentTopicoId && subId !== currentSubtopicoId;
+        });
+        related.push(...sameTopic);
+      }
+
+      // 3. Outras aulas do curso (próximas por ordem)
+      const currentOrder = currentLesson.ordem || 0;
+      const nextLessons = otherLessons
+        .filter(l => !related.some(r => r._id === l._id))
+        .filter(l => (l.ordem || 0) > currentOrder)
+        .sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+      related.push(...nextLessons);
+
+      // 4. Se ainda não tiver o suficiente, adicionar aulas anteriores
+      if (related.length < 6) {
+        const prevLessons = otherLessons
+          .filter(l => !related.some(r => r._id === l._id))
+          .filter(l => (l.ordem || 0) < currentOrder)
+          .sort((a, b) => (b.ordem || 0) - (a.ordem || 0));
+        related.push(...prevLessons);
+      }
+
+      // Limitar a 6 aulas relacionadas
+      setRelatedLessons(related.slice(0, 6));
+    } catch (error) {
+      console.error('Erro ao carregar aulas relacionadas:', error);
     }
   };
 
@@ -432,6 +508,120 @@ const Lesson: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Você Pode Assistir Também */}
+      {relatedLessons.length > 0 && (
+        <div className="mt-8">
+          <div className="card">
+            <div className="p-6 border-b border-[var(--glass-border)]">
+              <h3 className="font-heading text-xl font-semibold flex items-center gap-2 text-[var(--color-text-primary)]">
+                <PlayCircle className="w-6 h-6 text-primary-500" />
+                Você pode assistir também
+              </h3>
+              <p className="text-sm text-[var(--color-text-muted)] mt-1">
+                Continue aprendendo com esses conteúdos relacionados
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-6">
+              {relatedLessons.map((relatedLesson) => {
+                const isRelatedWatched = user?.aulasAssistidas?.includes(relatedLesson._id);
+                const topicoTitulo = typeof relatedLesson.topicoId === 'object'
+                  ? (relatedLesson.topicoId as any)?.titulo
+                  : null;
+                const subtopicoTitulo = typeof relatedLesson.subtopicoId === 'object'
+                  ? (relatedLesson.subtopicoId as any)?.titulo
+                  : null;
+
+                return (
+                  <Link
+                    key={relatedLesson._id}
+                    to={`/aulas/${relatedLesson._id}`}
+                    className="group block p-4 rounded-xl border border-[var(--glass-border)] hover:border-primary-300 dark:hover:border-primary-500/50 hover:bg-gray-50 dark:hover:bg-white/5 transition-all"
+                  >
+                    <div className="flex items-start gap-3">
+                      {/* Icon */}
+                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                        relatedLesson.tipo === 'ao_vivo'
+                          ? 'bg-red-100 dark:bg-red-500/20'
+                          : relatedLesson.tipo === 'material'
+                          ? 'bg-amber-100 dark:bg-amber-500/20'
+                          : 'bg-primary-100 dark:bg-primary-500/20'
+                      }`}>
+                        {relatedLesson.tipo === 'ao_vivo' ? (
+                          <Video className={`w-6 h-6 ${relatedLesson.tipo === 'ao_vivo' ? 'text-red-500' : 'text-primary-500'}`} />
+                        ) : relatedLesson.tipo === 'material' ? (
+                          <File className="w-6 h-6 text-amber-500" />
+                        ) : (
+                          <Play className="w-6 h-6 text-primary-500" />
+                        )}
+                      </div>
+
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-[var(--color-text-primary)] group-hover:text-primary-500 transition-colors line-clamp-2">
+                          {relatedLesson.titulo}
+                        </h4>
+
+                        {/* Tags */}
+                        <div className="flex flex-wrap items-center gap-2 mt-2">
+                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                            relatedLesson.tipo === 'ao_vivo'
+                              ? 'bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400'
+                              : relatedLesson.tipo === 'material'
+                              ? 'bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400'
+                              : 'bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400'
+                          }`}>
+                            {relatedLesson.tipo === 'ao_vivo' ? 'Ao Vivo' : relatedLesson.tipo === 'material' ? 'Material' : 'Gravada'}
+                          </span>
+
+                          {(relatedLesson.duracao ?? 0) > 0 && (
+                            <span className="flex items-center gap-1 text-xs text-[var(--color-text-muted)]">
+                              <Clock className="w-3 h-3" />
+                              {relatedLesson.duracao} min
+                            </span>
+                          )}
+
+                          {isRelatedWatched && (
+                            <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
+                              <CheckCircle className="w-3 h-3" />
+                              Assistida
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Tópico/Subtópico */}
+                        {(topicoTitulo || subtopicoTitulo) && (
+                          <div className="flex items-center gap-1.5 mt-2 text-xs text-[var(--color-text-muted)]">
+                            {topicoTitulo && (
+                              <span className="flex items-center gap-1">
+                                <BookOpen className="w-3 h-3" />
+                                {topicoTitulo}
+                              </span>
+                            )}
+                            {topicoTitulo && subtopicoTitulo && (
+                              <span>/</span>
+                            )}
+                            {subtopicoTitulo && (
+                              <span className="flex items-center gap-1">
+                                <Layers className="w-3 h-3" />
+                                {subtopicoTitulo}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Arrow */}
+                      <ChevronRight className="w-5 h-5 text-[var(--color-text-muted)] group-hover:text-primary-500 group-hover:translate-x-1 transition-all flex-shrink-0" />
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Exercise Modal */}
       {activeExercise && (

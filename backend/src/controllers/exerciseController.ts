@@ -11,14 +11,44 @@ import { AuthRequest } from '../middleware/auth';
 export const getExercisesByLesson = async (req: AuthRequest, res: Response) => {
   try {
     const { lessonId } = req.params;
-    const userCargo = req.user?.cargo;
+    const userCargo = req.user?.cargo || 'Visitante';
+    const userId = req.user?._id;
+
+    // Buscar aula com informações do curso
+    const lesson = await Lesson.findById(lessonId).populate({
+      path: 'cursoId',
+      select: 'acessoRestrito alunosAutorizados'
+    });
+
+    if (!lesson) {
+      return res.status(404).json({ message: 'Aula não encontrada' });
+    }
+
+    // Verificar acesso ao curso restrito (exceto admin)
+    if (userCargo !== 'Administrador') {
+      const curso = lesson.cursoId as any;
+      if (curso && curso.acessoRestrito) {
+        const alunosAutorizados = curso.alunosAutorizados || [];
+        const isAuthorized = alunosAutorizados.some((alunoId: any) =>
+          alunoId.toString() === userId?.toString()
+        );
+
+        if (!isAuthorized) {
+          return res.status(403).json({
+            message: 'Você não tem acesso aos exercícios desta aula. Este curso possui acesso restrito.'
+          });
+        }
+      }
+    }
 
     const exercises = await Exercise.find({ aulaId: lessonId });
 
-    // Filtrar exercícios baseado no cargo do usuário
-    const filteredExercises = exercises.filter((exercise) =>
-      exercise.cargosPermitidos.includes(userCargo || 'Visitante')
-    );
+    // Filtrar exercícios baseado no cargo do usuário (admin vê todos)
+    const filteredExercises = userCargo === 'Administrador'
+      ? exercises
+      : exercises.filter((exercise) =>
+          exercise.cargosPermitidos.includes(userCargo)
+        );
 
     res.json(filteredExercises);
   } catch (error) {
@@ -33,16 +63,44 @@ export const getExercisesByLesson = async (req: AuthRequest, res: Response) => {
 export const getExerciseById = async (req: AuthRequest, res: Response) => {
   try {
     const exercise = await Exercise.findById(req.params.id)
-      .populate('aulaId', 'titulo cursoId');
+      .populate({
+        path: 'aulaId',
+        select: 'titulo cursoId',
+        populate: {
+          path: 'cursoId',
+          select: 'titulo acessoRestrito alunosAutorizados'
+        }
+      });
 
     if (!exercise) {
       return res.status(404).json({ message: 'Exercício não encontrado' });
     }
 
-    // Verificar permissão
+    // Verificar permissão de cargo
     const userCargo = req.user?.cargo || 'Visitante';
+    const userId = req.user?._id;
+
     if (!exercise.cargosPermitidos.includes(userCargo) && userCargo !== 'Administrador') {
       return res.status(403).json({ message: 'Você não tem permissão para acessar este exercício' });
+    }
+
+    // Para não-admins, verificar acesso ao curso restrito
+    if (userCargo !== 'Administrador' && exercise.aulaId) {
+      const aula = exercise.aulaId as any;
+      const curso = aula?.cursoId;
+
+      if (curso && curso.acessoRestrito) {
+        const alunosAutorizados = curso.alunosAutorizados || [];
+        const isAuthorized = alunosAutorizados.some((alunoId: any) =>
+          alunoId.toString() === userId?.toString()
+        );
+
+        if (!isAuthorized) {
+          return res.status(403).json({
+            message: 'Você não tem acesso a este exercício. Este exercício pertence a um curso com acesso restrito.'
+          });
+        }
+      }
     }
 
     // Para não-admins, remover respostas corretas e comentadas
@@ -199,15 +257,43 @@ export const answerExercise = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: 'Respostas são obrigatórias' });
     }
 
-    const exercise = await Exercise.findById(exerciseId);
+    const exercise = await Exercise.findById(exerciseId)
+      .populate({
+        path: 'aulaId',
+        select: 'cursoId',
+        populate: {
+          path: 'cursoId',
+          select: 'acessoRestrito alunosAutorizados'
+        }
+      });
+
     if (!exercise) {
       return res.status(404).json({ message: 'Exercício não encontrado' });
     }
 
-    // Verificar permissão
+    // Verificar permissão de cargo
     const userCargo = req.user?.cargo || 'Visitante';
     if (!exercise.cargosPermitidos.includes(userCargo) && userCargo !== 'Administrador') {
       return res.status(403).json({ message: 'Você não tem permissão para responder este exercício' });
+    }
+
+    // Verificar acesso ao curso restrito
+    if (userCargo !== 'Administrador' && exercise.aulaId) {
+      const aula = exercise.aulaId as any;
+      const curso = aula?.cursoId;
+
+      if (curso && curso.acessoRestrito) {
+        const alunosAutorizados = curso.alunosAutorizados || [];
+        const isAuthorized = alunosAutorizados.some((alunoId: any) =>
+          alunoId.toString() === userId?.toString()
+        );
+
+        if (!isAuthorized) {
+          return res.status(403).json({
+            message: 'Você não tem acesso a este exercício. Este exercício pertence a um curso com acesso restrito.'
+          });
+        }
+      }
     }
 
     // Verificar número de tentativas
@@ -353,6 +439,7 @@ export const getAllExercises = async (req: AuthRequest, res: Response) => {
   try {
     const { aulaId, tipo, page = 1, limit = 20 } = req.query;
     const userCargo = req.user?.cargo || 'Visitante';
+    const userId = req.user?._id;
 
     const query: any = {};
     if (aulaId) query.aulaId = aulaId;
@@ -365,14 +452,76 @@ export const getAllExercises = async (req: AuthRequest, res: Response) => {
 
     const skip = (Number(page) - 1) * Number(limit);
 
-    const [exercises, total] = await Promise.all([
-      Exercise.find(query)
-        .populate('aulaId', 'titulo')
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(Number(limit)),
-      Exercise.countDocuments(query)
-    ]);
+    // Buscar exercícios com informações da aula e do curso
+    let exercises = await Exercise.find(query)
+      .populate({
+        path: 'aulaId',
+        select: 'titulo cursoId',
+        populate: {
+          path: 'cursoId',
+          select: 'titulo acessoRestrito alunosAutorizados'
+        }
+      })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(Number(limit));
+
+    // Para não-admins, filtrar exercícios com base no acesso ao curso
+    if (userCargo !== 'Administrador') {
+      exercises = exercises.filter((ex) => {
+        // Exercícios sem aula são acessíveis (exercícios independentes)
+        if (!ex.aulaId) return true;
+
+        const aula = ex.aulaId as any;
+        const curso = aula?.cursoId;
+
+        // Se não tem curso, é acessível
+        if (!curso) return true;
+
+        // Se o curso não é restrito, é acessível
+        if (!curso.acessoRestrito) return true;
+
+        // Se o curso é restrito, verificar se o usuário está autorizado
+        const alunosAutorizados = curso.alunosAutorizados || [];
+        return alunosAutorizados.some((alunoId: any) =>
+          alunoId.toString() === userId?.toString()
+        );
+      });
+    }
+
+    // Contar total (considerando filtros de acesso)
+    // Para uma contagem precisa, precisamos fazer a mesma lógica
+    let total: number;
+    if (userCargo === 'Administrador') {
+      total = await Exercise.countDocuments(query);
+    } else {
+      // Para não-admins, contar apenas os que passaram no filtro
+      // Como já aplicamos o filtro, usamos o length
+      // Mas para paginação correta, precisamos contar todos os exercícios filtrados
+      const allExercisesForCount = await Exercise.find(query)
+        .populate({
+          path: 'aulaId',
+          select: 'cursoId',
+          populate: {
+            path: 'cursoId',
+            select: 'acessoRestrito alunosAutorizados'
+          }
+        });
+
+      const filteredCount = allExercisesForCount.filter((ex) => {
+        if (!ex.aulaId) return true;
+        const aula = ex.aulaId as any;
+        const curso = aula?.cursoId;
+        if (!curso) return true;
+        if (!curso.acessoRestrito) return true;
+        const alunosAutorizados = curso.alunosAutorizados || [];
+        return alunosAutorizados.some((alunoId: any) =>
+          alunoId.toString() === userId?.toString()
+        );
+      });
+
+      total = filteredCount.length;
+    }
 
     // Para não-admins, remover respostas corretas
     const processedExercises = userCargo === 'Administrador'

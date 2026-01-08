@@ -1,65 +1,208 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { BookOpen, CheckCircle, Clock, MessageSquare, TrendingUp, AlertCircle, ArrowRight, Sparkles, User } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { BookOpen, CheckCircle, Clock, MessageSquare, TrendingUp, AlertCircle, ArrowRight, Sparkles, User, Video, Bell, Calendar, PlayCircle, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { courseService } from '../services/api';
-import { Course } from '../types';
+import { courseService, lessonService } from '../services/api';
+import { Course, Lesson } from '../types';
 import { GlassCard, GlassButton, GlassProgress, GlassBadge, SkeletonCard, SkeletonCourseItem } from '../components/ui';
+import toast from 'react-hot-toast';
+
+// Interface para aulas ao vivo do dia
+interface LiveLessonEvent {
+  lesson: Lesson;
+  course: Course;
+  startsAt: Date;
+  minutesUntilStart: number;
+}
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [courses, setCourses] = useState<Course[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [progress, setProgress] = useState<Record<string, number>>({});
+  const [liveLessonsToday, setLiveLessonsToday] = useState<LiveLessonEvent[]>([]);
+  const [dismissedNotifications, setDismissedNotifications] = useState<Set<string>>(new Set());
+  const [notifiedLessons, setNotifiedLessons] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
-    loadData();
-  }, [user]);
+  // Carregar dados com otimização - usar Promise.all para paralelizar
+  const loadData = useCallback(async () => {
+    if (!user?.cursosInscritos || user.cursosInscritos.length === 0) {
+      setIsLoading(false);
+      return;
+    }
 
-  const loadData = async () => {
     try {
-      // Load enrolled courses progress
-      if (user?.cursosInscritos && user.cursosInscritos.length > 0) {
-        const progressData: Record<string, number> = {};
-
-        // Extrair IDs dos cursos (pode ser string ou objeto Course)
-        const cursoIds = user.cursosInscritos.map((curso: string | Course) => {
-          if (typeof curso === 'string') {
-            return curso;
-          }
-          return curso._id;
-        });
-
-        // Carregar progresso para cada curso
-        for (const cursoId of cursoIds) {
-          try {
-            const response = await courseService.getProgress(cursoId);
-            progressData[cursoId] = response.data.progresso;
-          } catch {
-            progressData[cursoId] = 0;
-          }
+      // Extrair IDs dos cursos (pode ser string ou objeto Course)
+      const cursoIds = user.cursosInscritos.map((curso: string | Course) => {
+        if (typeof curso === 'string') {
+          return curso;
         }
-        setProgress(progressData);
+        return curso._id;
+      });
 
-        // Se os cursos já estão populados (objetos), usar diretamente
-        // Caso contrário, carregar os detalhes
-        const firstCurso = user.cursosInscritos[0];
-        if (typeof firstCurso === 'object' && firstCurso._id) {
-          // Cursos já populados
-          setCourses(user.cursosInscritos as Course[]);
-        } else {
-          // Carregar detalhes dos cursos
-          const coursePromises = cursoIds.map(id => courseService.getById(id));
-          const courseResponses = await Promise.all(coursePromises);
-          setCourses(courseResponses.map(r => r.data));
-        }
-      }
+      // Carregar tudo em paralelo para otimizar
+      const [progressResults, courseResults] = await Promise.all([
+        // Carregar progresso de todos os cursos em paralelo
+        Promise.all(
+          cursoIds.map(async (cursoId) => {
+            try {
+              const response = await courseService.getProgress(cursoId);
+              return { id: cursoId, progress: response.data.progresso };
+            } catch {
+              return { id: cursoId, progress: 0 };
+            }
+          })
+        ),
+        // Carregar detalhes dos cursos se necessário
+        (async () => {
+          const firstCurso = user.cursosInscritos[0];
+          if (typeof firstCurso === 'object' && firstCurso._id) {
+            return user.cursosInscritos as Course[];
+          } else {
+            const coursePromises = cursoIds.map(id => courseService.getById(id));
+            const responses = await Promise.all(coursePromises);
+            return responses.map(r => r.data);
+          }
+        })()
+      ]);
+
+      // Processar resultados de progresso
+      const progressData: Record<string, number> = {};
+      progressResults.forEach(({ id, progress }) => {
+        progressData[id] = progress;
+      });
+
+      setProgress(progressData);
+      setCourses(courseResults);
+
+      // Carregar aulas ao vivo do dia para os cursos inscritos
+      await loadLiveLessonsToday(cursoIds, courseResults);
+
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
     } finally {
       setIsLoading(false);
     }
+  }, [user]);
+
+  // Carregar aulas ao vivo do dia
+  const loadLiveLessonsToday = useCallback(async (cursoIds: string[], loadedCourses: Course[]) => {
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      // Buscar todas as aulas ao vivo dos cursos inscritos
+      const lessonPromises = cursoIds.map(cursoId =>
+        lessonService.getByCourse(cursoId).catch(() => ({ data: [] }))
+      );
+
+      const lessonResponses = await Promise.all(lessonPromises);
+      const allLessons: Lesson[] = lessonResponses.flatMap(r => r.data || []);
+
+      // Filtrar apenas aulas ao vivo que acontecem hoje
+      const liveLessons = allLessons.filter(lesson => {
+        if (lesson.tipo !== 'ao_vivo' || !lesson.dataHoraInicio) return false;
+        const lessonDate = new Date(lesson.dataHoraInicio);
+        return lessonDate >= today && lessonDate < tomorrow;
+      });
+
+      // Mapear aulas para eventos com informações do curso
+      const events: LiveLessonEvent[] = liveLessons.map(lesson => {
+        const course = loadedCourses.find(c => c._id === (typeof lesson.cursoId === 'string' ? lesson.cursoId : (lesson.cursoId as any)?._id));
+        const startsAt = new Date(lesson.dataHoraInicio!);
+        const now = new Date();
+        const minutesUntilStart = Math.floor((startsAt.getTime() - now.getTime()) / 60000);
+
+        return {
+          lesson,
+          course: course!,
+          startsAt,
+          minutesUntilStart
+        };
+      }).filter(e => e.course); // Filtrar eventos sem curso
+
+      // Ordenar por horário de início
+      events.sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
+
+      setLiveLessonsToday(events);
+    } catch (error) {
+      console.error('Erro ao carregar aulas ao vivo:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  // Atualizar minutesUntilStart a cada minuto e verificar notificações
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setLiveLessonsToday(prev => {
+        const now = new Date();
+        return prev.map(event => ({
+          ...event,
+          minutesUntilStart: Math.floor((event.startsAt.getTime() - now.getTime()) / 60000)
+        }));
+      });
+    }, 60000); // Atualizar a cada minuto
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Sistema de notificações para aulas ao vivo
+  useEffect(() => {
+    const checkNotifications = () => {
+      liveLessonsToday.forEach(event => {
+        const key = `${event.lesson._id}`;
+        const minutes = event.minutesUntilStart;
+
+        // Notificar em 10, 5 e 1 minuto
+        const notifyAt = [10, 5, 1];
+
+        notifyAt.forEach(threshold => {
+          const notifyKey = `${key}-${threshold}`;
+          if (minutes <= threshold && minutes > threshold - 1 && !notifiedLessons.has(notifyKey)) {
+            // Disparar notificação
+            const message = minutes <= 1
+              ? `A aula "${event.lesson.titulo}" está começando agora!`
+              : `A aula "${event.lesson.titulo}" começa em ${threshold} minutos!`;
+
+            toast(message, {
+              icon: '🔴',
+              duration: 8000,
+              style: {
+                background: '#1e40af',
+                color: '#fff',
+              },
+            });
+
+            setNotifiedLessons(prev => new Set([...prev, notifyKey]));
+          }
+        });
+      });
+    };
+
+    // Verificar imediatamente e a cada 30 segundos
+    checkNotifications();
+    const interval = setInterval(checkNotifications, 30000);
+
+    return () => clearInterval(interval);
+  }, [liveLessonsToday, notifiedLessons]);
+
+  // Fechar notificação de aula
+  const dismissLessonNotification = (lessonId: string) => {
+    setDismissedNotifications(prev => new Set([...prev, lessonId]));
   };
+
+  // Filtrar eventos não dispensados
+  const visibleLiveLessons = useMemo(() => {
+    return liveLessonsToday.filter(
+      event => !dismissedNotifications.has(event.lesson._id) && event.minutesUntilStart > -60 // Mostrar até 1h após início
+    );
+  }, [liveLessonsToday, dismissedNotifications]);
 
   const isVisitante = user?.cargo === 'Visitante';
   const firstName = user?.nomeCompleto ? (
@@ -103,6 +246,125 @@ const Dashboard: React.FC = () => {
                 <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
+          </div>
+        </GlassCard>
+      )}
+
+      {/* Eventos do Dia - Aulas ao Vivo */}
+      {visibleLiveLessons.length > 0 && (
+        <GlassCard hover={false} padding="none" className="border-l-4 border-l-red-500 overflow-hidden">
+          <div className="p-4 bg-gradient-to-r from-red-500/10 to-transparent border-b border-[var(--glass-border)]">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-red-500 flex items-center justify-center animate-pulse">
+                <Video className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h2 className="font-heading text-lg font-semibold text-[var(--color-text-primary)] flex items-center gap-2">
+                  <Calendar className="w-5 h-5 text-red-500" />
+                  Eventos do Dia
+                </h2>
+                <p className="text-sm text-[var(--color-text-muted)]">
+                  {visibleLiveLessons.length} aula{visibleLiveLessons.length > 1 ? 's' : ''} ao vivo programada{visibleLiveLessons.length > 1 ? 's' : ''} para hoje
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="divide-y divide-[var(--glass-border)]">
+            {visibleLiveLessons.map((event) => {
+              const isStartingSoon = event.minutesUntilStart <= 10 && event.minutesUntilStart > 0;
+              const isLive = event.minutesUntilStart <= 0 && event.minutesUntilStart > -(event.lesson.duracao || 60);
+              const isPast = event.minutesUntilStart <= -(event.lesson.duracao || 60);
+
+              const formatTimeUntil = () => {
+                if (isPast) return 'Encerrada';
+                if (isLive) return 'AO VIVO AGORA';
+                if (event.minutesUntilStart < 60) {
+                  return `Começa em ${event.minutesUntilStart} min`;
+                }
+                const hours = Math.floor(event.minutesUntilStart / 60);
+                const mins = event.minutesUntilStart % 60;
+                return `Começa em ${hours}h${mins > 0 ? ` ${mins}min` : ''}`;
+              };
+
+              return (
+                <div
+                  key={event.lesson._id}
+                  className={`p-4 transition-colors ${isLive ? 'bg-red-500/5' : isStartingSoon ? 'bg-amber-500/5' : ''}`}
+                >
+                  <div className="flex items-center gap-4">
+                    {/* Status Icon */}
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                      isLive ? 'bg-red-500 animate-pulse' :
+                      isStartingSoon ? 'bg-amber-500' :
+                      isPast ? 'bg-gray-400' : 'bg-primary-500'
+                    }`}>
+                      {isLive ? (
+                        <div className="flex items-center gap-1">
+                          <span className="w-2 h-2 bg-white rounded-full animate-ping" />
+                          <Video className="w-5 h-5 text-white" />
+                        </div>
+                      ) : (
+                        <PlayCircle className="w-6 h-6 text-white" />
+                      )}
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-semibold text-[var(--color-text-primary)] truncate">
+                          {event.lesson.titulo}
+                        </h3>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                          isLive ? 'bg-red-500 text-white animate-pulse' :
+                          isStartingSoon ? 'bg-amber-500 text-white' :
+                          isPast ? 'bg-gray-400 text-white' : 'bg-primary-100 text-primary-700 dark:bg-primary-500/20 dark:text-primary-400'
+                        }`}>
+                          {formatTimeUntil()}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-4 mt-1 text-sm text-[var(--color-text-muted)]">
+                        <span className="flex items-center gap-1">
+                          <BookOpen className="w-4 h-4" />
+                          {event.course?.titulo || 'Curso'}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-4 h-4" />
+                          {event.startsAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                          {event.lesson.duracao && ` (${event.lesson.duracao}min)`}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {!isPast && (
+                        <Link
+                          to={`/aulas/${event.lesson._id}`}
+                          className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+                            isLive
+                              ? 'bg-red-500 text-white hover:bg-red-600 animate-pulse'
+                              : isStartingSoon
+                              ? 'bg-amber-500 text-white hover:bg-amber-600'
+                              : 'bg-primary-500 text-white hover:bg-primary-600'
+                          }`}
+                        >
+                          {isLive ? 'Assistir Agora' : 'Acessar Aula'}
+                        </Link>
+                      )}
+                      <button
+                        onClick={() => dismissLessonNotification(event.lesson._id)}
+                        className="p-2 rounded-lg text-[var(--color-text-muted)] hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
+                        title="Dispensar"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </GlassCard>
       )}
