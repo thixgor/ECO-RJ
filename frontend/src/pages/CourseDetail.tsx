@@ -350,7 +350,15 @@ const CourseDetail: React.FC = () => {
         <div className="card p-6">
           <div className="h-40 bg-gradient-to-br from-primary-300 to-primary-500 rounded-lg mb-4 flex items-center justify-center">
             {course.imagemCapa ? (
-              <img src={course.imagemCapa} alt="" className="w-full h-full object-cover rounded-lg" loading="lazy" decoding="async" />
+              <img
+                src={course.imagemCapa}
+                alt=""
+                className="w-full h-full object-cover rounded-lg pointer-events-none select-none"
+                loading="lazy"
+                decoding="async"
+                onContextMenu={(e) => e.preventDefault()}
+                onDragStart={(e) => e.preventDefault()}
+              />
             ) : (
               <BookOpen className="w-16 h-16 text-white/80" />
             )}

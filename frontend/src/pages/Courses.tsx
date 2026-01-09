@@ -144,9 +144,11 @@ const Courses: React.FC = () => {
                     <img
                       src={course.imagemCapa}
                       alt={course.titulo}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover pointer-events-none select-none"
                       loading="lazy"
                       decoding="async"
+                      onContextMenu={(e) => e.preventDefault()}
+                      onDragStart={(e) => e.preventDefault()}
                     />
                   ) : (
                     <BookOpen className="w-16 h-16 text-white/80" />
