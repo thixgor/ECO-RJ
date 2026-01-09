@@ -7,6 +7,7 @@ import { PublicLayout, AuthenticatedLayout, AdminLayout, PublicPageWrapper } fro
 import ProtectedRoute from './components/common/ProtectedRoute';
 import { AnimatedBackground } from './components/ui';
 import { LoadingPage } from './components/common/Loading';
+import WelcomeModal from './components/common/WelcomeModal';
 
 // Lazy load pages for better performance
 // Public Pages
@@ -53,6 +54,9 @@ const App: React.FC = () => {
         <BrowserRouter>
           {/* Animated Background */}
           <AnimatedBackground intensity="subtle" />
+
+          {/* Welcome Modal for First-Time Visitors */}
+          <WelcomeModal />
 
           <Toaster
             position="top-right"

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, Calendar, User, Search, Mail, Key, Lock, ChevronDown } from 'lucide-react';
+import { BookOpen, Calendar, User, Search, Mail, Key, Lock, ChevronDown, Star, Sparkles } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { courseService } from '../services/api';
+import { courseService, siteConfigService } from '../services/api';
 import { Course, User as UserType } from '../types';
 import { LoadingPage } from '../components/common/Loading';
 
@@ -12,9 +12,10 @@ const Courses: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [showScrollHint, setShowScrollHint] = useState(true);
+  const [featuredCourseId, setFeaturedCourseId] = useState<string | null>(null);
 
   useEffect(() => {
-    loadCourses();
+    loadData();
   }, []);
 
   // Hide scroll hint on scroll
@@ -28,10 +29,25 @@ const Courses: React.FC = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const loadCourses = async () => {
+  const loadData = async () => {
     try {
-      const response = await courseService.getAll({ ativo: 'true' });
-      setCourses(response.data.courses);
+      // Carregar cursos e configurações em paralelo
+      const [coursesRes, configRes] = await Promise.all([
+        courseService.getAll({ ativo: 'true' }),
+        siteConfigService.get().catch(() => null) // Não falhar se config não existir
+      ]);
+
+      // Remover possíveis duplicatas baseado no _id
+      const uniqueCourses = coursesRes.data.courses.filter(
+        (course: Course, index: number, self: Course[]) =>
+          index === self.findIndex((c) => c._id === course._id)
+      );
+      setCourses(uniqueCourses);
+
+      // Verificar curso em destaque
+      if (configRes?.data?.featuredCourse?.enabled && configRes.data.featuredCourse.courseId) {
+        setFeaturedCourseId(configRes.data.featuredCourse.courseId);
+      }
     } catch (error) {
       console.error('Erro ao carregar cursos:', error);
     } finally {
@@ -99,13 +115,31 @@ const Courses: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           {filteredCourses.map((course) => {
             const instrutor = course.instrutor as UserType;
+            const isFeatured = featuredCourseId === course._id;
+
             return (
               <Link
                 key={course._id}
                 to={`/cursos/${course._id}`}
-                className="card overflow-hidden hover:-translate-y-1 transition-all duration-300"
+                className={`card overflow-hidden hover:-translate-y-1 transition-all duration-300 relative ${isFeatured
+                  ? 'ring-2 ring-amber-500/50 shadow-lg shadow-amber-500/20'
+                  : ''
+                  }`}
+                style={isFeatured ? {
+                  animation: 'featured-glow 2s ease-in-out infinite'
+                } : undefined}
               >
-                <div className="h-48 bg-gradient-to-br from-primary-300 to-primary-500 flex items-center justify-center">
+                {/* Featured Badge */}
+                {isFeatured && (
+                  <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg animate-pulse">
+                    <Star className="w-3.5 h-3.5 fill-white" />
+                    DESTAQUE
+                    <Sparkles className="w-3.5 h-3.5" />
+                  </div>
+                )}
+
+                <div className={`h-48 bg-gradient-to-br from-primary-300 to-primary-500 flex items-center justify-center ${isFeatured ? 'ring-1 ring-amber-500/30' : ''
+                  }`}>
                   {course.imagemCapa ? (
                     <img
                       src={course.imagemCapa}
@@ -119,7 +153,10 @@ const Courses: React.FC = () => {
                   )}
                 </div>
                 <div className="p-6">
-                  <h3 className="font-heading text-xl font-semibold mb-2 line-clamp-2 text-[var(--color-text-primary)]">
+                  <h3 className={`font-heading text-xl font-semibold mb-2 line-clamp-2 ${isFeatured
+                    ? 'text-amber-600 dark:text-amber-400'
+                    : 'text-[var(--color-text-primary)]'
+                    }`}>
                     {course.titulo}
                   </h3>
                   <p className="text-[var(--color-text-secondary)] text-sm mb-4 line-clamp-2">
