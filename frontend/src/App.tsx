@@ -40,16 +40,6 @@ const AdminExercises = lazy(() => import('./pages/admin/AdminExercises'));
 const AdminSiteConfig = lazy(() => import('./pages/admin/AdminSiteConfig'));
 
 const App: React.FC = () => {
-  // Remove initial loader when App mounts
-  React.useEffect(() => {
-    const loader = document.getElementById('initial-loader');
-    if (loader) {
-      loader.style.opacity = '0';
-      loader.style.transition = 'opacity 0.3s ease-out';
-      setTimeout(() => loader.remove(), 300);
-    }
-  }, []);
-
   return (
     <ThemeProvider>
       <AuthProvider>

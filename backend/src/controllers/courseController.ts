@@ -28,8 +28,22 @@ export const getCourses = async (req: AuthRequest, res: Response) => {
       Course.countDocuments(query)
     ]);
 
+    // Calcular duração total para cada curso
+    const coursesWithDuration = await Promise.all(
+      courses.map(async (course) => {
+        const duracaoResult = await Lesson.aggregate([
+          { $match: { cursoId: course._id } },
+          { $group: { _id: null, total: { $sum: '$duracao' } } }
+        ]);
+        const duracaoTotal = duracaoResult.length > 0 ? duracaoResult[0].total : 0;
+        const courseObj = course.toObject();
+        (courseObj as any).duracaoTotal = duracaoTotal;
+        return courseObj;
+      })
+    );
+
     res.json({
-      courses,
+      courses: coursesWithDuration,
       pagination: {
         total,
         page: Number(page),
@@ -90,12 +104,20 @@ export const getCourseById = async (req: AuthRequest, res: Response) => {
       tipo: { $in: ['ao_vivo', 'gravada'] }
     });
 
+    // Calcular duração total do curso (soma de todas as durações das aulas)
+    const duracaoResult = await Lesson.aggregate([
+      { $match: { cursoId: course._id } },
+      { $group: { _id: null, total: { $sum: '$duracao' } } }
+    ]);
+    const duracaoTotal = duracaoResult.length > 0 ? duracaoResult[0].total : 0;
+
     // Retornar curso com info de acesso e contagens
     const courseObj = course.toObject();
     (courseObj as any).temAcessoConteudo = temAcessoConteudo;
     (courseObj as any).totalAulas = totalAulas;
     (courseObj as any).totalMateriais = totalMateriais;
     (courseObj as any).totalAulasRegulares = totalAulasRegulares;
+    (courseObj as any).duracaoTotal = duracaoTotal;
 
     res.json(courseObj);
   } catch (error) {

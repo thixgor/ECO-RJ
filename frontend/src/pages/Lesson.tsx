@@ -6,6 +6,7 @@ import { Lesson as LessonType, Exercise, Course } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { generateExercisePDF } from '../utils/pdfGenerator';
 import { LoadingPage } from '../components/common/Loading';
+import { formatDuration } from '../utils/formatDuration';
 import VideoWatermark from '../components/common/VideoWatermark';
 import toast from 'react-hot-toast';
 
@@ -380,7 +381,7 @@ const Lesson: React.FC = () => {
                   {(lesson.duracao ?? 0) > 0 && (
                     <span className="flex items-center gap-1">
                       <Clock className="w-3 h-3" />
-                      {lesson.duracao} min
+                      {formatDuration(lesson.duracao)}
                     </span>
                   )}
                 </div>
@@ -578,7 +579,7 @@ const Lesson: React.FC = () => {
                           {(relatedLesson.duracao ?? 0) > 0 && (
                             <span className="flex items-center gap-1 text-xs text-[var(--color-text-muted)]">
                               <Clock className="w-3 h-3" />
-                              {relatedLesson.duracao} min
+                              {formatDuration(relatedLesson.duracao)}
                             </span>
                           )}
 

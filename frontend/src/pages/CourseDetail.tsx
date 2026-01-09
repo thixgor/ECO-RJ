@@ -5,6 +5,7 @@ import { courseService, lessonService, courseTopicService, courseSubtopicService
 import { Course, Lesson, User as UserType, CourseTopic, CourseSubtopic } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { CourseDetailSkeleton } from '../components/common/Loading';
+import { formatDuration } from '../utils/formatDuration';
 import toast from 'react-hot-toast';
 
 const CourseDetail: React.FC = () => {
@@ -264,7 +265,7 @@ const CourseDetail: React.FC = () => {
                 {(lesson.duracao ?? 0) > 0 && (
                   <span className="flex items-center gap-1">
                     <Clock className="w-3 h-3" />
-                    {lesson.duracao} min
+                    {formatDuration(lesson.duracao)}
                   </span>
                 )}
               </div>
@@ -294,7 +295,7 @@ const CourseDetail: React.FC = () => {
                 {(lesson.duracao ?? 0) > 0 && (
                   <span className="flex items-center gap-1">
                     <Clock className="w-3 h-3" />
-                    {lesson.duracao} min
+                    {formatDuration(lesson.duracao)}
                   </span>
                 )}
               </div>
@@ -341,6 +342,12 @@ const CourseDetail: React.FC = () => {
               <div className="flex items-center gap-2">
                 <FileText className="w-5 h-5 text-purple-500" />
                 <span>{(course as any).totalMateriais} material{(course as any).totalMateriais !== 1 ? 'is' : ''}</span>
+              </div>
+            )}
+            {(course as any).duracaoTotal > 0 && (
+              <div className="flex items-center gap-2">
+                <Clock className="w-5 h-5 text-emerald-500" />
+                <span>{formatDuration((course as any).duracaoTotal)} de conteúdo</span>
               </div>
             )}
           </div>

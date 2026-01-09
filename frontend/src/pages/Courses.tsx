@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, Calendar, User, Search, Mail, Key, Lock, ChevronDown, Star, Sparkles } from 'lucide-react';
+import { BookOpen, Calendar, User, Search, Mail, Key, Lock, ChevronDown, Star, Sparkles, Clock } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { courseService, siteConfigService } from '../services/api';
 import { Course, User as UserType } from '../types';
 import { CoursesGridSkeleton } from '../components/common/Loading';
+import { formatDuration } from '../utils/formatDuration';
 
 const Courses: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
@@ -189,6 +190,12 @@ const Courses: React.FC = () => {
                         Início: {new Date(course.dataInicio).toLocaleDateString('pt-BR')}
                       </span>
                     </div>
+                    {(course as any).duracaoTotal > 0 && (
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-emerald-500" />
+                        <span>{formatDuration((course as any).duracaoTotal)} de conteúdo</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </Link>

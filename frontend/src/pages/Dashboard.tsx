@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { courseService, lessonService } from '../services/api';
 import { Course, Lesson } from '../types';
 import { GlassCard, GlassButton, GlassProgress, GlassBadge, SkeletonCard, SkeletonCourseItem } from '../components/ui';
+import { formatDuration } from '../utils/formatDuration';
 import toast from 'react-hot-toast';
 
 // Interface para aulas ao vivo do dia
@@ -331,7 +332,7 @@ const Dashboard: React.FC = () => {
                         <span className="flex items-center gap-1">
                           <Clock className="w-4 h-4" />
                           {event.startsAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                          {event.lesson.duracao && ` (${event.lesson.duracao}min)`}
+                          {event.lesson.duracao && ` (${formatDuration(event.lesson.duracao)})`}
                         </span>
                       </div>
                     </div>

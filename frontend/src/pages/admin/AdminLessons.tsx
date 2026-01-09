@@ -5,6 +5,7 @@ import { Lesson, Course, CustomButton, CourseTopic, CourseSubtopic } from '../..
 import Loading from '../../components/common/Loading';
 import { GlassCard, GlassButton, GlassInput, GlassSelect, GlassBadge } from '../../components/ui';
 import { detectVideoDuration } from '../../utils/videoUtils';
+import { formatDuration } from '../../utils/formatDuration';
 import toast from 'react-hot-toast';
 
 // Ícones disponíveis para botões personalizados
@@ -496,7 +497,7 @@ const AdminLessons: React.FC = () => {
             {lesson.duracao && lesson.duracao > 0 && (
               <GlassBadge variant="default" size="sm">
                 <Clock className="w-3 h-3" />
-                {lesson.duracao} min
+                {formatDuration(lesson.duracao)}
               </GlassBadge>
             )}
             <GlassBadge
