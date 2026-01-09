@@ -4,7 +4,7 @@ import { BookOpen, Calendar, User, Search, Mail, Key, Lock, ChevronDown, Star, S
 import { useAuth } from '../contexts/AuthContext';
 import { courseService, siteConfigService } from '../services/api';
 import { Course, User as UserType } from '../types';
-import { LoadingPage } from '../components/common/Loading';
+import { CoursesGridSkeleton } from '../components/common/Loading';
 
 const Courses: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
@@ -67,7 +67,21 @@ const Courses: React.FC = () => {
   const isVisitor = user?.cargo === 'Visitante' || !isAuthenticated;
 
   if (isLoading) {
-    return <LoadingPage />;
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fade-in">
+        {/* Header skeleton */}
+        <div className="mb-6">
+          <div className="h-9 bg-gray-200 dark:bg-gray-700 rounded w-48 mb-2 animate-pulse" />
+          <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-72 animate-pulse" />
+        </div>
+        {/* Search skeleton */}
+        <div className="mb-6">
+          <div className="h-11 bg-gray-200 dark:bg-gray-700 rounded-lg max-w-md animate-pulse" />
+        </div>
+        {/* Grid skeleton */}
+        <CoursesGridSkeleton count={6} />
+      </div>
+    );
   }
 
   return (

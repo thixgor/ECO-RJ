@@ -6,7 +6,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { PublicLayout, AuthenticatedLayout, AdminLayout, PublicPageWrapper } from './components/Layout';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import { AnimatedBackground } from './components/ui';
-import { LoadingPage } from './components/common/Loading';
+import { LoadingMinimal } from './components/common/Loading';
 import WelcomeModal from './components/common/WelcomeModal';
 
 // Lazy load pages for better performance
@@ -84,7 +84,7 @@ const App: React.FC = () => {
             }}
           />
 
-          <Suspense fallback={<LoadingPage />}>
+          <Suspense fallback={<LoadingMinimal />}>
             <Routes>
               {/* Public Routes */}
               {/* Public Pages with Dynamic Layout (Sidebar if logged in) */}

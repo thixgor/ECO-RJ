@@ -4,7 +4,7 @@ import { BookOpen, Calendar, User, PlayCircle, Clock, Lock, CheckCircle, ArrowLe
 import { courseService, lessonService, courseTopicService, courseSubtopicService } from '../services/api';
 import { Course, Lesson, User as UserType, CourseTopic, CourseSubtopic } from '../types';
 import { useAuth } from '../contexts/AuthContext';
-import { LoadingPage } from '../components/common/Loading';
+import { CourseDetailSkeleton } from '../components/common/Loading';
 import toast from 'react-hot-toast';
 
 const CourseDetail: React.FC = () => {
@@ -170,7 +170,7 @@ const CourseDetail: React.FC = () => {
   };
 
   if (isLoading) {
-    return <LoadingPage text="Carregando curso..." />;
+    return <CourseDetailSkeleton />;
   }
 
   if (!course) {
