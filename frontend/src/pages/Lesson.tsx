@@ -9,8 +9,6 @@ import { LoadingPage } from '../components/common/Loading';
 import { formatDuration } from '../utils/formatDuration';
 import VideoWatermark from '../components/common/VideoWatermark';
 import toast from 'react-hot-toast';
-// Zoom SDK imports
-import ZoomMtgEmbedded from '@zoom/meetingsdk/embedded';
 
 // Interface for exercise result
 interface ExerciseResult {
@@ -206,6 +204,9 @@ const Lesson: React.FC = () => {
     setZoomError(null);
 
     try {
+      // Dynamic import do Zoom SDK (lazy loading)
+      const ZoomMtgEmbedded = (await import('@zoom/meetingsdk/embedded')).default;
+
       // Inicializar cliente Zoom (apenas uma vez)
       if (!zoomClientRef.current) {
         zoomClientRef.current = ZoomMtgEmbedded.createClient();
