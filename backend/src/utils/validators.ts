@@ -36,14 +36,13 @@ export function formatCPF(cpf: string): string {
   return cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
 }
 
-// Validação de CRM (formato básico)
+// Validação de CRM (apenas número, UF é validado separadamente)
 export function validateCRM(crm: string): boolean {
-  // Remove espaços
-  crm = crm.trim();
+  // Remove caracteres não numéricos
+  crm = crm.replace(/[^\d]/g, '');
 
-  // Formato esperado: números seguidos de UF (ex: 123456-RJ ou 123456/RJ ou CRM/RJ 123456)
-  const crmRegex = /^(\d{4,7})[-\/]?([A-Z]{2})$/i;
-  return crmRegex.test(crm);
+  // CRM deve ter entre 4 e 7 dígitos
+  return crm.length >= 4 && crm.length <= 7;
 }
 
 // Lista de UFs válidas

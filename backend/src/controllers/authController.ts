@@ -45,7 +45,7 @@ export const register = async (req: Request, res: Response) => {
 
     // Validar CRM
     if (!validateCRM(crm)) {
-      return res.status(400).json({ message: 'CRM inválido. Formato esperado: XXXXXX-UF' });
+      return res.status(400).json({ message: 'CRM inválido. Deve conter de 4 a 7 dígitos numéricos.' });
     }
 
     // Validar UF
