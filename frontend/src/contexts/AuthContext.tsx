@@ -9,7 +9,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isAdmin: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (data: RegisterData) => Promise<void>;
+  register: (data: RegisterData) => Promise<{ tokenRecuperacao: string; email: string; id: string }>;
   logout: () => void;
   updateUser: (user: User) => void;
   refreshUser: () => Promise<void>;
@@ -94,11 +94,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const register = async (data: RegisterData) => {
+  const register = async (data: RegisterData): Promise<{ tokenRecuperacao: string; email: string; id: string }> => {
     setIsLoading(true);
     try {
       const response = await authService.register(data);
-      const authData: AuthResponse = response.data;
+      const authData = response.data;
 
       localStorage.setItem('token', authData.token);
       setToken(authData.token);
@@ -107,6 +107,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const userResponse = await authService.getMe();
       setUser(userResponse.data);
       localStorage.setItem('user', JSON.stringify(userResponse.data));
+
+      // Retornar token de recuperação para exibição no modal
+      return {
+        tokenRecuperacao: authData.tokenRecuperacao,
+        email: authData.email,
+        id: authData._id
+      };
     } finally {
       setIsLoading(false);
     }

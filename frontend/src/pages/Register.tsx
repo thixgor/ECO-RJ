@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, User, CreditCard, MapPin, Calendar, Stethoscope, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, User, CreditCard, MapPin, Calendar, Stethoscope, Eye, EyeOff, AlertTriangle, Download, Key } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import toast from 'react-hot-toast';
@@ -14,6 +14,12 @@ const UF_OPTIONS = [
   'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN',
   'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
 ];
+
+interface RecoveryTokenData {
+  id: string;
+  email: string;
+  tokenRecuperacao: string;
+}
 
 const Register: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -30,6 +36,11 @@ const Register: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Modal de token de recuperação
+  const [showTokenModal, setShowTokenModal] = useState(false);
+  const [recoveryData, setRecoveryData] = useState<RecoveryTokenData | null>(null);
+  const [confirmClose, setConfirmClose] = useState(false);
 
   const { register } = useAuth();
   const { isDark } = useTheme();
@@ -115,7 +126,7 @@ const Register: React.FC = () => {
     setIsLoading(true);
 
     try {
-      await register({
+      const result = await register({
         email: formData.email,
         password: formData.password,
         nomeCompleto: formData.nomeCompleto,
@@ -125,14 +136,66 @@ const Register: React.FC = () => {
         dataNascimento: formData.dataNascimento,
         especialidade: formData.especialidade || undefined
       });
+
+      // Exibir modal com token de recuperação
+      setRecoveryData({
+        id: result.id,
+        email: result.email,
+        tokenRecuperacao: result.tokenRecuperacao
+      });
+      setShowTokenModal(true);
       toast.success('Conta criada com sucesso!');
-      navigate('/dashboard');
     } catch (err: any) {
       const message = err.response?.data?.message || 'Erro ao criar conta';
       toast.error(message);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleDownloadToken = () => {
+    if (!recoveryData) return;
+
+    const content = `===========================================
+ECO RJ - TOKEN DE RECUPERAÇÃO DE CONTA
+===========================================
+
+⚠️ GUARDE ESTE ARQUIVO EM LOCAL SEGURO!
+Este token é a ÚNICA forma de recuperar sua conta
+caso você perca sua senha.
+
+-------------------------------------------
+ID da Conta: ${recoveryData.id}
+E-mail: ${recoveryData.email}
+Token de Recuperação: ${recoveryData.tokenRecuperacao}
+-------------------------------------------
+
+Data de criação: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}
+
+===========================================
+NÃO COMPARTILHE ESTE TOKEN COM NINGUÉM!
+===========================================`;
+
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `ECO-RJ-Token-Recuperacao-${recoveryData.id}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    toast.success('Token baixado com sucesso!');
+  };
+
+  const handleCloseModal = () => {
+    if (!confirmClose) {
+      setConfirmClose(true);
+      return;
+    }
+    setShowTokenModal(false);
+    navigate('/dashboard');
   };
 
   return (
@@ -360,8 +423,110 @@ const Register: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Modal de Token de Recuperação */}
+      {showTokenModal && recoveryData && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-lg w-full shadow-2xl animate-slide-up overflow-hidden">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-amber-500 to-orange-500 p-6 text-white">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
+                  <Key className="w-6 h-6" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold">Token de Recuperação</h2>
+                  <p className="text-white/80 text-sm">Guarde este token em local seguro</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-4">
+              {/* Warning */}
+              <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-xl p-4">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="w-6 h-6 text-red-500 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-bold text-red-700 dark:text-red-400 mb-1">⚠️ ATENÇÃO:</p>
+                    <p className="text-red-600 dark:text-red-400 text-sm leading-relaxed">
+                      Este token é a <strong>ÚNICA</strong> forma de recuperar sua conta caso você perca sua senha.
+                      <br /><br />
+                      <strong>Após fechar este modal, ele nunca mais será exibido novamente.</strong>
+                      <br /><br />
+                      Recomendamos fortemente que você <strong>baixe e guarde o arquivo .TXT</strong> em um local seguro.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Account Info */}
+              <div className="bg-gray-50 dark:bg-white/5 rounded-xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-500 dark:text-gray-400">ID da Conta:</span>
+                  <code className="text-sm font-mono bg-gray-200 dark:bg-white/10 px-2 py-1 rounded">
+                    {recoveryData.id}
+                  </code>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-500 dark:text-gray-400">E-mail:</span>
+                  <span className="text-sm font-medium text-[var(--color-text-primary)]">
+                    {recoveryData.email}
+                  </span>
+                </div>
+                <div className="border-t border-gray-200 dark:border-white/10 pt-3">
+                  <span className="text-sm text-gray-500 dark:text-gray-400 block mb-2">Token de Recuperação:</span>
+                  <code className="block w-full text-center text-lg font-mono bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 px-3 py-3 rounded-lg break-all font-bold tracking-wider">
+                    {recoveryData.tokenRecuperacao}
+                  </code>
+                </div>
+              </div>
+
+              {/* Download Button */}
+              <button
+                onClick={handleDownloadToken}
+                className="btn btn-primary w-full py-3 flex items-center justify-center gap-2"
+              >
+                <Download className="w-5 h-5" />
+                Baixar Token (.txt)
+              </button>
+
+              {/* Close Button */}
+              {!confirmClose ? (
+                <button
+                  onClick={handleCloseModal}
+                  className="btn btn-outline w-full py-3"
+                >
+                  Já salvei meu token, continuar
+                </button>
+              ) : (
+                <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-xl p-4">
+                  <p className="text-amber-700 dark:text-amber-400 text-sm mb-3 text-center font-medium">
+                    Tem certeza? Este token <strong>NUNCA</strong> mais será exibido!
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setConfirmClose(false)}
+                      className="btn btn-outline flex-1"
+                    >
+                      Voltar
+                    </button>
+                    <button
+                      onClick={handleCloseModal}
+                      className="btn btn-primary flex-1"
+                    >
+                      Confirmar e Continuar
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 export default Register;
+

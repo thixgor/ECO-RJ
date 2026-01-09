@@ -58,7 +58,10 @@ export const authService = {
   }) => api.put('/auth/profile', data),
 
   changePassword: (senhaAtual: string, novaSenha: string) =>
-    api.put('/auth/password', { senhaAtual, novaSenha })
+    api.put('/auth/password', { senhaAtual, novaSenha }),
+
+  resetPassword: (email: string, tokenRecuperacao: string, novaSenha: string) =>
+    api.post('/auth/reset-password', { email, tokenRecuperacao, novaSenha })
 };
 
 // Users

@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import User from '../models/User';
 import { validateCPF, validateCRM, validateUF } from '../utils/validators';
 import { AuthRequest } from '../middleware/auth';
@@ -9,6 +10,11 @@ const generateToken = (id: string): string => {
   return jwt.sign({ id }, process.env.JWT_SECRET || 'secret', {
     expiresIn: (process.env.JWT_EXPIRES_IN || '7d') as any
   });
+};
+
+// Gerar token de recuperação de senha (único e permanente)
+const generateRecoveryToken = (): string => {
+  return crypto.randomBytes(24).toString('hex').toUpperCase();
 };
 
 // @desc    Registrar novo usuário
@@ -67,6 +73,9 @@ export const register = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Este CRM já está cadastrado' });
     }
 
+    // Gerar token de recuperação de senha único
+    const tokenRecuperacao = generateRecoveryToken();
+
     // Criar usuário
     const user = await User.create({
       email: email.toLowerCase(),
@@ -78,18 +87,21 @@ export const register = async (req: Request, res: Response) => {
       dataNascimento: new Date(dataNascimento),
       especialidade,
       cargo: 'Visitante',
-      emailConfirmado: true // Por enquanto sem confirmação por email
+      emailConfirmado: true, // Por enquanto sem confirmação por email
+      tokenRecuperacao
     });
 
-    // Gerar token
+    // Gerar token JWT
     const token = generateToken(user._id.toString());
 
+    // Retornar dados incluindo token de recuperação (apenas neste momento!)
     res.status(201).json({
       _id: user._id,
       nomeCompleto: user.nomeCompleto,
       email: user.email,
       cargo: user.cargo,
-      token
+      token,
+      tokenRecuperacao // Único momento em que o token de recuperação é retornado!
     });
   } catch (error: any) {
     console.error('Erro no registro:', error);
@@ -170,7 +182,7 @@ export const login = async (req: Request, res: Response) => {
 export const getMe = async (req: AuthRequest, res: Response) => {
   try {
     const user = await User.findById(req.user?._id)
-      .select('-password')
+      .select('-password -tokenRecuperacao') // Nunca expor token de recuperação
       .populate('cursosInscritos', 'titulo imagemCapa')
       .populate('serialKeysUsadas', 'chave cargoAtribuido dataUso');
 
@@ -251,5 +263,58 @@ export const changePassword = async (req: AuthRequest, res: Response) => {
   } catch (error) {
     console.error('Erro ao alterar senha:', error);
     res.status(500).json({ message: 'Erro ao alterar senha' });
+  }
+};
+
+// @desc    Recuperar senha usando token de recuperação
+// @route   POST /api/auth/reset-password
+// @access  Public
+export const resetPasswordWithToken = async (req: Request, res: Response) => {
+  try {
+    const { email, tokenRecuperacao, novaSenha } = req.body;
+
+    if (!email || !tokenRecuperacao || !novaSenha) {
+      return res.status(400).json({ message: 'E-mail, token de recuperação e nova senha são obrigatórios' });
+    }
+
+    if (novaSenha.length < 6) {
+      return res.status(400).json({ message: 'Nova senha deve ter no mínimo 6 caracteres' });
+    }
+
+    // Buscar usuário pelo email
+    const user = await User.findOne({ email: email.toLowerCase() });
+    if (!user) {
+      return res.status(400).json({ message: 'Token inválido. Verifique as informações e tente novamente.' });
+    }
+
+    // Verificar se o token corresponde (comparação case-insensitive)
+    if (user.tokenRecuperacao.toUpperCase() !== tokenRecuperacao.toUpperCase()) {
+      return res.status(400).json({ message: 'Token inválido. Verifique as informações e tente novamente.' });
+    }
+
+    // Verificar se a conta está ativa
+    if (!user.ativo) {
+      return res.status(400).json({ message: 'Conta desativada. Entre em contato com o suporte.' });
+    }
+
+    // Atualizar senha
+    user.password = novaSenha;
+    await user.save();
+
+    // Gerar token JWT para login automático
+    const token = generateToken(user._id.toString());
+
+    res.json({
+      message: 'Senha redefinida com sucesso!',
+      _id: user._id,
+      nomeCompleto: user.nomeCompleto,
+      email: user.email,
+      cargo: user.cargo,
+      fotoPerfil: user.fotoPerfil,
+      token
+    });
+  } catch (error) {
+    console.error('Erro ao redefinir senha:', error);
+    res.status(500).json({ message: 'Erro ao redefinir senha' });
   }
 };

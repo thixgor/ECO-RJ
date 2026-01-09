@@ -21,6 +21,7 @@ export interface IUser extends Document {
   ultimoLogin?: Date;
   ipsAcesso: string[];
   ativo: boolean;
+  tokenRecuperacao: string; // Token único para recuperação de senha
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
@@ -113,6 +114,11 @@ const UserSchema = new Schema<IUser>(
     ativo: {
       type: Boolean,
       default: true
+    },
+    tokenRecuperacao: {
+      type: String,
+      required: true,
+      unique: true
     }
   },
   {
