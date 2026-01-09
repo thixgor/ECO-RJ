@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Activity, User, BookOpen, Monitor, Clock, Filter, Download, RefreshCw } from 'lucide-react';
+import { Activity, User, BookOpen, Monitor, Clock, Filter, Download, RefreshCw, Pause, Play, Trash2, AlertTriangle } from 'lucide-react';
 import Loading from '../../components/common/Loading';
 import api from '../../services/api';
+import toast from 'react-hot-toast';
 
 interface AccessLog {
   _id: string;
@@ -53,10 +54,24 @@ const AdminAccessLogs: React.FC = () => {
     dataFim: ''
   });
   const [showFilters, setShowFilters] = useState(false);
+  const [logsEnabled, setLogsEnabled] = useState(true);
+  const [showClearModal, setShowClearModal] = useState(false);
+  const [clearMode, setClearMode] = useState<'all' | 'old'>('all');
+  const [clearDays, setClearDays] = useState(30);
 
   useEffect(() => {
     loadData();
+    loadStatus();
   }, [page, filters]);
+
+  const loadStatus = async () => {
+    try {
+      const res = await api.get('/access-logs/status');
+      setLogsEnabled(res.data.enabled);
+    } catch (error) {
+      console.error('Erro ao carregar status:', error);
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -79,6 +94,34 @@ const AdminAccessLogs: React.FC = () => {
       console.error('Erro ao carregar logs:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const toggleLogs = async () => {
+    try {
+      const res = await api.post('/access-logs/toggle');
+      setLogsEnabled(res.data.enabled);
+      toast.success(res.data.message);
+    } catch (error) {
+      console.error('Erro ao alternar logs:', error);
+      toast.error('Erro ao alternar logs');
+    }
+  };
+
+  const clearLogs = async () => {
+    try {
+      let res;
+      if (clearMode === 'all') {
+        res = await api.delete('/access-logs/clear');
+      } else {
+        res = await api.delete(`/access-logs/clear-old?days=${clearDays}`);
+      }
+      toast.success(`${res.data.deletedCount} logs removidos`);
+      setShowClearModal(false);
+      loadData();
+    } catch (error) {
+      console.error('Erro ao limpar logs:', error);
+      toast.error('Erro ao limpar logs');
     }
   };
 
@@ -138,12 +181,30 @@ const AdminAccessLogs: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="font-heading text-2xl font-bold text-[var(--color-text-primary)]">Logs de Acesso</h1>
           <p className="text-[var(--color-text-secondary)]">Monitoramento de atividades da plataforma</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={toggleLogs}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+              logsEnabled
+                ? 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-500/20 dark:text-green-400'
+                : 'bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-500/20 dark:text-amber-400'
+            }`}
+          >
+            {logsEnabled ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+            {logsEnabled ? 'Pausar' : 'Retomar'}
+          </button>
+          <button
+            onClick={() => setShowClearModal(true)}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-500/20 dark:text-red-400 transition-colors"
+          >
+            <Trash2 className="w-4 h-4" />
+            Limpar
+          </button>
           <button
             onClick={() => setShowFilters(!showFilters)}
             className="btn-secondary flex items-center gap-2"
@@ -167,6 +228,16 @@ const AdminAccessLogs: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Status dos logs */}
+      {!logsEnabled && (
+        <div className="p-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-lg flex items-center gap-3">
+          <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0" />
+          <p className="text-amber-700 dark:text-amber-400 text-sm">
+            <strong>Logs pausados.</strong> Nenhum novo acesso será registrado até você retomar.
+          </p>
+        </div>
+      )}
 
       {/* Filtros */}
       {showFilters && (
@@ -380,6 +451,83 @@ const AdminAccessLogs: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Modal de confirmação para limpar logs */}
+      {showClearModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-red-100 dark:bg-red-500/20 rounded-full flex items-center justify-center">
+                <AlertTriangle className="w-5 h-5 text-red-500" />
+              </div>
+              <h3 className="text-lg font-bold text-[var(--color-text-primary)]">Limpar Logs</h3>
+            </div>
+
+            <p className="text-[var(--color-text-secondary)] mb-4">
+              Escolha como deseja limpar os logs:
+            </p>
+
+            <div className="space-y-3 mb-6">
+              <label className="flex items-center gap-3 p-3 rounded-lg border border-[var(--glass-border)] cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
+                <input
+                  type="radio"
+                  name="clearMode"
+                  checked={clearMode === 'all'}
+                  onChange={() => setClearMode('all')}
+                  className="w-4 h-4 text-red-500"
+                />
+                <div>
+                  <p className="font-medium text-[var(--color-text-primary)]">Limpar todos os logs</p>
+                  <p className="text-sm text-[var(--color-text-muted)]">Remove permanentemente todos os registros</p>
+                </div>
+              </label>
+
+              <label className="flex items-center gap-3 p-3 rounded-lg border border-[var(--glass-border)] cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
+                <input
+                  type="radio"
+                  name="clearMode"
+                  checked={clearMode === 'old'}
+                  onChange={() => setClearMode('old')}
+                  className="w-4 h-4 text-amber-500"
+                />
+                <div className="flex-1">
+                  <p className="font-medium text-[var(--color-text-primary)]">Limpar logs antigos</p>
+                  <p className="text-sm text-[var(--color-text-muted)]">Remove logs com mais de:</p>
+                  {clearMode === 'old' && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <input
+                        type="number"
+                        value={clearDays}
+                        onChange={(e) => setClearDays(Number(e.target.value))}
+                        min={1}
+                        max={365}
+                        className="input w-20 text-sm"
+                      />
+                      <span className="text-sm text-[var(--color-text-muted)]">dias</span>
+                    </div>
+                  )}
+                </div>
+              </label>
+            </div>
+
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowClearModal(false)}
+                className="btn-secondary"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={clearLogs}
+                className="btn bg-red-500 text-white hover:bg-red-600"
+              >
+                <Trash2 className="w-4 h-4" />
+                Confirmar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

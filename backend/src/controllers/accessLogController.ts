@@ -2,6 +2,9 @@ import { Request, Response } from 'express';
 import AccessLog from '../models/AccessLog';
 import { AuthRequest } from '../middleware/auth';
 
+// Estado global para pausar/resumir logs
+let logsEnabled = true;
+
 // Helper para obter IP do request
 export const getClientIp = (req: Request): string => {
   const forwarded = req.headers['x-forwarded-for'];
@@ -23,6 +26,9 @@ export const registrarAcesso = async (
     provaId?: string;
   }
 ) => {
+  // Se logs estiverem pausados, não registra
+  if (!logsEnabled) return;
+
   try {
     await AccessLog.create({
       usuarioId,
@@ -260,5 +266,75 @@ export const getMyAccessLogs = async (req: AuthRequest, res: Response) => {
   } catch (error) {
     console.error('Erro ao listar meus logs:', error);
     res.status(500).json({ message: 'Erro ao listar histórico de acesso' });
+  }
+};
+
+// @desc    Obter status dos logs (pausado/ativo)
+// @route   GET /api/access-logs/status
+// @access  Private/Admin
+export const getLogsStatus = async (req: Request, res: Response) => {
+  try {
+    const totalLogs = await AccessLog.countDocuments();
+    res.json({
+      enabled: logsEnabled,
+      totalLogs
+    });
+  } catch (error) {
+    console.error('Erro ao obter status dos logs:', error);
+    res.status(500).json({ message: 'Erro ao obter status dos logs' });
+  }
+};
+
+// @desc    Pausar/Resumir logs
+// @route   POST /api/access-logs/toggle
+// @access  Private/Admin
+export const toggleLogs = async (req: Request, res: Response) => {
+  try {
+    logsEnabled = !logsEnabled;
+    res.json({
+      enabled: logsEnabled,
+      message: logsEnabled ? 'Logs ativados' : 'Logs pausados'
+    });
+  } catch (error) {
+    console.error('Erro ao alternar logs:', error);
+    res.status(500).json({ message: 'Erro ao alternar logs' });
+  }
+};
+
+// @desc    Limpar todos os logs
+// @route   DELETE /api/access-logs/clear
+// @access  Private/Admin
+export const clearLogs = async (req: Request, res: Response) => {
+  try {
+    const result = await AccessLog.deleteMany({});
+    res.json({
+      message: 'Logs limpos com sucesso',
+      deletedCount: result.deletedCount
+    });
+  } catch (error) {
+    console.error('Erro ao limpar logs:', error);
+    res.status(500).json({ message: 'Erro ao limpar logs' });
+  }
+};
+
+// @desc    Limpar logs antigos (mais de X dias)
+// @route   DELETE /api/access-logs/clear-old
+// @access  Private/Admin
+export const clearOldLogs = async (req: Request, res: Response) => {
+  try {
+    const { days = 30 } = req.query;
+    const cutoffDate = new Date(Date.now() - Number(days) * 24 * 60 * 60 * 1000);
+
+    const result = await AccessLog.deleteMany({
+      createdAt: { $lt: cutoffDate }
+    });
+
+    res.json({
+      message: `Logs com mais de ${days} dias foram removidos`,
+      deletedCount: result.deletedCount
+    });
+  } catch (error) {
+    console.error('Erro ao limpar logs antigos:', error);
+    res.status(500).json({ message: 'Erro ao limpar logs antigos' });
   }
 };

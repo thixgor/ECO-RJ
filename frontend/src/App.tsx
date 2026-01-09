@@ -40,6 +40,15 @@ const AdminExercises = lazy(() => import('./pages/admin/AdminExercises'));
 const AdminSiteConfig = lazy(() => import('./pages/admin/AdminSiteConfig'));
 
 const App: React.FC = () => {
+  // Remove splash screen when App mounts
+  React.useEffect(() => {
+    const splash = document.getElementById('splash');
+    if (splash) {
+      splash.style.opacity = '0';
+      setTimeout(() => splash.remove(), 300);
+    }
+  }, []);
+
   return (
     <ThemeProvider>
       <AuthProvider>
