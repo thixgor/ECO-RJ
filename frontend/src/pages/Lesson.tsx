@@ -194,6 +194,14 @@ const Lesson: React.FC = () => {
       return;
     }
 
+    // Verificar se as credenciais Zoom estão configuradas
+    const zoomSdkKey = import.meta.env.VITE_ZOOM_SDK_KEY;
+    if (!zoomSdkKey) {
+      setZoomError('Credenciais Zoom não configuradas. Entre em contato com o administrador.');
+      toast.error('Credenciais Zoom não configuradas');
+      return;
+    }
+
     setIsZoomConnecting(true);
     setZoomError(null);
 
@@ -217,7 +225,7 @@ const Lesson: React.FC = () => {
 
       // Configurar e entrar na reunião
       const meetingConfig = {
-        sdkKey: import.meta.env.VITE_ZOOM_SDK_KEY || '',
+        sdkKey: zoomSdkKey,
         meetingNumber: lesson.zoomMeetingId.replace(/\s|-/g, ''),
         password: lesson.zoomMeetingPassword || '',
         userName: user.nomeCompleto,
