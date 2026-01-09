@@ -47,7 +47,7 @@ const AdminCourses: React.FC = () => {
 
   const loadCourses = async () => {
     try {
-      const response = await courseService.getAll();
+      const response = await courseService.getAll({ limit: 1000 });
       setCourses(response.data.courses);
     } catch (error) {
       console.error('Erro ao carregar cursos:', error);

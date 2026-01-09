@@ -33,7 +33,7 @@ const Courses: React.FC = () => {
     try {
       // Carregar cursos e configurações em paralelo
       const [coursesRes, configRes] = await Promise.all([
-        courseService.getAll({ ativo: 'true' }),
+        courseService.getAll({ ativo: 'true', limit: 1000 }),
         siteConfigService.get().catch(() => null) // Não falhar se config não existir
       ]);
 

@@ -10,7 +10,7 @@ import { registrarAcesso } from './accessLogController';
 // @access  Public (todos veem todos os cursos, acesso ao conteúdo é controlado nas aulas)
 export const getCourses = async (req: AuthRequest, res: Response) => {
   try {
-    const { ativo, page = 1, limit = 10 } = req.query;
+    const { ativo, page = 1, limit = 1000 } = req.query;
 
     const query: any = {};
     if (ativo !== undefined) {
