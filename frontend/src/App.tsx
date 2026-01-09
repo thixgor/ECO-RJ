@@ -9,9 +9,11 @@ import { AnimatedBackground } from './components/ui';
 import { LoadingMinimal } from './components/common/Loading';
 import WelcomeModal from './components/common/WelcomeModal';
 
+// Home é carregada diretamente (sem lazy) para eliminar loading na landing page
+import Home from './pages/Home';
+
 // Lazy load pages for better performance
 // Public Pages
-const Home = lazy(() => import('./pages/Home'));
 const Login = lazy(() => import('./pages/Login'));
 const Register = lazy(() => import('./pages/Register'));
 const Courses = lazy(() => import('./pages/Courses'));
