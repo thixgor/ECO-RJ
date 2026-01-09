@@ -64,7 +64,9 @@ const AdminLessons: React.FC = () => {
     topicoId: '',
     subtopicoId: '',
     notasAula: '',
-    botoesPersonalizados: [] as CustomButton[]
+    botoesPersonalizados: [] as CustomButton[],
+    zoomMeetingId: '',
+    zoomMeetingPassword: ''
   });
 
   // Estado para novo botão
@@ -262,7 +264,9 @@ const AdminLessons: React.FC = () => {
         topicoId: topicoId,
         subtopicoId: subtopicoId,
         notasAula: lesson.notasAula || '',
-        botoesPersonalizados: lesson.botoesPersonalizados || []
+        botoesPersonalizados: lesson.botoesPersonalizados || [],
+        zoomMeetingId: lesson.zoomMeetingId || '',
+        zoomMeetingPassword: lesson.zoomMeetingPassword || ''
       });
       await loadFormTopics(courseId);
       if (topicoId) {
@@ -283,7 +287,9 @@ const AdminLessons: React.FC = () => {
         topicoId: filterTopic === 'null' ? '' : filterTopic,
         subtopicoId: '',
         notasAula: '',
-        botoesPersonalizados: []
+        botoesPersonalizados: [],
+        zoomMeetingId: '',
+        zoomMeetingPassword: ''
       });
       if (defaultCourseId) {
         await loadFormTopics(defaultCourseId);
@@ -938,6 +944,56 @@ const AdminLessons: React.FC = () => {
                   Deixe em branco se não houver vídeo para esta aula. Suporta YouTube e Vimeo.
                 </p>
               </div>
+
+              {/* Seção Integração Zoom - Apenas para aulas ao vivo */}
+              {formData.tipo === 'ao_vivo' && (
+                <div className="border-t border-[var(--glass-border)] pt-6 mt-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <Video className="w-5 h-5 text-blue-500" />
+                    <h3 className="font-semibold text-[var(--color-text-primary)]">
+                      Integração com Zoom (Opcional)
+                    </h3>
+                  </div>
+
+                  <div className="space-y-4 bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-200 dark:border-blue-700">
+                    <p className="text-sm text-[var(--color-text-secondary)]">
+                      Configure uma reunião Zoom existente para esta aula. Os alunos poderão entrar diretamente pela plataforma.
+                    </p>
+
+                    <div>
+                      <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
+                        Meeting ID
+                      </label>
+                      <GlassInput
+                        type="text"
+                        value={formData.zoomMeetingId}
+                        onChange={(e) => setFormData({ ...formData, zoomMeetingId: e.target.value })}
+                        placeholder="Ex: 123 456 7890"
+                        maxLength={13}
+                      />
+                      <p className="text-xs text-[var(--color-text-muted)] mt-1">
+                        ID da reunião Zoom (9-11 dígitos). Deixe em branco para não usar Zoom.
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
+                        Senha da Reunião (Opcional)
+                      </label>
+                      <GlassInput
+                        type="text"
+                        value={formData.zoomMeetingPassword}
+                        onChange={(e) => setFormData({ ...formData, zoomMeetingPassword: e.target.value })}
+                        placeholder="Senha da reunião (se houver)"
+                        maxLength={10}
+                      />
+                      <p className="text-xs text-[var(--color-text-muted)] mt-1">
+                        Deixe em branco se a reunião não tiver senha.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Cargos Permitidos */}
               <div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Clock, CheckCircle, BookOpen, FileText, Play, ExternalLink, Download, Layers, X, ChevronRight, ChevronLeft, Award, Target, RotateCcw, AlertTriangle, Check, XCircle, Video, File, PlayCircle } from 'lucide-react';
 import { lessonService, exerciseService } from '../services/api';
@@ -9,6 +9,8 @@ import { LoadingPage } from '../components/common/Loading';
 import { formatDuration } from '../utils/formatDuration';
 import VideoWatermark from '../components/common/VideoWatermark';
 import toast from 'react-hot-toast';
+// Zoom SDK imports
+import ZoomMtgEmbedded from '@zoom/meetingsdk/embedded';
 
 // Interface for exercise result
 interface ExerciseResult {
@@ -44,6 +46,13 @@ const Lesson: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<ExerciseResult | null>(null);
   const [showConfirmSubmit, setShowConfirmSubmit] = useState(false);
+
+  // Zoom meeting states
+  const [isZoomJoined, setIsZoomJoined] = useState(false);
+  const [isZoomConnecting, setIsZoomConnecting] = useState(false);
+  const [zoomError, setZoomError] = useState<string | null>(null);
+  const zoomClientRef = useRef<any>(null);
+  const zoomContainerRef = useRef<HTMLDivElement>(null);
 
   const isWatched = user?.aulasAssistidas?.includes(id || '');
 
@@ -177,6 +186,119 @@ const Lesson: React.FC = () => {
       setIsMarking(false);
     }
   };
+
+  // ========== Zoom Integration Functions ==========
+  const joinZoomMeeting = useCallback(async () => {
+    if (!lesson?.zoomMeetingId || !user) {
+      toast.error('Dados de reunião não disponíveis');
+      return;
+    }
+
+    setIsZoomConnecting(true);
+    setZoomError(null);
+
+    try {
+      // Inicializar cliente Zoom (apenas uma vez)
+      if (!zoomClientRef.current) {
+        zoomClientRef.current = ZoomMtgEmbedded.createClient();
+      }
+
+      const client = zoomClientRef.current;
+
+      // Inicializar o container da reunião
+      if (zoomContainerRef.current) {
+        await client.init({
+          zoomAppRoot: zoomContainerRef.current,
+          language: 'pt-BR',
+          patchJsMedia: true,
+          leaveOnPageUnload: true
+        });
+      }
+
+      // Configurar e entrar na reunião
+      const meetingConfig = {
+        sdkKey: import.meta.env.VITE_ZOOM_SDK_KEY || '',
+        meetingNumber: lesson.zoomMeetingId.replace(/\s|-/g, ''),
+        password: lesson.zoomMeetingPassword || '',
+        userName: user.nomeCompleto,
+        userEmail: user.email,
+        tk: '', // Registration token (não usado para client SDK)
+        success: (success: any) => {
+          console.log('Zoom meeting joined:', success);
+          setIsZoomJoined(true);
+          setIsZoomConnecting(false);
+          toast.success('Conectado à aula ao vivo!');
+        },
+        error: (error: any) => {
+          console.error('Zoom join error:', error);
+          setZoomError('Erro ao conectar com a reunião');
+          setIsZoomConnecting(false);
+          toast.error('Erro ao entrar na reunião Zoom');
+        }
+      };
+
+      await client.join(meetingConfig);
+    } catch (error: any) {
+      console.error('Zoom initialization error:', error);
+      setZoomError(error.message || 'Erro ao inicializar Zoom');
+      setIsZoomConnecting(false);
+      toast.error('Erro ao carregar reunião Zoom');
+    }
+  }, [lesson, user]);
+
+  const leaveZoomMeeting = useCallback(async () => {
+    if (zoomClientRef.current && isZoomJoined) {
+      try {
+        await zoomClientRef.current.leaveMeeting();
+        setIsZoomJoined(false);
+        setZoomError(null);
+        toast.success('Você saiu da aula ao vivo');
+      } catch (error) {
+        console.error('Error leaving Zoom:', error);
+        toast.error('Erro ao sair da reunião');
+      }
+    }
+  }, [isZoomJoined]);
+
+  // Cleanup Zoom ao desmontar componente
+  useEffect(() => {
+    return () => {
+      if (zoomClientRef.current && isZoomJoined) {
+        zoomClientRef.current.leaveMeeting().catch((err: any) => {
+          console.error('Cleanup error:', err);
+        });
+      }
+    };
+  }, [isZoomJoined]);
+
+  // Detectar mudanças de visibilidade da página
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden && isZoomJoined) {
+        console.log('User left page with active Zoom session');
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isZoomJoined]);
+
+  // Detectar refresh ou fechamento de página
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isZoomJoined) {
+        e.preventDefault();
+        e.returnValue = 'Você está em uma aula ao vivo. Deseja sair?';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [isZoomJoined]);
 
   // ========== Exercise Modal Functions ==========
   const startExercise = useCallback(async (exercise: Exercise) => {
@@ -330,8 +452,82 @@ const Lesson: React.FC = () => {
       <div className="grid lg:grid-cols-3 gap-8">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Video Player */}
-          {getVideoEmbed() && (
+          {/* Video Player ou Zoom Container */}
+          {lesson?.zoomMeetingId && lesson.tipo === 'ao_vivo' ? (
+            <div className="card overflow-hidden">
+              {!isZoomJoined ? (
+                <div className="p-8 text-center bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20">
+                  <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-blue-500 flex items-center justify-center shadow-lg">
+                    <Video className="w-10 h-10 text-white" />
+                  </div>
+
+                  <h3 className="text-xl font-bold text-[var(--color-text-primary)] mb-2">
+                    Aula ao Vivo via Zoom
+                  </h3>
+
+                  <p className="text-[var(--color-text-secondary)] mb-6 max-w-md mx-auto">
+                    Clique no botão abaixo para entrar na reunião ao vivo. Seu nome será exibido como: <strong>{user?.nomeCompleto}</strong>
+                  </p>
+
+                  {zoomError && (
+                    <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg text-red-600 dark:text-red-400 text-sm">
+                      {zoomError}
+                    </div>
+                  )}
+
+                  <button
+                    onClick={joinZoomMeeting}
+                    disabled={isZoomConnecting}
+                    className="btn btn-primary text-lg px-8 py-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isZoomConnecting ? (
+                      <>
+                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Conectando...
+                      </>
+                    ) : (
+                      <>
+                        <Video className="w-5 h-5" />
+                        Entrar na Aula ao Vivo
+                      </>
+                    )}
+                  </button>
+
+                  <div className="mt-6 pt-6 border-t border-[var(--glass-border)]">
+                    <p className="text-xs text-[var(--color-text-muted)]">
+                      <strong>Meeting ID:</strong> {lesson.zoomMeetingId}
+                    </p>
+                    {lesson.zoomMeetingPassword && (
+                      <p className="text-xs text-[var(--color-text-muted)] mt-1">
+                        <strong>Senha:</strong> {lesson.zoomMeetingPassword}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="relative bg-black">
+                  {/* Container do Zoom SDK */}
+                  <div
+                    ref={zoomContainerRef}
+                    id="zoom-meeting-container"
+                    className="w-full"
+                    style={{ minHeight: '600px' }}
+                  />
+
+                  {/* Botão de sair sobreposto */}
+                  <div className="absolute top-4 right-4 z-50">
+                    <button
+                      onClick={leaveZoomMeeting}
+                      className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium shadow-lg transition-colors flex items-center gap-2"
+                    >
+                      <X className="w-4 h-4" />
+                      Sair da Aula
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : getVideoEmbed() ? (
             <div className="card overflow-hidden">
               <div
                 id="video-container"
@@ -345,7 +541,7 @@ const Lesson: React.FC = () => {
                 <VideoWatermark />
               </div>
             </div>
-          )}
+          ) : null}
 
           {/* Lesson Info */}
           <div className="card p-6">

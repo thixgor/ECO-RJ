@@ -70,6 +70,9 @@ export interface Lesson {
   criadorId?: string;
   exerciciosAnexados: string[] | Exercise[];
   provasAnexadas: string[];
+  // Integração Zoom
+  zoomMeetingId?: string;
+  zoomMeetingPassword?: string;
   createdAt: string;
 }
 
@@ -202,4 +205,21 @@ export interface Stats {
   };
   taxaConclusao: number;
   usuariosPorSemana: Array<{ _id: string; count: number }>;
+}
+
+// Configuração de reunião Zoom
+export interface ZoomMeetingConfig {
+  meetingNumber: string;
+  password?: string;
+  userName: string;
+  userEmail: string;
+  sdkKey: string;
+  leaveUrl: string;
+}
+
+// Estado da sessão Zoom
+export interface ZoomMeetingState {
+  isJoined: boolean;
+  isConnecting: boolean;
+  error: string | null;
 }

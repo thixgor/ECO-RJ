@@ -98,7 +98,9 @@ export const createLesson = async (req: AuthRequest, res: Response) => {
       participantes,
       botoesPersonalizados,
       exerciciosAnexados,
-      provasAnexadas
+      provasAnexadas,
+      zoomMeetingId,
+      zoomMeetingPassword
     } = req.body;
 
     // Descrição não é mais obrigatória
@@ -117,6 +119,18 @@ export const createLesson = async (req: AuthRequest, res: Response) => {
     // Para aulas ao vivo, data/hora é obrigatória
     if (tipo === 'ao_vivo' && !dataHoraInicio) {
       return res.status(400).json({ message: 'Data/hora de início é obrigatória para aulas ao vivo' });
+    }
+
+    // Validar formato do Meeting ID do Zoom se fornecido
+    if (zoomMeetingId) {
+      const meetingIdClean = zoomMeetingId.replace(/\s|-/g, '');
+      const meetingIdPattern = /^\d{9,11}$/;
+
+      if (!meetingIdPattern.test(meetingIdClean)) {
+        return res.status(400).json({
+          message: 'Meeting ID inválido. Deve conter 9-11 dígitos numéricos.'
+        });
+      }
     }
 
     // Obter próxima ordem (baseado no subtópico, tópico ou curso)
@@ -151,7 +165,9 @@ export const createLesson = async (req: AuthRequest, res: Response) => {
       botoesPersonalizados: botoesPersonalizados || [],
       criadorId: req.user?._id,
       exerciciosAnexados: exerciciosAnexados || [],
-      provasAnexadas: provasAnexadas || []
+      provasAnexadas: provasAnexadas || [],
+      zoomMeetingId: zoomMeetingId || undefined,
+      zoomMeetingPassword: zoomMeetingPassword || undefined
     });
 
     // Adicionar aula ao curso
@@ -187,7 +203,9 @@ export const updateLesson = async (req: Request, res: Response) => {
       participantes,
       botoesPersonalizados,
       exerciciosAnexados,
-      provasAnexadas
+      provasAnexadas,
+      zoomMeetingId,
+      zoomMeetingPassword
     } = req.body;
 
     const lesson = await Lesson.findById(req.params.id);
@@ -212,6 +230,8 @@ export const updateLesson = async (req: Request, res: Response) => {
     if (botoesPersonalizados !== undefined) lesson.botoesPersonalizados = botoesPersonalizados;
     if (exerciciosAnexados !== undefined) lesson.exerciciosAnexados = exerciciosAnexados;
     if (provasAnexadas !== undefined) lesson.provasAnexadas = provasAnexadas;
+    if (zoomMeetingId !== undefined) lesson.zoomMeetingId = zoomMeetingId || undefined;
+    if (zoomMeetingPassword !== undefined) lesson.zoomMeetingPassword = zoomMeetingPassword || undefined;
 
     await lesson.save();
 

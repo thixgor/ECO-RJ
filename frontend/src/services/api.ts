@@ -203,6 +203,8 @@ export const lessonService = {
     topicoId?: string;
     subtopicoId?: string;
     notasAula?: string;
+    zoomMeetingId?: string;
+    zoomMeetingPassword?: string;
   }) => api.post('/lessons', data),
 
   update: (id: string, data: {
@@ -218,6 +220,8 @@ export const lessonService = {
     notasAula?: string;
     status?: string;
     ordem?: number;
+    zoomMeetingId?: string;
+    zoomMeetingPassword?: string;
   }) => api.put(`/lessons/${id}`, data),
 
   delete: (id: string) => api.delete(`/lessons/${id}`),

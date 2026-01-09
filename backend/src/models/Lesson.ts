@@ -35,6 +35,9 @@ export interface ILesson extends Document {
   // Exercícios e provas anexados
   exerciciosAnexados: mongoose.Types.ObjectId[];
   provasAnexadas: mongoose.Types.ObjectId[];
+  // Integração opcional com Zoom
+  zoomMeetingId?: string;
+  zoomMeetingPassword?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -139,7 +142,17 @@ const LessonSchema = new Schema<ILesson>(
     provasAnexadas: [{
       type: Schema.Types.ObjectId,
       ref: 'Exam'
-    }]
+    }],
+    zoomMeetingId: {
+      type: String,
+      trim: true
+      // Opcional - ID da reunião Zoom (9-11 dígitos)
+    },
+    zoomMeetingPassword: {
+      type: String,
+      trim: true
+      // Opcional - senha da reunião Zoom
+    }
   },
   {
     timestamps: true
