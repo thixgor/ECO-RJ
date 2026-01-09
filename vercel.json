@@ -31,27 +31,12 @@
             ]
         }
     ],
-    "builds": [
-        {
-            "src": "frontend/package.json",
-            "use": "@vercel/static-build",
-            "config": {
-                "distDir": "dist"
-            }
-        },
-        {
-            "src": "backend/src/server.ts",
-            "use": "@vercel/node"
-        }
-    ],
+    "buildCommand": "cd frontend && npm install && npm run build",
+    "outputDirectory": "frontend/dist",
     "rewrites": [
         {
             "source": "/api/:path*",
-            "destination": "/backend/src/server.ts"
-        },
-        {
-            "source": "/:path((?!api).*)",
-            "destination": "/frontend/index.html"
+            "destination": "/api/index.ts"
         }
     ]
 }
