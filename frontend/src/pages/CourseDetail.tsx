@@ -344,7 +344,7 @@ const CourseDetail: React.FC = () => {
                 <span>{(course as any).totalMateriais} material{(course as any).totalMateriais !== 1 ? 'is' : ''}</span>
               </div>
             )}
-            {(course as any).duracaoTotal > 0 && (
+            {(course as any).duracaoTotal > 0 && course.exibirDuracao !== false && (
               <div className="flex items-center gap-2">
                 <Clock className="w-5 h-5 text-emerald-500" />
                 <span>{formatDuration((course as any).duracaoTotal)} de conteúdo</span>

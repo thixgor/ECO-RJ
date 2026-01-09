@@ -17,7 +17,7 @@ export function formatDuration(minutes: number | undefined | null): string {
     return `${hours}h`;
   }
 
-  return `${hours}h ${remainingMinutes}min`;
+  return `${hours}h e ${remainingMinutes}min`;
 }
 
 /**

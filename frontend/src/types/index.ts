@@ -34,6 +34,7 @@ export interface Course {
   dataLimiteInscricao?: string;
   acessoRestrito: boolean;
   alunosAutorizados: string[] | User[];
+  exibirDuracao?: boolean; // default: true - exibe tempo de conteúdo
   createdAt: string;
 }
 

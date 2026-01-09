@@ -18,7 +18,8 @@ const AdminCourses: React.FC = () => {
     dataInicio: '',
     imagemCapa: '',
     dataLimiteInscricao: '',
-    acessoRestrito: true // Padrão: curso restrito
+    acessoRestrito: true, // Padrão: curso restrito
+    exibirDuracao: true // Padrão: exibir duração do conteúdo
   });
   const [isSaving, setIsSaving] = useState(false);
   const [showAuthorizedModal, setShowAuthorizedModal] = useState(false);
@@ -65,11 +66,12 @@ const AdminCourses: React.FC = () => {
         dataInicio: course.dataInicio.split('T')[0],
         imagemCapa: course.imagemCapa || '',
         dataLimiteInscricao: course.dataLimiteInscricao ? course.dataLimiteInscricao.split('T')[0] : '',
-        acessoRestrito: course.acessoRestrito || false
+        acessoRestrito: course.acessoRestrito || false,
+        exibirDuracao: course.exibirDuracao !== false // default true
       });
     } else {
       setEditingCourse(null);
-      setFormData({ titulo: '', descricao: '', dataInicio: '', imagemCapa: '', dataLimiteInscricao: '', acessoRestrito: true });
+      setFormData({ titulo: '', descricao: '', dataInicio: '', imagemCapa: '', dataLimiteInscricao: '', acessoRestrito: true, exibirDuracao: true });
     }
     setShowModal(true);
   };
@@ -541,6 +543,23 @@ const AdminCourses: React.FC = () => {
                   </label>
                   <p className="text-xs text-[var(--color-text-muted)]">
                     Todos podem ver o curso, mas apenas alunos autorizados poderão acessar as aulas e conteúdos
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 p-4 bg-emerald-50 dark:bg-emerald-500/10 rounded-lg">
+                <input
+                  type="checkbox"
+                  id="exibirDuracao"
+                  checked={formData.exibirDuracao}
+                  onChange={(e) => setFormData({ ...formData, exibirDuracao: e.target.checked })}
+                  className="w-4 h-4 rounded border-gray-300 text-primary-500 focus:ring-primary-500"
+                />
+                <div>
+                  <label htmlFor="exibirDuracao" className="font-medium text-[var(--color-text-primary)] cursor-pointer">
+                    Exibir Tempo de Conteúdo
+                  </label>
+                  <p className="text-xs text-[var(--color-text-muted)]">
+                    Mostra "Xh e Ymin de conteúdo" na página do curso e listagem
                   </p>
                 </div>
               </div>

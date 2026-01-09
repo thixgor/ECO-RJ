@@ -13,6 +13,7 @@ export interface ICourse extends Document {
   // Controle de acesso
   acessoRestrito: boolean; // se true, apenas alunos autorizados podem ver
   alunosAutorizados: mongoose.Types.ObjectId[]; // lista de alunos com acesso
+  exibirDuracao: boolean; // se true, exibe "xh e ymin de conteúdo" na página do curso
   createdAt: Date;
   updatedAt: Date;
 }
@@ -63,7 +64,11 @@ const CourseSchema = new Schema<ICourse>(
     alunosAutorizados: [{
       type: Schema.Types.ObjectId,
       ref: 'User'
-    }]
+    }],
+    exibirDuracao: {
+      type: Boolean,
+      default: true
+    }
   },
   {
     timestamps: true
