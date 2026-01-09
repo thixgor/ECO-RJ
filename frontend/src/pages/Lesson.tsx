@@ -205,10 +205,14 @@ const Lesson: React.FC = () => {
 
     try {
       // Dynamic import do Zoom SDK (lazy loading)
-      const ZoomMtgEmbedded = (await import('@zoom/meetingsdk/embedded')).default;
+      console.log('Loading Zoom SDK...');
+      const ZoomMtgEmbeddedModule = await import('@zoom/meetingsdk/embedded');
+      const ZoomMtgEmbedded = ZoomMtgEmbeddedModule.default || ZoomMtgEmbeddedModule;
+      console.log('Zoom SDK loaded successfully');
 
       // Inicializar cliente Zoom (apenas uma vez)
       if (!zoomClientRef.current) {
+        console.log('Creating Zoom client...');
         zoomClientRef.current = ZoomMtgEmbedded.createClient();
       }
 
