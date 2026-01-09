@@ -48,6 +48,10 @@
         {
             "source": "/api/:path*",
             "destination": "/backend/src/server.ts"
+        },
+        {
+            "source": "/:path((?!api).*)",
+            "destination": "/frontend/index.html"
         }
     ]
 }
