@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Mail, MapPin, Facebook, Linkedin, Instagram } from 'lucide-react';
+import { Mail, MapPin } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 
 // Logos ECO RJ
@@ -75,16 +75,13 @@ const Footer: React.FC = () => {
             </div>
 
             {/* Social */}
-            <div className="flex gap-4 mt-6">
-              {[Facebook, Linkedin, Instagram].map((Icon, idx) => (
-                <a
-                  key={idx}
-                  href="#"
-                  className="w-10 h-10 bg-gray-100 dark:bg-white/5 rounded-xl flex items-center justify-center text-[var(--color-text-secondary)] hover:bg-primary-500 hover:text-white transition-all duration-300"
-                >
-                  <Icon className="w-5 h-5" />
-                </a>
-              ))}
+            <div className="mt-6">
+              <p className="text-[var(--color-text-muted)] text-sm">
+                {new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
+              </p>
+              <p className="text-[var(--color-text-primary)] font-semibold text-sm mt-1">
+                ECO RJ - Desde 2016
+              </p>
             </div>
           </div>
         </div>

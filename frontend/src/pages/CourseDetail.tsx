@@ -143,6 +143,14 @@ const CourseDetail: React.FC = () => {
       loadCourse();
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Erro ao se inscrever');
+
+      // Se der erro (provavelmente por falta de permissão/curso pago), rola até a seção de como adquirir
+      setTimeout(() => {
+        const acquireSection = document.getElementById('acquire-course-section');
+        if (acquireSection) {
+          acquireSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
     } finally {
       setIsEnrolling(false);
     }
@@ -283,6 +291,12 @@ const CourseDetail: React.FC = () => {
                   }`}>
                   {lesson.tipo === 'ao_vivo' ? 'Ao Vivo' : lesson.tipo === 'material' ? 'Material' : 'Gravada'}
                 </span>
+                {(lesson.duracao ?? 0) > 0 && (
+                  <span className="flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    {lesson.duracao} min
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -502,8 +516,8 @@ const CourseDetail: React.FC = () => {
       </div>
 
       {/* Info for non-enrolled users (both authenticated and not authenticated) */}
-      {!canViewLessons && (
-        <div className="mt-8 space-y-6 animate-slide-up">
+      {(!isEnrolled && !isAdmin) && (
+        <div id="acquire-course-section" className="mt-8 space-y-6 animate-slide-up">
           {/* Main Warning */}
           <div className="p-4 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-xl flex items-start gap-4">
             <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -512,7 +526,9 @@ const CourseDetail: React.FC = () => {
             <div>
               <p className="text-amber-900 dark:text-amber-400 font-medium text-lg">
                 {isAuthenticated
-                  ? 'Você precisa ser um Aluno para acessar as aulas.'
+                  ? (!canViewLessons
+                    ? 'Você precisa ser um Aluno para acessar as aulas.'
+                    : 'Você precisa estar inscrito neste curso para acessar as aulas.')
                   : 'Faça login ou crie uma conta para acessar o conteúdo.'}
               </p>
               <p className="text-amber-800 dark:text-amber-400/80 mt-1">
