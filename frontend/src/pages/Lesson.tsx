@@ -49,14 +49,13 @@ const Lesson: React.FC = () => {
   const [isZoomJoined, setIsZoomJoined] = useState(false);
   const [isZoomConnecting, setIsZoomConnecting] = useState(false);
   const [zoomError, setZoomError] = useState<string | null>(null);
-  const [showZoomFallback, setShowZoomFallback] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [fullscreenCountdown, setFullscreenCountdown] = useState<number | null>(null);
   const [joinedExternally, setJoinedExternally] = useState(false);
   const zoomClientRef = useRef<any>(null);
   const zoomContainerRef = useRef<HTMLDivElement>(null);
   const zoomWrapperRef = useRef<HTMLDivElement>(null);
-  const countdownTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const countdownTimerRef = useRef<number | null>(null);
 
   const isWatched = user?.aulasAssistidas?.includes(id || '');
 
@@ -318,7 +317,6 @@ const Lesson: React.FC = () => {
       console.error('Zoom initialization error:', error);
       setZoomError(error.message || 'Erro ao inicializar Zoom');
       setIsZoomConnecting(false);
-      setShowZoomFallback(true); // Mostrar opções alternativas
       toast.error('Não foi possível carregar o Zoom integrado');
     }
   }, [lesson, user]);
@@ -377,7 +375,7 @@ const Lesson: React.FC = () => {
   const startFullscreenCountdown = useCallback(() => {
     setFullscreenCountdown(3);
 
-    const timer = setInterval(() => {
+    const timer = window.setInterval(() => {
       setFullscreenCountdown(prev => {
         if (prev === null || prev <= 1) {
           clearInterval(timer);
