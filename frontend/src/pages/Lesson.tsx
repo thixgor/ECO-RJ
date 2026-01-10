@@ -254,6 +254,19 @@ const Lesson: React.FC = () => {
         patchJsMedia: true,
         leaveOnPageUnload: true,
         customize: {
+          video: {
+            isResizable: true,
+            viewSizes: {
+              default: {
+                width: 1280,
+                height: 720
+              },
+              ribbon: {
+                width: 300,
+                height: 700
+              }
+            }
+          },
           meetingInfo: ['topic', 'host', 'mn', 'pwd', 'telPwd', 'invite', 'participant', 'dc', 'enctype'],
           toolbar: {
             buttons: []
@@ -528,90 +541,101 @@ const Lesson: React.FC = () => {
             <div className="card overflow-hidden">
               {/* Tela de entrada (antes de conectar) */}
               {!isZoomJoined && (
-                <div className="p-8 text-center bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20">
-                  <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-blue-500 flex items-center justify-center shadow-lg">
-                    <Video className="w-10 h-10 text-white" />
-                  </div>
-
-                  <h3 className="text-xl font-bold text-[var(--color-text-primary)] mb-2">
-                    Aula ao Vivo via Zoom
-                  </h3>
-
-                  <p className="text-[var(--color-text-secondary)] mb-6 max-w-md mx-auto">
-                    Clique no botão abaixo para entrar na reunião ao vivo. Seu nome será exibido como: <strong>{user?.nomeCompleto}</strong>
-                  </p>
-
-                  {zoomError && !showZoomFallback && (
-                    <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg text-red-600 dark:text-red-400 text-sm">
-                      {zoomError}
+                <div className="relative w-full bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20"
+                     style={{ paddingBottom: '56.25%' /* 16:9 aspect ratio */ }}>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center">
+                    <div className="w-20 h-20 mb-6 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-xl animate-pulse">
+                      <Video className="w-10 h-10 text-white" />
                     </div>
-                  )}
 
-                  {!showZoomFallback ? (
-                    <button
-                      onClick={joinZoomMeeting}
-                      disabled={isZoomConnecting}
-                      className="btn btn-primary text-lg px-8 py-3 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {isZoomConnecting ? (
-                        <>
-                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                          Conectando...
-                        </>
-                      ) : (
-                        <>
-                          <Video className="w-5 h-5" />
-                          Entrar na Aula ao Vivo
-                        </>
-                      )}
-                    </button>
-                  ) : (
-                    <div className="space-y-4">
-                      <div className="mb-4 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg">
-                        <p className="text-amber-800 dark:text-amber-300 font-medium mb-2">
-                          Você possui o aplicativo Zoom instalado?
-                        </p>
-                        <p className="text-sm text-amber-700 dark:text-amber-400">
-                          Escolha como deseja participar da reunião:
-                        </p>
-                      </div>
+                    <h3 className="text-2xl font-bold text-[var(--color-text-primary)] mb-3">
+                      Aula ao Vivo via Zoom
+                    </h3>
 
-                      <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                        <button
-                          onClick={openZoomApp}
-                          className="flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors shadow-md"
-                        >
-                          <Video className="w-5 h-5" />
-                          Sim, abrir no App Zoom
-                        </button>
-
-                        <button
-                          onClick={openZoomBrowser}
-                          className="flex items-center justify-center gap-2 px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition-colors shadow-md"
-                        >
-                          <ExternalLink className="w-5 h-5" />
-                          Não, abrir no Navegador
-                        </button>
-                      </div>
-
-                      <button
-                        onClick={() => setShowZoomFallback(false)}
-                        className="text-sm text-[var(--color-text-muted)] hover:text-primary-500 underline mt-2"
-                      >
-                        Tentar conexão integrada novamente
-                      </button>
-                    </div>
-                  )}
-
-                  <div className="mt-6 pt-6 border-t border-[var(--glass-border)]">
-                    <p className="text-xs text-[var(--color-text-muted)]">
-                      <strong>Meeting ID:</strong> {lesson.zoomMeetingId}
+                    <p className="text-[var(--color-text-secondary)] mb-8 max-w-lg mx-auto leading-relaxed">
+                      Clique no botão abaixo para entrar na reunião ao vivo.<br />
+                      <span className="inline-block mt-2 px-3 py-1 bg-white/50 dark:bg-white/10 rounded-lg text-sm">
+                        Você entrará como: <strong className="text-primary-600 dark:text-primary-400">{user?.nomeCompleto}</strong>
+                      </span>
                     </p>
-                    {lesson.zoomMeetingPassword && (
-                      <p className="text-xs text-[var(--color-text-muted)] mt-1">
-                        <strong>Senha:</strong> {lesson.zoomMeetingPassword}
-                      </p>
+
+                    {zoomError && !showZoomFallback && (
+                      <div className="mb-6 p-4 bg-red-100 dark:bg-red-900/30 border-l-4 border-red-500 rounded-lg text-red-600 dark:text-red-400 text-sm max-w-lg mx-auto shadow-sm">
+                        <strong className="block mb-1">Erro ao conectar:</strong>
+                        {zoomError}
+                      </div>
                     )}
+
+                    {!showZoomFallback ? (
+                      <button
+                        onClick={joinZoomMeeting}
+                        disabled={isZoomConnecting}
+                        className="btn btn-primary text-lg px-10 py-4 disabled:opacity-50 disabled:cursor-not-allowed shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-200"
+                      >
+                        {isZoomConnecting ? (
+                          <>
+                            <div className="w-6 h-6 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
+                            Conectando...
+                          </>
+                        ) : (
+                          <>
+                            <Video className="w-6 h-6" />
+                            Entrar na Aula ao Vivo
+                          </>
+                        )}
+                      </button>
+                    ) : (
+                      <div className="space-y-6 max-w-lg mx-auto w-full">
+                        <div className="p-5 bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-500 rounded-lg shadow-sm">
+                          <p className="text-amber-800 dark:text-amber-300 font-bold mb-2 text-base">
+                            Escolha como participar
+                          </p>
+                          <p className="text-sm text-amber-700 dark:text-amber-400">
+                            Você pode abrir no aplicativo Zoom ou diretamente no navegador.
+                          </p>
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                          <button
+                            onClick={openZoomApp}
+                            className="flex items-center justify-center gap-3 px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
+                          >
+                            <Video className="w-6 h-6" />
+                            Abrir no App Zoom
+                          </button>
+
+                          <button
+                            onClick={openZoomBrowser}
+                            className="flex items-center justify-center gap-3 px-8 py-4 bg-gray-700 hover:bg-gray-800 text-white rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
+                          >
+                            <ExternalLink className="w-6 h-6" />
+                            Abrir no Navegador
+                          </button>
+                        </div>
+
+                        <button
+                          onClick={() => setShowZoomFallback(false)}
+                          className="text-sm text-[var(--color-text-muted)] hover:text-primary-600 dark:hover:text-primary-400 underline transition-colors"
+                        >
+                          ← Tentar conexão integrada novamente
+                        </button>
+                      </div>
+                    )}
+
+                    <div className="mt-8 pt-6 border-t border-[var(--glass-border)] w-full max-w-md mx-auto">
+                      <div className="flex flex-col sm:flex-row gap-4 justify-center text-xs text-[var(--color-text-muted)]">
+                        <div className="flex items-center gap-2 bg-white/30 dark:bg-white/5 px-4 py-2 rounded-lg">
+                          <span className="font-bold text-[var(--color-text-primary)]">Meeting ID:</span>
+                          <code className="bg-white/50 dark:bg-black/30 px-2 py-1 rounded font-mono">{lesson.zoomMeetingId}</code>
+                        </div>
+                        {lesson.zoomMeetingPassword && (
+                          <div className="flex items-center gap-2 bg-white/30 dark:bg-white/5 px-4 py-2 rounded-lg">
+                            <span className="font-bold text-[var(--color-text-primary)]">Senha:</span>
+                            <code className="bg-white/50 dark:bg-black/30 px-2 py-1 rounded font-mono">{lesson.zoomMeetingPassword}</code>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -620,22 +644,22 @@ const Lesson: React.FC = () => {
               <div
                 ref={zoomContainerRef}
                 id="zoom-meeting-container"
-                className="relative bg-black"
+                className="relative bg-black w-full"
                 style={{
-                  minHeight: isZoomJoined ? '600px' : '0px',
-                  height: isZoomJoined ? 'auto' : '0px',
+                  paddingBottom: isZoomJoined ? '56.25%' : '0',
+                  height: isZoomJoined ? '0' : '0px',
                   overflow: 'hidden',
                   display: isZoomJoined ? 'block' : 'none'
                 }}
               >
                 {/* Botão de sair sobreposto */}
                 {isZoomJoined && (
-                  <div className="absolute top-4 right-4 z-50">
+                  <div className="absolute top-6 right-6 z-[9999]">
                     <button
                       onClick={leaveZoomMeeting}
-                      className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium shadow-lg transition-colors flex items-center gap-2"
+                      className="px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl font-bold shadow-2xl transition-all hover:shadow-red-500/50 flex items-center gap-3 transform hover:scale-105"
                     >
-                      <X className="w-4 h-4" />
+                      <X className="w-5 h-5" />
                       Sair da Aula
                     </button>
                   </div>

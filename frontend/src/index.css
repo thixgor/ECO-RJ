@@ -1206,3 +1206,42 @@
     color-scheme: light;
   }
 }
+
+/* ==========================================
+   ZOOM SDK CONTAINER STYLES
+   ========================================== */
+#zoom-meeting-container {
+  position: relative;
+  width: 100%;
+  background: #000;
+}
+
+/* Força o Zoom SDK a ocupar todo o espaço do container */
+#zoom-meeting-container > div {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Estilos para garantir que o vídeo do Zoom ocupe todo o espaço */
+#zoom-meeting-container video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain;
+}
+
+/* Garante que controles do Zoom sejam visíveis */
+#zoom-meeting-container .zm-btn,
+#zoom-meeting-container button,
+#zoom-meeting-container [role="button"] {
+  z-index: 10 !important;
+}
+
+/* Mobile adjustments para Zoom */
+@media screen and (max-width: 768px) {
+  #zoom-meeting-container {
+    border-radius: 0 !important;
+  }
+}
