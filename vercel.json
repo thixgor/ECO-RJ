@@ -13,6 +13,12 @@
             ]
         }
     ],
+    "rewrites": [
+        {
+            "source": "/api/:path*",
+            "destination": "/api/:path*"
+        }
+    ],
     "builds": [
         {
             "src": "frontend/package.json",
@@ -24,22 +30,6 @@
         {
             "src": "backend/src/server.ts",
             "use": "@vercel/node"
-        }
-    ],
-    "routes": [
-        {
-            "src": "/api/(.*)",
-            "dest": "backend/src/server.ts"
-        },
-        {
-            "src": "/(.*)",
-            "dest": "frontend/$1",
-            "check": true
-        },
-        {
-            "src": "/(.*)",
-            "status": 200,
-            "dest": "frontend/index.html"
         }
     ]
 }
