@@ -51,9 +51,12 @@ const Lesson: React.FC = () => {
   const [zoomError, setZoomError] = useState<string | null>(null);
   const [showZoomFallback, setShowZoomFallback] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [fullscreenCountdown, setFullscreenCountdown] = useState<number | null>(null);
+  const [joinedExternally, setJoinedExternally] = useState(false);
   const zoomClientRef = useRef<any>(null);
   const zoomContainerRef = useRef<HTMLDivElement>(null);
   const zoomWrapperRef = useRef<HTMLDivElement>(null);
+  const countdownTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const isWatched = user?.aulasAssistidas?.includes(id || '');
 
@@ -272,6 +275,13 @@ const Lesson: React.FC = () => {
               }
             }
           },
+          chat: {
+            popper: {
+              disableDraggable: false,
+              anchorElement: zoomContainerRef.current,
+              placement: 'right'
+            }
+          },
           meetingInfo: ['topic', 'host', 'mn', 'pwd', 'telPwd', 'invite', 'participant', 'dc', 'enctype']
           // Removido toolbar.buttons para manter controles padrão do Zoom
         }
@@ -301,6 +311,9 @@ const Lesson: React.FC = () => {
       setIsZoomJoined(true);
       setIsZoomConnecting(false);
       toast.success('Conectado à aula ao vivo!');
+
+      // Iniciar countdown para fullscreen
+      startFullscreenCountdown();
     } catch (error: any) {
       console.error('Zoom initialization error:', error);
       setZoomError(error.message || 'Erro ao inicializar Zoom');
@@ -320,6 +333,10 @@ const Lesson: React.FC = () => {
     // URL do protocolo zoommtg:// para abrir o app Zoom
     const zoomAppUrl = `zoommtg://zoom.us/join?confno=${cleanMeetingId}${password ? `&pwd=${password}` : ''}`;
     window.location.href = zoomAppUrl;
+
+    // Marcar que entrou externamente
+    setJoinedExternally(true);
+    toast.success('Abrindo Zoom App...');
   }, [lesson]);
 
   const openZoomBrowser = useCallback(() => {
@@ -331,6 +348,10 @@ const Lesson: React.FC = () => {
     // URL para abrir Zoom no navegador
     const zoomBrowserUrl = `https://zoom.us/wc/join/${cleanMeetingId}${password}`;
     window.open(zoomBrowserUrl, '_blank');
+
+    // Marcar que entrou externamente
+    setJoinedExternally(true);
+    toast.success('Abrindo Zoom no navegador...');
   }, [lesson]);
 
   const leaveZoomMeeting = useCallback(async () => {
@@ -351,6 +372,37 @@ const Lesson: React.FC = () => {
       }
     }
   }, [isZoomJoined]);
+
+  // Countdown para fullscreen automático
+  const startFullscreenCountdown = useCallback(() => {
+    setFullscreenCountdown(3);
+
+    const timer = setInterval(() => {
+      setFullscreenCountdown(prev => {
+        if (prev === null || prev <= 1) {
+          clearInterval(timer);
+          // Entrar em fullscreen automaticamente
+          if (zoomWrapperRef.current && !document.fullscreenElement) {
+            zoomWrapperRef.current.requestFullscreen().catch(err => {
+              console.error('Auto-fullscreen failed:', err);
+            });
+          }
+          return null;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    countdownTimerRef.current = timer;
+  }, []);
+
+  const cancelFullscreenCountdown = useCallback(() => {
+    if (countdownTimerRef.current) {
+      clearInterval(countdownTimerRef.current);
+      countdownTimerRef.current = null;
+    }
+    setFullscreenCountdown(null);
+  }, []);
 
   // Funções de Fullscreen
   const toggleFullscreen = useCallback(async () => {
@@ -577,8 +629,8 @@ const Lesson: React.FC = () => {
           {/* Video Player ou Zoom Container */}
           {lesson?.zoomMeetingId && lesson.tipo === 'ao_vivo' ? (
             <div className="card overflow-hidden">
-              {/* Tela de entrada (antes de conectar) */}
-              {!isZoomJoined && (
+              {/* Tela de entrada (antes de conectar) ou tela de "já entrou externamente" */}
+              {!isZoomJoined && !joinedExternally && (
                 <div className="relative w-full bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20"
                      style={{ paddingBottom: '56.25%' /* 16:9 aspect ratio */ }}>
                   <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center">
@@ -591,24 +643,25 @@ const Lesson: React.FC = () => {
                     </h3>
 
                     <p className="text-[var(--color-text-secondary)] mb-8 max-w-lg mx-auto leading-relaxed">
-                      Clique no botão abaixo para entrar na reunião ao vivo.<br />
+                      Escolha como deseja participar da aula.<br />
                       <span className="inline-block mt-2 px-3 py-1 bg-white/50 dark:bg-white/10 rounded-lg text-sm">
                         Você entrará como: <strong className="text-primary-600 dark:text-primary-400">{user?.nomeCompleto}</strong>
                       </span>
                     </p>
 
-                    {zoomError && !showZoomFallback && (
+                    {zoomError && (
                       <div className="mb-6 p-4 bg-red-100 dark:bg-red-900/30 border-l-4 border-red-500 rounded-lg text-red-600 dark:text-red-400 text-sm max-w-lg mx-auto shadow-sm">
                         <strong className="block mb-1">Erro ao conectar:</strong>
                         {zoomError}
                       </div>
                     )}
 
-                    {!showZoomFallback ? (
+                    <div className="space-y-4 max-w-lg mx-auto w-full">
+                      {/* Opção 1: Ver nativamente aqui */}
                       <button
                         onClick={joinZoomMeeting}
                         disabled={isZoomConnecting}
-                        className="btn btn-primary text-lg px-10 py-4 disabled:opacity-50 disabled:cursor-not-allowed shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-200"
+                        className="w-full flex items-center justify-center gap-3 px-8 py-4 bg-primary-500 hover:bg-primary-600 text-white rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl transform hover:scale-105 disabled:opacity-50"
                       >
                         {isZoomConnecting ? (
                           <>
@@ -618,47 +671,29 @@ const Lesson: React.FC = () => {
                         ) : (
                           <>
                             <Video className="w-6 h-6" />
-                            Entrar na Aula ao Vivo
+                            Assistir Aqui Nativamente
                           </>
                         )}
                       </button>
-                    ) : (
-                      <div className="space-y-6 max-w-lg mx-auto w-full">
-                        <div className="p-5 bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-500 rounded-lg shadow-sm">
-                          <p className="text-amber-800 dark:text-amber-300 font-bold mb-2 text-base">
-                            Escolha como participar
-                          </p>
-                          <p className="text-sm text-amber-700 dark:text-amber-400">
-                            Você pode abrir no aplicativo Zoom ou diretamente no navegador.
-                          </p>
-                        </div>
 
-                        <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                          <button
-                            onClick={openZoomApp}
-                            className="flex items-center justify-center gap-3 px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
-                          >
-                            <Video className="w-6 h-6" />
-                            Abrir no App Zoom
-                          </button>
+                      {/* Opção 2: Abrir no App Zoom */}
+                      <button
+                        onClick={openZoomApp}
+                        className="w-full flex items-center justify-center gap-3 px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
+                      >
+                        <Video className="w-6 h-6" />
+                        Abrir no App Zoom
+                      </button>
 
-                          <button
-                            onClick={openZoomBrowser}
-                            className="flex items-center justify-center gap-3 px-8 py-4 bg-gray-700 hover:bg-gray-800 text-white rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
-                          >
-                            <ExternalLink className="w-6 h-6" />
-                            Abrir no Navegador
-                          </button>
-                        </div>
-
-                        <button
-                          onClick={() => setShowZoomFallback(false)}
-                          className="text-sm text-[var(--color-text-muted)] hover:text-primary-600 dark:hover:text-primary-400 underline transition-colors"
-                        >
-                          ← Tentar conexão integrada novamente
-                        </button>
-                      </div>
-                    )}
+                      {/* Opção 3: Abrir no Navegador */}
+                      <button
+                        onClick={openZoomBrowser}
+                        className="w-full flex items-center justify-center gap-3 px-8 py-4 bg-gray-700 hover:bg-gray-800 text-white rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
+                      >
+                        <ExternalLink className="w-6 h-6" />
+                        Abrir no Navegador
+                      </button>
+                    </div>
 
                     <div className="mt-8 pt-6 border-t border-[var(--glass-border)] w-full max-w-md mx-auto">
                       <div className="flex flex-col sm:flex-row gap-4 justify-center text-xs text-[var(--color-text-muted)]">
@@ -674,6 +709,34 @@ const Lesson: React.FC = () => {
                         )}
                       </div>
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Mensagem quando entrou externamente */}
+              {!isZoomJoined && joinedExternally && (
+                <div className="relative w-full bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-900/20 dark:to-emerald-800/20"
+                     style={{ paddingBottom: '56.25%' /* 16:9 aspect ratio */ }}>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center">
+                    <div className="w-20 h-20 mb-6 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-xl">
+                      <CheckCircle className="w-10 h-10 text-white" />
+                    </div>
+
+                    <h3 className="text-2xl font-bold text-[var(--color-text-primary)] mb-3">
+                      Você já entrou na reunião
+                    </h3>
+
+                    <p className="text-[var(--color-text-secondary)] mb-6 max-w-lg mx-auto leading-relaxed">
+                      A aula foi aberta em outra aba ou aplicativo.<br />
+                      Aproveite sua aula ao vivo!
+                    </p>
+
+                    <button
+                      onClick={() => setJoinedExternally(false)}
+                      className="btn btn-secondary px-8 py-3"
+                    >
+                      Voltar às Opções
+                    </button>
                   </div>
                 </div>
               )}
@@ -722,6 +785,27 @@ const Lesson: React.FC = () => {
                       <X className="w-4 h-4" />
                       Sair da Aula
                     </button>
+                  </div>
+                )}
+
+                {/* Alert de countdown para fullscreen */}
+                {isZoomJoined && fullscreenCountdown !== null && (
+                  <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 z-[9999] animate-fade-in">
+                    <div className="bg-gradient-to-r from-primary-500 to-primary-600 text-white px-8 py-4 rounded-xl shadow-2xl flex items-center gap-4 backdrop-blur-sm">
+                      <div className="flex items-center justify-center w-12 h-12 rounded-full bg-white/20 font-bold text-2xl animate-pulse">
+                        {fullscreenCountdown}
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-bold text-lg">Entrando em tela cheia...</p>
+                        <p className="text-sm text-primary-100">Para a melhor experiência</p>
+                      </div>
+                      <button
+                        onClick={cancelFullscreenCountdown}
+                        className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg font-semibold transition-colors"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

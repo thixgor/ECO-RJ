@@ -1273,6 +1273,25 @@
   pointer-events: auto !important;
 }
 
+/* Garante que o painel de chat seja visível em fullscreen */
+#zoom-meeting-container [class*="chat"],
+#zoom-meeting-container [class*="Chat"],
+#zoom-meeting-container [role="complementary"] {
+  position: absolute !important;
+  z-index: 2000 !important;
+  visibility: visible !important;
+  display: block !important;
+  opacity: 1 !important;
+}
+
+/* Chat button na toolbar */
+#zoom-meeting-container button[aria-label*="chat" i],
+#zoom-meeting-container button[aria-label*="Chat" i] {
+  display: inline-flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
 /* Mobile adjustments para Zoom */
 @media screen and (max-width: 768px) {
   #zoom-meeting-container {
