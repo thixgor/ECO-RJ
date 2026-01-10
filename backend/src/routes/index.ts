@@ -13,6 +13,7 @@ import questionRoutes from './questionRoutes';
 import siteConfigRoutes from './siteConfigRoutes';
 import courseTopicRoutes from './courseTopicRoutes';
 import courseSubtopicRoutes from './courseSubtopicRoutes';
+import zoomRoutes from './zoomRoutes';
 
 const router = Router();
 
@@ -30,6 +31,7 @@ router.use('/questions', questionRoutes);
 router.use('/site-config', siteConfigRoutes);
 router.use('/course-topics', courseTopicRoutes);
 router.use('/course-subtopics', courseSubtopicRoutes);
+router.use('/zoom', zoomRoutes);
 
 export default router;
 

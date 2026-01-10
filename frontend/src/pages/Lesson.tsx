@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Clock, CheckCircle, BookOpen, FileText, Play, ExternalLink, Download, Layers, X, ChevronRight, ChevronLeft, Award, Target, RotateCcw, AlertTriangle, Check, XCircle, Video, File, PlayCircle } from 'lucide-react';
-import { lessonService, exerciseService } from '../services/api';
+import { lessonService, exerciseService, zoomService } from '../services/api';
 import { Lesson as LessonType, Exercise, Course } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { generateExercisePDF } from '../utils/pdfGenerator';
@@ -192,14 +192,6 @@ const Lesson: React.FC = () => {
       return;
     }
 
-    // Verificar se as credenciais Zoom estão configuradas
-    const zoomSdkKey = import.meta.env.VITE_ZOOM_SDK_KEY;
-    if (!zoomSdkKey) {
-      setZoomError('Credenciais Zoom não configuradas. Entre em contato com o administrador.');
-      toast.error('Credenciais Zoom não configuradas');
-      return;
-    }
-
     // Validar e limpar o Meeting ID antes de processar
     const meetingId = lesson.zoomMeetingId?.trim();
     if (!meetingId) {
@@ -211,6 +203,20 @@ const Lesson: React.FC = () => {
     setZoomError(null);
 
     try {
+      // Limpar Meeting ID (remover espaços e hífens)
+      const cleanMeetingId = meetingId.replace(/\s|-/g, '');
+      console.log('Generating Zoom signature for meeting:', cleanMeetingId);
+
+      // Buscar signature JWT do backend
+      const signatureResponse = await zoomService.generateSignature(cleanMeetingId, 0);
+      const { signature, sdkKey } = signatureResponse.data;
+
+      if (!signature || !sdkKey) {
+        throw new Error('Credenciais Zoom não disponíveis');
+      }
+
+      console.log('Signature generated successfully');
+
       // Dynamic import do Zoom SDK (lazy loading)
       console.log('Loading Zoom SDK...');
       const ZoomMtgEmbeddedModule = await import('@zoom/meetingsdk/embedded');
@@ -227,40 +233,44 @@ const Lesson: React.FC = () => {
 
       // Inicializar o container da reunião
       if (zoomContainerRef.current) {
+        console.log('Initializing Zoom client...');
         await client.init({
           zoomAppRoot: zoomContainerRef.current,
           language: 'pt-BR',
           patchJsMedia: true,
-          leaveOnPageUnload: true
+          leaveOnPageUnload: true,
+          customize: {
+            meetingInfo: ['topic', 'host', 'mn', 'pwd', 'telPwd', 'invite', 'participant', 'dc', 'enctype'],
+            toolbar: {
+              buttons: []
+            }
+          }
         });
+        console.log('Zoom client initialized');
       }
 
-      // Limpar Meeting ID (remover espaços e hífens)
-      const cleanMeetingId = meetingId.replace(/\s|-/g, '');
+      console.log('Joining meeting:', cleanMeetingId);
 
-      // Configurar e entrar na reunião
-      const meetingConfig = {
-        sdkKey: zoomSdkKey,
+      // Entrar na reunião com signature JWT
+      await client.join({
+        sdkKey: sdkKey,
+        signature: signature,
         meetingNumber: cleanMeetingId,
         password: lesson.zoomMeetingPassword || '',
         userName: user.nomeCompleto,
-        userEmail: user.email,
-        tk: '', // Registration token (não usado para client SDK)
-        success: (success: any) => {
-          console.log('Zoom meeting joined:', success);
-          setIsZoomJoined(true);
-          setIsZoomConnecting(false);
-          toast.success('Conectado à aula ao vivo!');
-        },
-        error: (error: any) => {
-          console.error('Zoom join error:', error);
-          setZoomError('Erro ao conectar com a reunião');
-          setIsZoomConnecting(false);
-          toast.error('Erro ao entrar na reunião Zoom');
-        }
-      };
-
-      await client.join(meetingConfig);
+        userEmail: user.email
+      }).then(() => {
+        console.log('Zoom meeting joined successfully');
+        setIsZoomJoined(true);
+        setIsZoomConnecting(false);
+        toast.success('Conectado à aula ao vivo!');
+      }).catch((error: any) => {
+        console.error('Zoom join error:', error);
+        setZoomError(error.reason || 'Erro ao conectar com a reunião');
+        setIsZoomConnecting(false);
+        toast.error('Erro ao entrar na reunião Zoom');
+        throw error;
+      });
     } catch (error: any) {
       console.error('Zoom initialization error:', error);
       setZoomError(error.message || 'Erro ao inicializar Zoom');

@@ -359,3 +359,9 @@ export const siteConfigService = {
   updateWatermark: (data: { enabled?: boolean; opacity?: number; showForAdmins?: boolean }) =>
     api.put('/site-config/watermark', data)
 };
+
+// Zoom
+export const zoomService = {
+  generateSignature: (meetingNumber: string, role?: number) =>
+    api.post('/zoom/signature', { meetingNumber, role })
+};
