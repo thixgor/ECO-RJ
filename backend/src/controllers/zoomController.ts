@@ -45,19 +45,27 @@ export const generateZoomSignature = async (req: Request, res: Response) => {
       tokenExp: tokenExp
     };
 
-    console.log('[Zoom] Payload:', {
-      sdkKey: sdkKey.substring(0, 10) + '...',
-      mn: meetingNumber,
-      role: userRole,
-      iat,
-      exp,
-      tokenExp: payload.tokenExp
+    console.log('[Zoom] Payload completo:', payload);
+    console.log('[Zoom] Tipos:', {
+      sdkKey: typeof payload.sdkKey,
+      mn: typeof payload.mn,
+      role: typeof payload.role,
+      iat: typeof payload.iat,
+      exp: typeof payload.exp,
+      appKey: typeof payload.appKey,
+      tokenExp: typeof payload.tokenExp
     });
 
     // Gerar signature JWT com algoritmo HS256
     const signature = jwt.sign(payload, sdkSecret, { algorithm: 'HS256' });
 
     console.log('[Zoom] Signature generated successfully');
+    console.log('[Zoom] Signature (primeiros 50 chars):', signature.substring(0, 50) + '...');
+
+    // Decodificar para debug (REMOVER EM PRODUÇÃO)
+    const decoded = jwt.decode(signature, { complete: true });
+    console.log('[Zoom] JWT Header:', decoded?.header);
+    console.log('[Zoom] JWT Payload decoded:', decoded?.payload);
 
     // Retornar apenas a signature
     // SDK JWT Signature já contém o appKey no payload, não precisa enviar sdkKey separado

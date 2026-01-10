@@ -17,7 +17,7 @@ export default defineConfig({
     }
   },
   build: {
-    chunkSizeWarningLimit: 600,
+    chunkSizeWarningLimit: 3000, // Zoom SDK é grande (~2.8MB), aumentar limite
     rollupOptions: {
       output: {
         manualChunks(id) {

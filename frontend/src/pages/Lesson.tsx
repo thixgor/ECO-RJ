@@ -216,7 +216,19 @@ const Lesson: React.FC = () => {
         throw new Error('Signature Zoom não disponível');
       }
 
-      console.log('Signature generated successfully');
+      console.log('Signature received:', signature.substring(0, 50) + '...');
+      console.log('Signature length:', signature.length);
+
+      // Decodificar JWT para debug (apenas para verificar o payload)
+      try {
+        const parts = signature.split('.');
+        if (parts.length === 3) {
+          const payload = JSON.parse(atob(parts[1]));
+          console.log('Decoded JWT Payload:', payload);
+        }
+      } catch (e) {
+        console.warn('Não foi possível decodificar JWT:', e);
+      }
 
       // Verificar se o container existe
       if (!zoomContainerRef.current) {
@@ -250,7 +262,13 @@ const Lesson: React.FC = () => {
       });
       console.log('Zoom client initialized successfully');
 
-      console.log('Joining meeting:', cleanMeetingId);
+      console.log('Joining meeting with params:', {
+        meetingNumber: cleanMeetingId,
+        password: lesson.zoomMeetingPassword ? '***' : '',
+        userName: user.nomeCompleto,
+        userEmail: user.email,
+        signatureLength: signature.length
+      });
 
       // Entrar na reunião com SDK JWT Signature
       // SDK JWT Signature já inclui appKey no payload, NÃO passar sdkKey aqui
