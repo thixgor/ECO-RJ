@@ -200,6 +200,13 @@ const Lesson: React.FC = () => {
       return;
     }
 
+    // Validar e limpar o Meeting ID antes de processar
+    const meetingId = lesson.zoomMeetingId?.trim();
+    if (!meetingId) {
+      toast.error('Meeting ID não está configurado corretamente');
+      return;
+    }
+
     setIsZoomConnecting(true);
     setZoomError(null);
 
@@ -228,10 +235,13 @@ const Lesson: React.FC = () => {
         });
       }
 
+      // Limpar Meeting ID (remover espaços e hífens)
+      const cleanMeetingId = meetingId.replace(/\s|-/g, '');
+
       // Configurar e entrar na reunião
       const meetingConfig = {
         sdkKey: zoomSdkKey,
-        meetingNumber: lesson.zoomMeetingId.replace(/\s|-/g, ''),
+        meetingNumber: cleanMeetingId,
         password: lesson.zoomMeetingPassword || '',
         userName: user.nomeCompleto,
         userEmail: user.email,
