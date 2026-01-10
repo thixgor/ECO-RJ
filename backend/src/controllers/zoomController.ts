@@ -34,25 +34,24 @@ export const generateZoomSignature = async (req: Request, res: Response) => {
     const exp = iat + 60 * 60 * 2; // Expira em 2 horas
     const tokenExp = exp;
 
-    // Payload DEVE incluir AMBOS sdkKey E appKey (conforme exemplo oficial)
+    // Payload conforme exemplo oficial - APENAS appKey (NÃO incluir sdkKey!)
+    // sdkKey está deprecated após v5.0.0
     const payload = {
-      sdkKey: sdkKey,        // Obrigatório (mesmo valor de appKey)
+      appKey: sdkKey,        // ZOOM_CLIENT_ID
       mn: String(meetingNumber),
       role: userRole,
       iat: iat,
       exp: exp,
-      appKey: sdkKey,        // Obrigatório (mesmo valor de sdkKey)
       tokenExp: tokenExp
     };
 
     console.log('[Zoom] Payload completo:', payload);
     console.log('[Zoom] Tipos:', {
-      sdkKey: typeof payload.sdkKey,
+      appKey: typeof payload.appKey,
       mn: typeof payload.mn,
       role: typeof payload.role,
       iat: typeof payload.iat,
       exp: typeof payload.exp,
-      appKey: typeof payload.appKey,
       tokenExp: typeof payload.tokenExp
     });
 
