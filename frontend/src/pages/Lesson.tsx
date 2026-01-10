@@ -250,6 +250,13 @@ const Lesson: React.FC = () => {
 
       // Inicializar o container da reunião
       console.log('Initializing Zoom client...');
+
+      // Calcular dimensões do container
+      const containerWidth = zoomContainerRef.current.offsetWidth;
+      const containerHeight = zoomContainerRef.current.offsetHeight;
+
+      console.log('Container dimensions:', { width: containerWidth, height: containerHeight });
+
       await client.init({
         zoomAppRoot: zoomContainerRef.current,
         language: 'pt-PT', // Zoom SDK aceita pt-PT (Português), não pt-BR
@@ -257,11 +264,11 @@ const Lesson: React.FC = () => {
         leaveOnPageUnload: true,
         customize: {
           video: {
-            isResizable: false,
+            isResizable: true,
             viewSizes: {
               default: {
-                width: 1280,
-                height: 720
+                width: containerWidth || 1280,
+                height: containerHeight || 720
               }
             }
           },

@@ -1214,35 +1214,42 @@
   position: absolute !important;
   top: 0 !important;
   left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
   width: 100% !important;
   height: 100% !important;
   background: #000;
   overflow: hidden !important;
 }
 
-/* Força o Zoom SDK e TODOS os filhos a respeitarem o container */
-#zoom-meeting-container *,
-#zoom-meeting-container > div,
-#zoom-meeting-container > div > div,
-#zoom-meeting-container > div > div > div {
-  max-width: 100% !important;
-  max-height: 100% !important;
-  box-sizing: border-box !important;
-}
-
-/* Container raiz do Zoom SDK */
+/* Container raiz do Zoom SDK - forçar a ocupar 100% */
 #zoom-meeting-container > div {
   position: absolute !important;
   top: 0 !important;
   left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
   width: 100% !important;
   height: 100% !important;
-  overflow: hidden !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  overflow: visible !important;
+  transform: scale(1) !important;
 }
 
-/* Estilos para vídeos e canvas */
+/* Força TODOS os elementos internos a respeitarem limites */
+#zoom-meeting-container * {
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Área de vídeo principal */
+#zoom-meeting-container [class*="video"],
+#zoom-meeting-container [class*="participants"],
 #zoom-meeting-container video,
 #zoom-meeting-container canvas {
+  width: 100% !important;
+  height: auto !important;
   max-width: 100% !important;
   max-height: 100% !important;
   object-fit: contain !important;
@@ -1250,6 +1257,8 @@
 
 /* Garante que iframes sejam contidos */
 #zoom-meeting-container iframe {
+  width: 100% !important;
+  height: 100% !important;
   max-width: 100% !important;
   max-height: 100% !important;
 }
@@ -1261,12 +1270,28 @@
   max-height: none !important;
 }
 
-/* Garante que toolbar do Zoom seja visível */
+/* Garante que toolbar/footer do Zoom fique sempre visível NO FUNDO */
 #zoom-meeting-container [class*="footer"],
 #zoom-meeting-container [class*="toolbar"],
-#zoom-meeting-container [class*="controls"] {
-  position: relative !important;
-  z-index: 100 !important;
+#zoom-meeting-container [class*="meeting-footer"],
+#zoom-meeting-container footer {
+  position: absolute !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  z-index: 1000 !important;
+  background: rgba(0, 0, 0, 0.8) !important;
+  backdrop-filter: blur(10px) !important;
+}
+
+/* Garante visibilidade dos botões da toolbar */
+#zoom-meeting-container [class*="footer"] button,
+#zoom-meeting-container [class*="toolbar"] button,
+#zoom-meeting-container footer button {
+  max-width: none !important;
+  max-height: none !important;
 }
 
 /* Mobile adjustments para Zoom */
@@ -1276,7 +1301,8 @@
   }
 
   /* Controles maiores em mobile */
-  #zoom-meeting-container .zm-btn {
+  #zoom-meeting-container .zm-btn,
+  #zoom-meeting-container [class*="footer"] button {
     min-width: 48px !important;
     min-height: 48px !important;
   }
