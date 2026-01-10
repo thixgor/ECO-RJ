@@ -49,6 +49,7 @@ const Lesson: React.FC = () => {
   const [isZoomJoined, setIsZoomJoined] = useState(false);
   const [isZoomConnecting, setIsZoomConnecting] = useState(false);
   const [zoomError, setZoomError] = useState<string | null>(null);
+  const [showZoomFallback, setShowZoomFallback] = useState(false);
   const zoomClientRef = useRef<any>(null);
   const zoomContainerRef = useRef<HTMLDivElement>(null);
 
@@ -269,9 +270,33 @@ const Lesson: React.FC = () => {
       console.error('Zoom initialization error:', error);
       setZoomError(error.message || 'Erro ao inicializar Zoom');
       setIsZoomConnecting(false);
-      toast.error('Erro ao carregar reunião Zoom');
+      setShowZoomFallback(true); // Mostrar opções alternativas
+      toast.error('Não foi possível carregar o Zoom integrado');
     }
   }, [lesson, user]);
+
+  // Funções para abrir Zoom externamente
+  const openZoomApp = useCallback(() => {
+    if (!lesson?.zoomMeetingId) return;
+
+    const cleanMeetingId = lesson.zoomMeetingId.replace(/\s|-/g, '');
+    const password = lesson.zoomMeetingPassword || '';
+
+    // URL do protocolo zoommtg:// para abrir o app Zoom
+    const zoomAppUrl = `zoommtg://zoom.us/join?confno=${cleanMeetingId}${password ? `&pwd=${password}` : ''}`;
+    window.location.href = zoomAppUrl;
+  }, [lesson]);
+
+  const openZoomBrowser = useCallback(() => {
+    if (!lesson?.zoomMeetingId) return;
+
+    const cleanMeetingId = lesson.zoomMeetingId.replace(/\s|-/g, '');
+    const password = lesson.zoomMeetingPassword ? `?pwd=${lesson.zoomMeetingPassword}` : '';
+
+    // URL para abrir Zoom no navegador
+    const zoomBrowserUrl = `https://zoom.us/wc/join/${cleanMeetingId}${password}`;
+    window.open(zoomBrowserUrl, '_blank');
+  }, [lesson]);
 
   const leaveZoomMeeting = useCallback(async () => {
     if (zoomClientRef.current && isZoomJoined) {
@@ -497,29 +522,67 @@ const Lesson: React.FC = () => {
                     Clique no botão abaixo para entrar na reunião ao vivo. Seu nome será exibido como: <strong>{user?.nomeCompleto}</strong>
                   </p>
 
-                  {zoomError && (
+                  {zoomError && !showZoomFallback && (
                     <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg text-red-600 dark:text-red-400 text-sm">
                       {zoomError}
                     </div>
                   )}
 
-                  <button
-                    onClick={joinZoomMeeting}
-                    disabled={isZoomConnecting}
-                    className="btn btn-primary text-lg px-8 py-3 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isZoomConnecting ? (
-                      <>
-                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        Conectando...
-                      </>
-                    ) : (
-                      <>
-                        <Video className="w-5 h-5" />
-                        Entrar na Aula ao Vivo
-                      </>
-                    )}
-                  </button>
+                  {!showZoomFallback ? (
+                    <button
+                      onClick={joinZoomMeeting}
+                      disabled={isZoomConnecting}
+                      className="btn btn-primary text-lg px-8 py-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isZoomConnecting ? (
+                        <>
+                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          Conectando...
+                        </>
+                      ) : (
+                        <>
+                          <Video className="w-5 h-5" />
+                          Entrar na Aula ao Vivo
+                        </>
+                      )}
+                    </button>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="mb-4 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg">
+                        <p className="text-amber-800 dark:text-amber-300 font-medium mb-2">
+                          Você possui o aplicativo Zoom instalado?
+                        </p>
+                        <p className="text-sm text-amber-700 dark:text-amber-400">
+                          Escolha como deseja participar da reunião:
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                        <button
+                          onClick={openZoomApp}
+                          className="flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors shadow-md"
+                        >
+                          <Video className="w-5 h-5" />
+                          Sim, abrir no App Zoom
+                        </button>
+
+                        <button
+                          onClick={openZoomBrowser}
+                          className="flex items-center justify-center gap-2 px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition-colors shadow-md"
+                        >
+                          <ExternalLink className="w-5 h-5" />
+                          Não, abrir no Navegador
+                        </button>
+                      </div>
+
+                      <button
+                        onClick={() => setShowZoomFallback(false)}
+                        className="text-sm text-[var(--color-text-muted)] hover:text-primary-500 underline mt-2"
+                      >
+                        Tentar conexão integrada novamente
+                      </button>
+                    </div>
+                  )}
 
                   <div className="mt-6 pt-6 border-t border-[var(--glass-border)]">
                     <p className="text-xs text-[var(--color-text-muted)]">
