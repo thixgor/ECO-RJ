@@ -50,12 +50,11 @@ const Lesson: React.FC = () => {
   const [isZoomConnecting, setIsZoomConnecting] = useState(false);
   const [zoomError, setZoomError] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [fullscreenCountdown, setFullscreenCountdown] = useState<number | null>(null);
+  const [showFullscreenSuggestion, setShowFullscreenSuggestion] = useState(false);
   const [joinedExternally, setJoinedExternally] = useState(false);
   const zoomClientRef = useRef<any>(null);
   const zoomContainerRef = useRef<HTMLDivElement>(null);
   const zoomWrapperRef = useRef<HTMLDivElement>(null);
-  const countdownTimerRef = useRef<number | null>(null);
 
   const isWatched = user?.aulasAssistidas?.includes(id || '');
 
@@ -311,8 +310,10 @@ const Lesson: React.FC = () => {
       setIsZoomConnecting(false);
       toast.success('Conectado à aula ao vivo!');
 
-      // Iniciar countdown para fullscreen
-      startFullscreenCountdown();
+      // Mostrar sugestão de tela cheia após 2 segundos
+      setTimeout(() => {
+        setShowFullscreenSuggestion(true);
+      }, 2000);
     } catch (error: any) {
       console.error('Zoom initialization error:', error);
       setZoomError(error.message || 'Erro ao inicializar Zoom');
@@ -371,35 +372,18 @@ const Lesson: React.FC = () => {
     }
   }, [isZoomJoined]);
 
-  // Countdown para fullscreen automático
-  const startFullscreenCountdown = useCallback(() => {
-    setFullscreenCountdown(3);
-
-    const timer = window.setInterval(() => {
-      setFullscreenCountdown(prev => {
-        if (prev === null || prev <= 1) {
-          clearInterval(timer);
-          // Entrar em fullscreen automaticamente
-          if (zoomWrapperRef.current && !document.fullscreenElement) {
-            zoomWrapperRef.current.requestFullscreen().catch(err => {
-              console.error('Auto-fullscreen failed:', err);
-            });
-          }
-          return null;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    countdownTimerRef.current = timer;
-  }, []);
-
-  const cancelFullscreenCountdown = useCallback(() => {
-    if (countdownTimerRef.current) {
-      clearInterval(countdownTimerRef.current);
-      countdownTimerRef.current = null;
+  // Função para entrar em tela cheia e ocultar sugestão
+  const enterFullscreenFromSuggestion = useCallback(async () => {
+    setShowFullscreenSuggestion(false);
+    if (zoomWrapperRef.current && !document.fullscreenElement) {
+      try {
+        await zoomWrapperRef.current.requestFullscreen();
+        setIsFullscreen(true);
+      } catch (err) {
+        console.error('Fullscreen failed:', err);
+        toast.error('Não foi possível entrar em tela cheia');
+      }
     }
-    setFullscreenCountdown(null);
   }, []);
 
   // Funções de Fullscreen
@@ -786,23 +770,38 @@ const Lesson: React.FC = () => {
                   </div>
                 )}
 
-                {/* Alert de countdown para fullscreen */}
-                {isZoomJoined && fullscreenCountdown !== null && (
-                  <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 z-[9999] animate-fade-in">
-                    <div className="bg-gradient-to-r from-primary-500 to-primary-600 text-white px-8 py-4 rounded-xl shadow-2xl flex items-center gap-4 backdrop-blur-sm">
-                      <div className="flex items-center justify-center w-12 h-12 rounded-full bg-white/20 font-bold text-2xl animate-pulse">
-                        {fullscreenCountdown}
+                {/* Sugestão de tela cheia */}
+                {isZoomJoined && showFullscreenSuggestion && !isFullscreen && (
+                  <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 z-[9999] animate-fade-in max-w-md">
+                    <div className="bg-gradient-to-r from-primary-500 to-primary-600 text-white px-6 py-4 rounded-xl shadow-2xl backdrop-blur-sm">
+                      <div className="flex items-center gap-3 mb-3">
+                        <Maximize className="w-6 h-6 flex-shrink-0" />
+                        <div className="flex-1">
+                          <p className="font-bold text-base">Melhor experiência em tela cheia</p>
+                          <p className="text-xs text-primary-100 mt-0.5">Recomendado para acompanhar a aula</p>
+                        </div>
+                        <button
+                          onClick={() => setShowFullscreenSuggestion(false)}
+                          className="p-1 hover:bg-white/20 rounded transition-colors"
+                          aria-label="Fechar sugestão"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
                       </div>
-                      <div className="flex-1">
-                        <p className="font-bold text-lg">Entrando em tela cheia...</p>
-                        <p className="text-sm text-primary-100">Para a melhor experiência</p>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={enterFullscreenFromSuggestion}
+                          className="flex-1 px-4 py-2 bg-white text-primary-600 hover:bg-primary-50 rounded-lg font-semibold transition-colors text-sm"
+                        >
+                          Tela Cheia
+                        </button>
+                        <button
+                          onClick={() => setShowFullscreenSuggestion(false)}
+                          className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg font-medium transition-colors text-sm"
+                        >
+                          Agora Não
+                        </button>
                       </div>
-                      <button
-                        onClick={cancelFullscreenCountdown}
-                        className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg font-semibold transition-colors"
-                      >
-                        Cancelar
-                      </button>
                     </div>
                   </div>
                 )}
