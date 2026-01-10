@@ -1,8 +1,7 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
-  readonly VITE_ZOOM_SDK_KEY: string
-  readonly VITE_ZOOM_SDK_SECRET: string
+  // Add your environment variables here if needed
 }
 
 interface ImportMeta {
