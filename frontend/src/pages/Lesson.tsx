@@ -678,22 +678,23 @@ const Lesson: React.FC = () => {
               )}
 
               {/* Container do Zoom SDK (sempre renderizado, mas oculto quando não conectado) */}
-              {isZoomJoined && (
+              <div
+                ref={zoomWrapperRef}
+                className="relative bg-black w-full overflow-hidden"
+                style={{
+                  paddingBottom: '56.25%', /* 16:9 aspect ratio */
+                  display: isZoomJoined ? 'block' : 'none'
+                }}
+              >
+                {/* Container interno do Zoom SDK */}
                 <div
-                  ref={zoomWrapperRef}
-                  className="relative bg-black w-full overflow-hidden"
-                  style={{
-                    paddingBottom: '56.25%', /* 16:9 aspect ratio */
-                  }}
-                >
-                  {/* Container interno do Zoom SDK */}
-                  <div
-                    ref={zoomContainerRef}
-                    id="zoom-meeting-container"
-                    className="absolute inset-0 w-full h-full"
-                  />
+                  ref={zoomContainerRef}
+                  id="zoom-meeting-container"
+                  className="absolute inset-0 w-full h-full"
+                />
 
-                  {/* Controles sobrepostos */}
+                {/* Controles sobrepostos */}
+                {isZoomJoined && (
                   <div className="absolute top-4 right-4 z-[9999] flex gap-3">
                     <button
                       onClick={toggleFullscreen}
@@ -721,8 +722,8 @@ const Lesson: React.FC = () => {
                       Sair da Aula
                     </button>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           ) : getVideoEmbed() ? (
             <div className="card overflow-hidden">
