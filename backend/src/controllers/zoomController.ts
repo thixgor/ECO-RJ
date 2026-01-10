@@ -29,18 +29,20 @@ export const generateZoomSignature = async (req: Request, res: Response) => {
     const userRole = role || 0;
 
     // Criar payload para JWT (formato EXATO para Zoom Meeting SDK v5.x)
-    const iat = Math.floor(Date.now() / 1000) - 30; // 30 segundos no passado para evitar problemas de clock
+    const iat = Math.floor(Date.now() / 1000);
     const exp = iat + 60 * 60 * 2; // Expira em 2 horas
+    const tokenExp = exp; // tokenExp deve ser igual a exp
 
-    // Formato correto segundo a documentação do Zoom SDK v5.x
+    // Formato correto segundo a documentação oficial do Zoom SDK
+    // Para Web Meeting SDK: usar appKey (que é o Client ID)
+    // mn deve ser string, exp e tokenExp devem ser idênticos
     const payload = {
-      sdkKey: sdkKey,
-      mn: meetingNumber,
+      appKey: sdkKey,
+      mn: String(meetingNumber), // Garantir que é string
       role: userRole,
       iat: iat,
       exp: exp,
-      appKey: sdkKey,
-      tokenExp: iat + 60 * 60 * 2
+      tokenExp: tokenExp
     };
 
     console.log('[Zoom] Payload:', {
