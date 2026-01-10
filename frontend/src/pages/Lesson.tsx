@@ -210,10 +210,10 @@ const Lesson: React.FC = () => {
 
       // Buscar signature JWT do backend
       const signatureResponse = await zoomService.generateSignature(cleanMeetingId, 0);
-      const { signature, sdkKey } = signatureResponse.data;
+      const { signature } = signatureResponse.data;
 
-      if (!signature || !sdkKey) {
-        throw new Error('Credenciais Zoom não disponíveis');
+      if (!signature) {
+        throw new Error('Signature Zoom não disponível');
       }
 
       console.log('Signature generated successfully');
@@ -252,9 +252,10 @@ const Lesson: React.FC = () => {
 
       console.log('Joining meeting:', cleanMeetingId);
 
-      // Entrar na reunião com signature JWT
+      // Entrar na reunião com SDK JWT Signature
+      // SDK JWT Signature já inclui appKey no payload, NÃO passar sdkKey aqui
+      // Ref: https://devforum.zoom.us - SDK JWT usa tempo em SEGUNDOS (não milissegundos)
       await client.join({
-        sdkKey: sdkKey,
         signature: signature,
         meetingNumber: cleanMeetingId,
         password: lesson.zoomMeetingPassword || '',

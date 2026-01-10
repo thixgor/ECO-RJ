@@ -59,9 +59,10 @@ export const generateZoomSignature = async (req: Request, res: Response) => {
 
     console.log('[Zoom] Signature generated successfully');
 
+    // Retornar apenas a signature
+    // SDK JWT Signature já contém o appKey no payload, não precisa enviar sdkKey separado
     res.json({
-      signature,
-      sdkKey
+      signature
     });
   } catch (error: any) {
     console.error('[Zoom] Error generating signature:', error);
