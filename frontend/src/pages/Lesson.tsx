@@ -482,7 +482,8 @@ const Lesson: React.FC = () => {
           {/* Video Player ou Zoom Container */}
           {lesson?.zoomMeetingId && lesson.tipo === 'ao_vivo' ? (
             <div className="card overflow-hidden">
-              {!isZoomJoined ? (
+              {/* Tela de entrada (antes de conectar) */}
+              {!isZoomJoined && (
                 <div className="p-8 text-center bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20">
                   <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-blue-500 flex items-center justify-center shadow-lg">
                     <Video className="w-10 h-10 text-white" />
@@ -531,17 +532,22 @@ const Lesson: React.FC = () => {
                     )}
                   </div>
                 </div>
-              ) : (
-                <div className="relative bg-black">
-                  {/* Container do Zoom SDK */}
-                  <div
-                    ref={zoomContainerRef}
-                    id="zoom-meeting-container"
-                    className="w-full"
-                    style={{ minHeight: '600px' }}
-                  />
+              )}
 
-                  {/* Botão de sair sobreposto */}
+              {/* Container do Zoom SDK (sempre renderizado, mas oculto quando não conectado) */}
+              <div
+                ref={zoomContainerRef}
+                id="zoom-meeting-container"
+                className="relative bg-black"
+                style={{
+                  minHeight: isZoomJoined ? '600px' : '0px',
+                  height: isZoomJoined ? 'auto' : '0px',
+                  overflow: 'hidden',
+                  display: isZoomJoined ? 'block' : 'none'
+                }}
+              >
+                {/* Botão de sair sobreposto */}
+                {isZoomJoined && (
                   <div className="absolute top-4 right-4 z-50">
                     <button
                       onClick={leaveZoomMeeting}
@@ -551,8 +557,8 @@ const Lesson: React.FC = () => {
                       Sair da Aula
                     </button>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           ) : getVideoEmbed() ? (
             <div className="card overflow-hidden">
