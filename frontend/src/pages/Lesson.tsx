@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Clock, CheckCircle, BookOpen, FileText, Play, ExternalLink, Download, Layers, X, ChevronRight, ChevronLeft, Award, Target, RotateCcw, AlertTriangle, Check, XCircle, Video, File, PlayCircle } from 'lucide-react';
+import { ArrowLeft, Clock, CheckCircle, BookOpen, FileText, Play, ExternalLink, Download, Layers, X, ChevronRight, ChevronLeft, Award, Target, RotateCcw, AlertTriangle, Check, XCircle, Video, File, PlayCircle, Maximize, Minimize } from 'lucide-react';
 import { lessonService, exerciseService, zoomService } from '../services/api';
 import { Lesson as LessonType, Exercise, Course } from '../types';
 import { useAuth } from '../contexts/AuthContext';
@@ -50,8 +50,10 @@ const Lesson: React.FC = () => {
   const [isZoomConnecting, setIsZoomConnecting] = useState(false);
   const [zoomError, setZoomError] = useState<string | null>(null);
   const [showZoomFallback, setShowZoomFallback] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const zoomClientRef = useRef<any>(null);
   const zoomContainerRef = useRef<HTMLDivElement>(null);
+  const zoomWrapperRef = useRef<HTMLDivElement>(null);
 
   const isWatched = user?.aulasAssistidas?.includes(id || '');
 
@@ -333,9 +335,14 @@ const Lesson: React.FC = () => {
   const leaveZoomMeeting = useCallback(async () => {
     if (zoomClientRef.current && isZoomJoined) {
       try {
+        // Sair do fullscreen se estiver ativo
+        if (document.fullscreenElement) {
+          await document.exitFullscreen();
+        }
         await zoomClientRef.current.leaveMeeting();
         setIsZoomJoined(false);
         setZoomError(null);
+        setIsFullscreen(false);
         toast.success('Você saiu da aula ao vivo');
       } catch (error) {
         console.error('Error leaving Zoom:', error);
@@ -343,6 +350,36 @@ const Lesson: React.FC = () => {
       }
     }
   }, [isZoomJoined]);
+
+  // Funções de Fullscreen
+  const toggleFullscreen = useCallback(async () => {
+    if (!zoomWrapperRef.current) return;
+
+    try {
+      if (!document.fullscreenElement) {
+        await zoomWrapperRef.current.requestFullscreen();
+        setIsFullscreen(true);
+      } else {
+        await document.exitFullscreen();
+        setIsFullscreen(false);
+      }
+    } catch (error) {
+      console.error('Fullscreen error:', error);
+      toast.error('Erro ao alternar tela cheia');
+    }
+  }, []);
+
+  // Detectar mudanças de fullscreen
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []);
 
   // Cleanup Zoom ao desmontar componente
   useEffect(() => {
@@ -641,30 +678,51 @@ const Lesson: React.FC = () => {
               )}
 
               {/* Container do Zoom SDK (sempre renderizado, mas oculto quando não conectado) */}
-              <div
-                ref={zoomContainerRef}
-                id="zoom-meeting-container"
-                className="relative bg-black w-full"
-                style={{
-                  paddingBottom: isZoomJoined ? '56.25%' : '0',
-                  height: isZoomJoined ? '0' : '0px',
-                  overflow: 'hidden',
-                  display: isZoomJoined ? 'block' : 'none'
-                }}
-              >
-                {/* Botão de sair sobreposto */}
-                {isZoomJoined && (
-                  <div className="absolute top-6 right-6 z-[9999]">
+              {isZoomJoined && (
+                <div
+                  ref={zoomWrapperRef}
+                  className="relative bg-black w-full overflow-hidden"
+                  style={{
+                    paddingBottom: '56.25%', /* 16:9 aspect ratio */
+                  }}
+                >
+                  {/* Container interno do Zoom SDK */}
+                  <div
+                    ref={zoomContainerRef}
+                    id="zoom-meeting-container"
+                    className="absolute inset-0 w-full h-full"
+                  />
+
+                  {/* Controles sobrepostos */}
+                  <div className="absolute top-4 right-4 z-[9999] flex gap-3">
+                    <button
+                      onClick={toggleFullscreen}
+                      className="px-5 py-2.5 bg-gray-800/90 hover:bg-gray-700 text-white rounded-lg font-semibold shadow-xl transition-all hover:shadow-2xl flex items-center gap-2 backdrop-blur-sm"
+                      title={isFullscreen ? 'Sair da tela cheia' : 'Tela cheia'}
+                    >
+                      {isFullscreen ? (
+                        <>
+                          <Minimize className="w-4 h-4" />
+                          Sair
+                        </>
+                      ) : (
+                        <>
+                          <Maximize className="w-4 h-4" />
+                          Tela Cheia
+                        </>
+                      )}
+                    </button>
+
                     <button
                       onClick={leaveZoomMeeting}
-                      className="px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl font-bold shadow-2xl transition-all hover:shadow-red-500/50 flex items-center gap-3 transform hover:scale-105"
+                      className="px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-lg font-bold shadow-xl transition-all hover:shadow-red-500/50 flex items-center gap-2 transform hover:scale-105"
                     >
-                      <X className="w-5 h-5" />
+                      <X className="w-4 h-4" />
                       Sair da Aula
                     </button>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           ) : getVideoEmbed() ? (
             <div className="card overflow-hidden">
