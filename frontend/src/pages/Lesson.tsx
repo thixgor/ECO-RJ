@@ -217,37 +217,37 @@ const Lesson: React.FC = () => {
 
       console.log('Signature generated successfully');
 
+      // Verificar se o container existe
+      if (!zoomContainerRef.current) {
+        throw new Error('Container do Zoom não encontrado');
+      }
+
       // Dynamic import do Zoom SDK (lazy loading)
       console.log('Loading Zoom SDK...');
       const ZoomMtgEmbeddedModule = await import('@zoom/meetingsdk/embedded');
       const ZoomMtgEmbedded = ZoomMtgEmbeddedModule.default || ZoomMtgEmbeddedModule;
       console.log('Zoom SDK loaded successfully');
 
-      // Inicializar cliente Zoom (apenas uma vez)
-      if (!zoomClientRef.current) {
-        console.log('Creating Zoom client...');
-        zoomClientRef.current = ZoomMtgEmbedded.createClient();
-      }
-
-      const client = zoomClientRef.current;
+      // Criar novo cliente Zoom (sempre criar novo para cada join)
+      console.log('Creating Zoom client...');
+      const client = ZoomMtgEmbedded.createClient();
+      zoomClientRef.current = client;
 
       // Inicializar o container da reunião
-      if (zoomContainerRef.current) {
-        console.log('Initializing Zoom client...');
-        await client.init({
-          zoomAppRoot: zoomContainerRef.current,
-          language: 'pt-BR',
-          patchJsMedia: true,
-          leaveOnPageUnload: true,
-          customize: {
-            meetingInfo: ['topic', 'host', 'mn', 'pwd', 'telPwd', 'invite', 'participant', 'dc', 'enctype'],
-            toolbar: {
-              buttons: []
-            }
+      console.log('Initializing Zoom client...');
+      await client.init({
+        zoomAppRoot: zoomContainerRef.current,
+        language: 'pt-BR',
+        patchJsMedia: true,
+        leaveOnPageUnload: true,
+        customize: {
+          meetingInfo: ['topic', 'host', 'mn', 'pwd', 'telPwd', 'invite', 'participant', 'dc', 'enctype'],
+          toolbar: {
+            buttons: []
           }
-        });
-        console.log('Zoom client initialized');
-      }
+        }
+      });
+      console.log('Zoom client initialized successfully');
 
       console.log('Joining meeting:', cleanMeetingId);
 
@@ -259,18 +259,12 @@ const Lesson: React.FC = () => {
         password: lesson.zoomMeetingPassword || '',
         userName: user.nomeCompleto,
         userEmail: user.email
-      }).then(() => {
-        console.log('Zoom meeting joined successfully');
-        setIsZoomJoined(true);
-        setIsZoomConnecting(false);
-        toast.success('Conectado à aula ao vivo!');
-      }).catch((error: any) => {
-        console.error('Zoom join error:', error);
-        setZoomError(error.reason || 'Erro ao conectar com a reunião');
-        setIsZoomConnecting(false);
-        toast.error('Erro ao entrar na reunião Zoom');
-        throw error;
       });
+
+      console.log('Zoom meeting joined successfully');
+      setIsZoomJoined(true);
+      setIsZoomConnecting(false);
+      toast.success('Conectado à aula ao vivo!');
     } catch (error: any) {
       console.error('Zoom initialization error:', error);
       setZoomError(error.message || 'Erro ao inicializar Zoom');
