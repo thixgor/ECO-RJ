@@ -257,22 +257,16 @@ const Lesson: React.FC = () => {
         leaveOnPageUnload: true,
         customize: {
           video: {
-            isResizable: true,
+            isResizable: false,
             viewSizes: {
               default: {
                 width: 1280,
                 height: 720
-              },
-              ribbon: {
-                width: 300,
-                height: 700
               }
             }
           },
-          meetingInfo: ['topic', 'host', 'mn', 'pwd', 'telPwd', 'invite', 'participant', 'dc', 'enctype'],
-          toolbar: {
-            buttons: []
-          }
+          meetingInfo: ['topic', 'host', 'mn', 'pwd', 'telPwd', 'invite', 'participant', 'dc', 'enctype']
+          // Removido toolbar.buttons para manter controles padrão do Zoom
         }
       });
       console.log('Zoom client initialized successfully');
