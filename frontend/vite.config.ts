@@ -17,17 +17,32 @@ export default defineConfig({
     }
   },
   build: {
-    chunkSizeWarningLimit: 1000,
+    chunkSizeWarningLimit: 600,
     rollupOptions: {
       output: {
         manualChunks(id) {
           if (id.includes('node_modules')) {
+            // Zoom SDK - carregado dinamicamente na página Lesson
+            if (id.includes('@zoom/meetingsdk') || id.includes('zoom')) {
+              return 'vendor-zoom';
+            }
+            // PDF - usado apenas para exportar exercícios
+            if (id.includes('jspdf') || id.includes('html2canvas')) {
+              return 'vendor-pdf';
+            }
+            // Icons - Lucide React
             if (id.includes('lucide-react')) {
               return 'vendor-icons';
             }
-            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom')) {
-              return 'vendor-core';
+            // React core
+            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
+              return 'vendor-react';
             }
+            // UI libraries
+            if (id.includes('framer-motion') || id.includes('react-hot-toast')) {
+              return 'vendor-ui';
+            }
+            // Outros vendors
             return 'vendor';
           }
         }
