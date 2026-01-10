@@ -237,7 +237,7 @@ const Lesson: React.FC = () => {
       console.log('Initializing Zoom client...');
       await client.init({
         zoomAppRoot: zoomContainerRef.current,
-        language: 'pt-BR',
+        language: 'pt-PT', // Zoom SDK aceita pt-PT (Português), não pt-BR
         patchJsMedia: true,
         leaveOnPageUnload: true,
         customize: {
