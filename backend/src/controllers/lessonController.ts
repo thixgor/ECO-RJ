@@ -364,39 +364,49 @@ export const getLiveLessonsToday = async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ message: 'Não autorizado' });
     }
 
-    // Obter IDs dos cursos inscritos
-    const cursosInscritos = user.cursosInscritos || [];
-    if (cursosInscritos.length === 0) {
+    // Obter IDs dos cursos inscritos (pode ser string ou objeto)
+    const cursosInscritosRaw = user.cursosInscritos || [];
+    if (cursosInscritosRaw.length === 0) {
       return res.json({ lessons: [] });
     }
 
-    // Calcular início e fim do dia atual no timezone do Brasil (America/Sao_Paulo)
-    // Offset: UTC-3 (ou UTC-2 em horário de verão, mas Brasil não usa mais)
+    // Extrair IDs corretamente (pode ser ObjectId, string ou objeto populado)
+    const cursoIds = cursosInscritosRaw.map((curso: any) => {
+      if (typeof curso === 'string') return curso;
+      if (curso._id) return curso._id.toString();
+      return curso.toString();
+    });
+
+    // Calcular início e fim do dia atual no timezone do Brasil (UTC-3)
     const now = new Date();
 
-    // Converter para horário de Brasília para calcular início/fim do dia
-    const brasilOffset = -3 * 60; // -3 horas em minutos
-    const localOffset = now.getTimezoneOffset();
-    const diffMinutes = brasilOffset - localOffset;
+    // Criar datas para início e fim do dia em UTC, ajustado para Brasil (UTC-3)
+    // Início do dia no Brasil = 03:00 UTC do mesmo dia
+    // Fim do dia no Brasil = 02:59:59 UTC do dia seguinte
+    const startOfDay = new Date(now);
+    startOfDay.setUTCHours(3, 0, 0, 0); // 00:00 em Brasília = 03:00 UTC
 
-    // Criar data ajustada para o timezone do Brasil
-    const brasilNow = new Date(now.getTime() + diffMinutes * 60 * 1000);
+    // Se agora for antes das 03:00 UTC, o dia brasileiro ainda é o dia anterior
+    if (now.getUTCHours() < 3) {
+      startOfDay.setUTCDate(startOfDay.getUTCDate() - 1);
+    }
 
-    // Início do dia no Brasil (00:00:00 em Brasília)
-    const startOfDayBrasil = new Date(brasilNow);
-    startOfDayBrasil.setHours(0, 0, 0, 0);
-    // Converter de volta para UTC
-    const startOfDay = new Date(startOfDayBrasil.getTime() - diffMinutes * 60 * 1000);
+    const endOfDay = new Date(startOfDay);
+    endOfDay.setUTCDate(endOfDay.getUTCDate() + 1);
+    endOfDay.setUTCMilliseconds(-1); // 23:59:59.999 em Brasília
 
-    // Fim do dia no Brasil (23:59:59 em Brasília)
-    const endOfDayBrasil = new Date(brasilNow);
-    endOfDayBrasil.setHours(23, 59, 59, 999);
-    // Converter de volta para UTC
-    const endOfDay = new Date(endOfDayBrasil.getTime() - diffMinutes * 60 * 1000);
+    console.log('[getLiveLessonsToday] Debug:', {
+      userId: user._id,
+      userCargo: user.cargo,
+      cursoIds,
+      now: now.toISOString(),
+      startOfDay: startOfDay.toISOString(),
+      endOfDay: endOfDay.toISOString()
+    });
 
     // Buscar aulas ao vivo de hoje dos cursos inscritos
     const lessons = await Lesson.find({
-      cursoId: { $in: cursosInscritos },
+      cursoId: { $in: cursoIds },
       tipo: 'ao_vivo',
       status: { $ne: 'inativa' },
       dataHoraInicio: {
@@ -407,11 +417,22 @@ export const getLiveLessonsToday = async (req: AuthRequest, res: Response) => {
       .populate('cursoId', 'titulo imagemCapa')
       .sort({ dataHoraInicio: 1 });
 
+    console.log('[getLiveLessonsToday] Aulas encontradas:', lessons.length, lessons.map(l => ({
+      id: l._id,
+      titulo: l.titulo,
+      tipo: l.tipo,
+      status: l.status,
+      dataHoraInicio: l.dataHoraInicio,
+      cursoId: l.cursoId
+    })));
+
     // Filtrar por permissão de cargo
     const userCargo = user.cargo || 'Visitante';
     const filteredLessons = lessons.filter(lesson =>
       lesson.cargosPermitidos.includes(userCargo) || userCargo === 'Administrador'
     );
+
+    console.log('[getLiveLessonsToday] Após filtro de cargo:', filteredLessons.length);
 
     res.json({ lessons: filteredLessons });
   } catch (error) {

@@ -88,7 +88,9 @@ const Dashboard: React.FC = () => {
   // Carregar aulas ao vivo do dia usando a API dedicada
   const loadLiveLessonsToday = useCallback(async () => {
     try {
+      console.log('[Dashboard] Carregando aulas ao vivo...');
       const response = await lessonService.getLiveToday();
+      console.log('[Dashboard] Resposta da API:', response.data);
       const lessons = response.data.lessons || [];
 
       // Mapear aulas para eventos com informações do curso
@@ -97,6 +99,14 @@ const Dashboard: React.FC = () => {
         const startsAt = new Date(lesson.dataHoraInicio!);
         const now = new Date();
         const minutesUntilStart = Math.floor((startsAt.getTime() - now.getTime()) / 60000);
+
+        console.log('[Dashboard] Processando aula:', {
+          titulo: lesson.titulo,
+          dataHoraInicio: lesson.dataHoraInicio,
+          startsAt: startsAt.toISOString(),
+          minutesUntilStart,
+          course: course?.titulo
+        });
 
         return {
           lesson,
@@ -109,6 +119,7 @@ const Dashboard: React.FC = () => {
       // Ordenar por horário de início
       events.sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
 
+      console.log('[Dashboard] Eventos filtrados:', events.length);
       setLiveLessonsToday(events);
     } catch (error) {
       console.error('Erro ao carregar aulas ao vivo:', error);
