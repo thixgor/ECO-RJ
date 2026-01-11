@@ -257,7 +257,7 @@ const AdminLessons: React.FC = () => {
         descricao: lesson.descricao || '',
         tipo: lesson.tipo,
         embedVideo: lesson.embedVideo || '',
-        dataHoraInicio: lesson.dataHoraInicio ? convertFromUTCtoBrasilia(lesson.dataHoraInicio) : '',
+        dataHoraInicio: lesson.dataHoraInicio ? convertFromISO(lesson.dataHoraInicio) : '',
         duracao: lesson.duracao || 0,
         cargosPermitidos: lesson.cargosPermitidos,
         cursoId: courseId,
@@ -314,33 +314,25 @@ const AdminLessons: React.FC = () => {
     }
   };
 
-  // Converter datetime-local para ISO considerando que o input está em horário de Brasília (UTC-3)
-  const convertToBrasiliaTimezone = (datetimeLocal: string): string => {
+  // Converter datetime-local para ISO string
+  // O navegador já interpreta o datetime-local no timezone local do usuário
+  // então só precisamos converter para ISO
+  const convertToISO = (datetimeLocal: string): string => {
     if (!datetimeLocal) return '';
-    // O datetime-local vem como "2026-01-11T15:50" (sem timezone)
-    // Precisamos interpretar isso como horário de Brasília (UTC-3)
-    // Então adicionamos +03:00 ao timestamp para compensar
     const date = new Date(datetimeLocal);
-    // Ajustar para UTC considerando que o input é Brasília (UTC-3)
-    // Se o usuário digitou 15:50 em Brasília, queremos salvar 18:50 UTC
-    const brasilOffsetMs = 3 * 60 * 60 * 1000; // 3 horas em ms
-    const utcDate = new Date(date.getTime() + brasilOffsetMs);
-    return utcDate.toISOString();
+    return date.toISOString();
   };
 
-  // Converter ISO (UTC) para datetime-local em horário de Brasília
-  const convertFromUTCtoBrasilia = (isoString: string): string => {
+  // Converter ISO (UTC) para datetime-local no timezone local do usuário
+  const convertFromISO = (isoString: string): string => {
     if (!isoString) return '';
     const date = new Date(isoString);
-    // Subtrair 3 horas para converter de UTC para Brasília
-    const brasilOffsetMs = 3 * 60 * 60 * 1000;
-    const brasilDate = new Date(date.getTime() - brasilOffsetMs);
-    // Formatar para datetime-local (YYYY-MM-DDTHH:MM)
-    const year = brasilDate.getFullYear();
-    const month = String(brasilDate.getMonth() + 1).padStart(2, '0');
-    const day = String(brasilDate.getDate()).padStart(2, '0');
-    const hours = String(brasilDate.getHours()).padStart(2, '0');
-    const minutes = String(brasilDate.getMinutes()).padStart(2, '0');
+    // Formatar para datetime-local (YYYY-MM-DDTHH:MM) usando horário local
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
     return `${year}-${month}-${day}T${hours}:${minutes}`;
   };
 
@@ -349,9 +341,9 @@ const AdminLessons: React.FC = () => {
     setIsSaving(true);
 
     try {
-      // Converter dataHoraInicio para timezone correto se for aula ao vivo
+      // Converter dataHoraInicio para ISO se for aula ao vivo
       const dataHoraInicioISO = formData.tipo === 'ao_vivo' && formData.dataHoraInicio
-        ? convertToBrasiliaTimezone(formData.dataHoraInicio)
+        ? convertToISO(formData.dataHoraInicio)
         : undefined;
 
       if (editingLesson) {
