@@ -458,17 +458,92 @@ const Lesson: React.FC = () => {
     }
   }, []);
 
-  // Detectar mudanças de fullscreen
+  // Função para recalcular dimensões do Zoom
+  const resizeZoomMeeting = useCallback(() => {
+    if (!zoomClientRef.current || !isZoomJoined) return;
+
+    try {
+      let newWidth: number;
+      let newHeight: number;
+
+      if (document.fullscreenElement) {
+        // Em tela cheia: usar viewport inteira
+        newWidth = window.innerWidth;
+        newHeight = window.innerHeight;
+      } else if (zoomWrapperRef.current) {
+        // Modo normal: usar dimensões do container
+        const rect = zoomWrapperRef.current.getBoundingClientRect();
+        newWidth = rect.width;
+        newHeight = rect.height;
+
+        // Fallback se dimensões inválidas
+        if (newWidth === 0 || newHeight === 0) {
+          const cardElement = zoomWrapperRef.current.closest('.card');
+          if (cardElement) {
+            newWidth = cardElement.clientWidth;
+            newHeight = Math.round(newWidth * 9 / 16);
+          }
+        }
+      } else {
+        return;
+      }
+
+      // Garantir dimensões mínimas
+      newWidth = Math.max(Math.round(newWidth), 320);
+      newHeight = Math.max(Math.round(newHeight), 180);
+
+      console.log('Resizing Zoom to:', { width: newWidth, height: newHeight, fullscreen: !!document.fullscreenElement });
+
+      // Redimensionar o cliente Zoom
+      zoomClientRef.current.updateVideoSize?.(newWidth, newHeight);
+    } catch (error) {
+      console.error('Error resizing Zoom:', error);
+    }
+  }, [isZoomJoined]);
+
+  // Detectar mudanças de fullscreen e redimensionar
   useEffect(() => {
     const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
+      const isNowFullscreen = !!document.fullscreenElement;
+      setIsFullscreen(isNowFullscreen);
+
+      // Aguardar transição de fullscreen antes de redimensionar
+      setTimeout(() => {
+        resizeZoomMeeting();
+      }, 100);
     };
 
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
     };
-  }, []);
+  }, [resizeZoomMeeting]);
+
+  // Detectar mudanças de tamanho da janela e zoom do navegador
+  useEffect(() => {
+    if (!isZoomJoined) return;
+
+    let resizeTimeout: NodeJS.Timeout;
+
+    const handleResize = () => {
+      // Debounce para evitar muitas chamadas
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(() => {
+        resizeZoomMeeting();
+      }, 150);
+    };
+
+    window.addEventListener('resize', handleResize);
+
+    // Também detectar mudanças de orientação em dispositivos móveis
+    window.addEventListener('orientationchange', handleResize);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', handleResize);
+      clearTimeout(resizeTimeout);
+    };
+  }, [isZoomJoined, resizeZoomMeeting]);
 
   // Cleanup Zoom ao desmontar componente
   useEffect(() => {
@@ -785,9 +860,16 @@ const Lesson: React.FC = () => {
               {/* Container do Zoom SDK - visível durante inicialização e quando conectado */}
               <div
                 ref={zoomWrapperRef}
-                className="relative bg-black w-full overflow-hidden"
+                className={`relative bg-black w-full overflow-hidden ${isFullscreen ? 'fixed inset-0 z-[9998]' : ''}`}
                 style={{
-                  paddingBottom: (isZoomInitializing || isZoomJoined) ? '56.25%' : '0', /* 16:9 aspect ratio */
+                  // Em tela cheia: 100% da viewport; Modo normal: aspect ratio 16:9
+                  ...(isFullscreen ? {
+                    width: '100vw',
+                    height: '100vh',
+                    paddingBottom: '0'
+                  } : {
+                    paddingBottom: (isZoomInitializing || isZoomJoined) ? '56.25%' : '0'
+                  }),
                   display: (isZoomInitializing || isZoomJoined) ? 'block' : 'none'
                 }}
               >
@@ -796,6 +878,7 @@ const Lesson: React.FC = () => {
                   ref={zoomContainerRef}
                   id="zoom-meeting-container"
                   className="absolute inset-0 w-full h-full"
+                  style={isFullscreen ? { width: '100vw', height: '100vh' } : undefined}
                 />
 
                 {/* Controles sobrepostos */}
