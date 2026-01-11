@@ -678,9 +678,8 @@ const Lesson: React.FC = () => {
             <div className="card overflow-hidden">
               {/* Tela de entrada (antes de conectar) ou tela de "já entrou externamente" */}
               {!isZoomJoined && !joinedExternally && (
-                <div className="relative w-full bg-gradient-to-br from-[#0a1628] to-[#1a2744]"
-                     style={{ paddingBottom: '56.25%' /* 16:9 aspect ratio */ }}>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center p-4 sm:p-6 text-center">
+                <div className="w-full bg-gradient-to-br from-[#0a1628] to-[#1a2744] rounded-xl">
+                  <div className="flex flex-col items-center justify-center p-6 sm:p-8 text-center">
                     <div className="w-14 h-14 sm:w-16 sm:h-16 mb-3 sm:mb-4 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-xl">
                       <Video className="w-7 h-7 sm:w-8 sm:h-8 text-white" />
                     </div>
@@ -755,9 +754,8 @@ const Lesson: React.FC = () => {
 
               {/* Mensagem quando entrou externamente */}
               {!isZoomJoined && joinedExternally && (
-                <div className="relative w-full bg-gradient-to-br from-[#0a2818] to-[#1a4428]"
-                     style={{ paddingBottom: '56.25%' /* 16:9 aspect ratio */ }}>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center p-6 sm:p-8">
+                <div className="w-full bg-gradient-to-br from-[#0a2818] to-[#1a4428] rounded-xl">
+                  <div className="flex flex-col items-center justify-center p-6 sm:p-8 text-center">
                     <div className="w-16 h-16 sm:w-20 sm:h-20 mb-4 sm:mb-6 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-xl">
                       <CheckCircle className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
                     </div>
