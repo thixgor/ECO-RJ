@@ -1,10 +1,16 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import User from '../models/User';
 import Role from '../models/Role';
 
 dotenv.config();
+
+// Gerar token de recuperação de senha (único e permanente)
+const generateRecoveryToken = (): string => {
+  return crypto.randomBytes(24).toString('hex').toUpperCase();
+};
 
 const seedDatabase = async () => {
   try {
@@ -91,6 +97,7 @@ const seedDatabase = async () => {
 
     const existingAdmin = await User.findOne({ email: adminEmail });
     if (!existingAdmin) {
+      const tokenRecuperacao = generateRecoveryToken();
       await User.create({
         email: adminEmail,
         password: adminPassword,
@@ -102,11 +109,13 @@ const seedDatabase = async () => {
         especialidade: 'Cardiologia',
         cargo: 'Administrador',
         emailConfirmado: true,
-        ativo: true
+        ativo: true,
+        tokenRecuperacao
       });
       console.log(`\nUsuário administrador criado:`);
       console.log(`Email: ${adminEmail}`);
       console.log(`Senha: ${adminPassword}`);
+      console.log(`Token de Recuperação: ${tokenRecuperacao}`);
     } else {
       console.log(`\nUsuário administrador já existe: ${adminEmail}`);
     }
