@@ -264,21 +264,36 @@ const Lesson: React.FC = () => {
       zoomClientRef.current = client;
 
       // Aguardar um pouco para garantir que o container está completamente renderizado
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 150));
 
       // Inicializar o container da reunião
       console.log('Initializing Zoom client...');
 
-      // Calcular dimensões do container
-      const containerWidth = zoomContainerRef.current.offsetWidth;
-      const containerHeight = zoomContainerRef.current.offsetHeight;
+      // Calcular dimensões do container - usar o wrapper ou o container pai para obter dimensões reais
+      const wrapperElement = zoomWrapperRef.current;
+      let containerWidth = zoomContainerRef.current.offsetWidth;
+      let containerHeight = zoomContainerRef.current.offsetHeight;
+
+      // Se o container tem dimensões zeradas (porque está oculto), calcular baseado no pai
+      if (containerWidth === 0 || containerHeight === 0) {
+        // Buscar o card pai para obter a largura real
+        const cardElement = zoomContainerRef.current.closest('.card');
+        if (cardElement) {
+          containerWidth = cardElement.clientWidth;
+          containerHeight = Math.round(containerWidth * 9 / 16); // 16:9 aspect ratio
+        } else if (wrapperElement) {
+          // Fallback para o wrapper
+          const rect = wrapperElement.getBoundingClientRect();
+          containerWidth = rect.width || window.innerWidth * 0.65;
+          containerHeight = rect.height || Math.round(containerWidth * 9 / 16);
+        }
+      }
+
+      // Garantir dimensões mínimas
+      containerWidth = Math.max(containerWidth, 640);
+      containerHeight = Math.max(containerHeight, 360);
 
       console.log('Container dimensions:', { width: containerWidth, height: containerHeight });
-
-      // Verificar se as dimensões são válidas
-      if (containerWidth === 0 || containerHeight === 0) {
-        throw new Error('Container do Zoom não possui dimensões válidas');
-      }
 
       await client.init({
         zoomAppRoot: zoomContainerRef.current,
@@ -595,13 +610,6 @@ const Lesson: React.FC = () => {
 
   const curso = lesson.cursoId as Course;
 
-  // Helper para verificar se é admin
-  const isAdmin = () => {
-    if (!user?.cargo) return false;
-    if (typeof user.cargo === 'string') return user.cargo === 'Administrador';
-    return (user.cargo as any).nome === 'Administrador';
-  };
-
   // Extract video ID from embed or URL
   const getVideoEmbed = () => {
     let embedCode = lesson.embedVideo || '';
@@ -670,51 +678,52 @@ const Lesson: React.FC = () => {
             <div className="card overflow-hidden">
               {/* Tela de entrada (antes de conectar) ou tela de "já entrou externamente" */}
               {!isZoomJoined && !joinedExternally && (
-                <div className="relative w-full bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20"
+                <div className="relative w-full bg-gradient-to-br from-[#0a1628] to-[#1a2744]"
                      style={{ paddingBottom: '56.25%' /* 16:9 aspect ratio */ }}>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center">
+                  <div className="absolute inset-0 flex flex-col items-center justify-center p-6 sm:p-8">
                     <div className="w-20 h-20 mb-6 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-xl animate-pulse">
                       <Video className="w-10 h-10 text-white" />
                     </div>
 
-                    <h3 className="text-2xl font-bold text-[var(--color-text-primary)] mb-3">
+                    <h3 className="text-xl sm:text-2xl font-bold text-white mb-2">
                       Aula ao Vivo via Zoom
                     </h3>
 
-                    <p className="text-[var(--color-text-secondary)] mb-8 max-w-lg mx-auto leading-relaxed">
-                      Escolha como deseja participar da aula.<br />
-                      <span className="inline-block mt-2 px-3 py-1 bg-white/50 dark:bg-white/10 rounded-lg text-sm">
-                        Você entrará como: <strong className="text-primary-600 dark:text-primary-400">{user?.nomeCompleto}</strong>
-                      </span>
+                    <p className="text-gray-300 text-sm sm:text-base mb-4 sm:mb-6">
+                      Escolha como deseja participar da aula.
                     </p>
 
+                    <div className="inline-block mb-4 sm:mb-6 px-4 py-2 bg-white/10 rounded-lg text-sm text-gray-200">
+                      Você entrará como: <strong className="text-cyan-400">{user?.nomeCompleto}</strong>
+                    </div>
+
                     {zoomError && (
-                      <div className="mb-6 p-4 bg-red-100 dark:bg-red-900/30 border-l-4 border-red-500 rounded-lg text-red-600 dark:text-red-400 text-sm max-w-lg mx-auto shadow-sm">
+                      <div className="mb-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-300 text-sm max-w-md mx-auto">
                         <strong className="block mb-1">Erro ao conectar:</strong>
                         {zoomError}
                       </div>
                     )}
 
-                    <div className="space-y-3 max-w-lg mx-auto w-full">
+                    <div className="space-y-2 sm:space-y-3 max-w-sm sm:max-w-md w-full">
                       {/* Opção 1: Ver nativamente aqui (só aparece se habilitado) */}
                       {zoomNativeEnabled && (
                         <button
                           onClick={joinZoomMeeting}
                           disabled={isZoomConnecting}
-                          className="relative w-full flex flex-col items-center justify-center gap-2 px-8 py-5 bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white rounded-xl font-bold transition-all shadow-xl hover:shadow-2xl transform hover:scale-105 disabled:opacity-50 border-2 border-primary-400"
+                          className="relative w-full flex flex-col items-center justify-center gap-1 px-6 py-3 sm:py-4 bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-600 hover:to-cyan-700 text-white rounded-xl font-bold transition-all shadow-lg hover:shadow-xl disabled:opacity-50 border border-cyan-400/50"
                         >
                           {isZoomConnecting ? (
                             <>
-                              <div className="w-6 h-6 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
-                              <span>Conectando...</span>
+                              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                              <span className="text-sm">Conectando...</span>
                             </>
                           ) : (
                             <>
-                              <div className="flex items-center gap-3">
-                                <Video className="w-6 h-6" />
+                              <div className="flex items-center gap-2">
+                                <Video className="w-5 h-5" />
                                 <span>Assistir Aqui Nativamente</span>
                               </div>
-                              <span className="text-xs bg-white/20 px-3 py-1 rounded-full font-medium">
+                              <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full font-medium">
                                 (em testes)
                               </span>
                             </>
@@ -725,45 +734,20 @@ const Lesson: React.FC = () => {
                       {/* Opção 2: Abrir no App Zoom */}
                       <button
                         onClick={openZoomApp}
-                        className="w-full flex items-center justify-center gap-3 px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
+                        className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-all shadow-md hover:shadow-lg"
                       >
-                        <Video className="w-6 h-6" />
+                        <Video className="w-5 h-5" />
                         Abrir no App Zoom
                       </button>
 
                       {/* Opção 3: Abrir no Navegador */}
                       <button
                         onClick={openZoomBrowser}
-                        className="w-full flex items-center justify-center gap-3 px-8 py-4 bg-gray-700 hover:bg-gray-800 text-white rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
+                        className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-xl font-semibold transition-all shadow-md hover:shadow-lg"
                       >
-                        <ExternalLink className="w-6 h-6" />
+                        <ExternalLink className="w-5 h-5" />
                         Abrir no Navegador
                       </button>
-                    </div>
-
-                    <div className="mt-8 pt-6 border-t border-[var(--glass-border)] w-full max-w-md mx-auto">
-                      {isAdmin() ? (
-                        <div className="flex flex-col sm:flex-row gap-4 justify-center text-xs text-[var(--color-text-muted)]">
-                          <div className="flex items-center gap-2 bg-white/30 dark:bg-white/5 px-4 py-2 rounded-lg">
-                            <span className="font-bold text-[var(--color-text-primary)]">Meeting ID:</span>
-                            <code className="bg-white/50 dark:bg-black/30 px-2 py-1 rounded font-mono">{lesson.zoomMeetingId}</code>
-                          </div>
-                          {lesson.zoomMeetingPassword && (
-                            <div className="flex items-center gap-2 bg-white/30 dark:bg-white/5 px-4 py-2 rounded-lg">
-                              <span className="font-bold text-[var(--color-text-primary)]">Senha:</span>
-                              <code className="bg-white/50 dark:bg-black/30 px-2 py-1 rounded font-mono">{lesson.zoomMeetingPassword}</code>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-center">
-                          <div className="px-6 py-3 bg-white/30 dark:bg-white/5 rounded-lg">
-                            <p className="text-sm font-semibold text-[var(--color-text-primary)]">
-                              ECO RJ - Centro de Treinamento em Ecocardiografia
-                            </p>
-                          </div>
-                        </div>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -771,25 +755,25 @@ const Lesson: React.FC = () => {
 
               {/* Mensagem quando entrou externamente */}
               {!isZoomJoined && joinedExternally && (
-                <div className="relative w-full bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-900/20 dark:to-emerald-800/20"
+                <div className="relative w-full bg-gradient-to-br from-[#0a2818] to-[#1a4428]"
                      style={{ paddingBottom: '56.25%' /* 16:9 aspect ratio */ }}>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center">
-                    <div className="w-20 h-20 mb-6 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-xl">
-                      <CheckCircle className="w-10 h-10 text-white" />
+                  <div className="absolute inset-0 flex flex-col items-center justify-center p-6 sm:p-8">
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 mb-4 sm:mb-6 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-xl">
+                      <CheckCircle className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
                     </div>
 
-                    <h3 className="text-2xl font-bold text-[var(--color-text-primary)] mb-3">
+                    <h3 className="text-xl sm:text-2xl font-bold text-white mb-2">
                       Você já entrou na reunião
                     </h3>
 
-                    <p className="text-[var(--color-text-secondary)] mb-6 max-w-lg mx-auto leading-relaxed">
+                    <p className="text-gray-300 text-sm sm:text-base mb-4 sm:mb-6 max-w-md mx-auto">
                       A aula foi aberta em outra aba ou aplicativo.<br />
                       Aproveite sua aula ao vivo!
                     </p>
 
                     <button
                       onClick={() => setJoinedExternally(false)}
-                      className="btn btn-secondary px-8 py-3"
+                      className="px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-xl font-semibold transition-all shadow-md hover:shadow-lg"
                     >
                       Voltar às Opções
                     </button>
@@ -797,13 +781,12 @@ const Lesson: React.FC = () => {
                 </div>
               )}
 
-              {/* Container do Zoom SDK (sempre renderizado, mas oculto quando não conectado) */}
+              {/* Container do Zoom SDK - sempre visível para ter dimensões, mas ocultado visualmente quando não conectado */}
               <div
                 ref={zoomWrapperRef}
-                className="relative bg-black w-full overflow-hidden"
+                className={`relative bg-black w-full overflow-hidden ${!isZoomJoined ? 'absolute inset-0 opacity-0 pointer-events-none' : ''}`}
                 style={{
-                  paddingBottom: '56.25%', /* 16:9 aspect ratio */
-                  display: isZoomJoined ? 'block' : 'none'
+                  paddingBottom: '56.25%' /* 16:9 aspect ratio */
                 }}
               >
                 {/* Container interno do Zoom SDK */}
@@ -811,6 +794,7 @@ const Lesson: React.FC = () => {
                   ref={zoomContainerRef}
                   id="zoom-meeting-container"
                   className="absolute inset-0 w-full h-full"
+                  style={{ minWidth: '100%', minHeight: '100%' }}
                 />
 
                 {/* Controles sobrepostos */}

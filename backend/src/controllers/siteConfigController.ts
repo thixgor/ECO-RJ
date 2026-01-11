@@ -110,6 +110,10 @@ export const updateSiteConfig = async (req: AuthRequest, res: Response) => {
       watermark: {
         ...currentConfig.watermark,
         ...(updates.watermark || {})
+      },
+      zoomNative: {
+        ...currentConfig.zoomNative,
+        ...(updates.zoomNative || {})
       }
     };
 
