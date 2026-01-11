@@ -257,7 +257,7 @@ const AdminLessons: React.FC = () => {
         descricao: lesson.descricao || '',
         tipo: lesson.tipo,
         embedVideo: lesson.embedVideo || '',
-        dataHoraInicio: lesson.dataHoraInicio ? lesson.dataHoraInicio.slice(0, 16) : '',
+        dataHoraInicio: lesson.dataHoraInicio ? convertFromUTCtoBrasilia(lesson.dataHoraInicio) : '',
         duracao: lesson.duracao || 0,
         cargosPermitidos: lesson.cargosPermitidos,
         cursoId: courseId,
@@ -314,15 +314,50 @@ const AdminLessons: React.FC = () => {
     }
   };
 
+  // Converter datetime-local para ISO considerando que o input está em horário de Brasília (UTC-3)
+  const convertToBrasiliaTimezone = (datetimeLocal: string): string => {
+    if (!datetimeLocal) return '';
+    // O datetime-local vem como "2026-01-11T15:50" (sem timezone)
+    // Precisamos interpretar isso como horário de Brasília (UTC-3)
+    // Então adicionamos +03:00 ao timestamp para compensar
+    const date = new Date(datetimeLocal);
+    // Ajustar para UTC considerando que o input é Brasília (UTC-3)
+    // Se o usuário digitou 15:50 em Brasília, queremos salvar 18:50 UTC
+    const brasilOffsetMs = 3 * 60 * 60 * 1000; // 3 horas em ms
+    const utcDate = new Date(date.getTime() + brasilOffsetMs);
+    return utcDate.toISOString();
+  };
+
+  // Converter ISO (UTC) para datetime-local em horário de Brasília
+  const convertFromUTCtoBrasilia = (isoString: string): string => {
+    if (!isoString) return '';
+    const date = new Date(isoString);
+    // Subtrair 3 horas para converter de UTC para Brasília
+    const brasilOffsetMs = 3 * 60 * 60 * 1000;
+    const brasilDate = new Date(date.getTime() - brasilOffsetMs);
+    // Formatar para datetime-local (YYYY-MM-DDTHH:MM)
+    const year = brasilDate.getFullYear();
+    const month = String(brasilDate.getMonth() + 1).padStart(2, '0');
+    const day = String(brasilDate.getDate()).padStart(2, '0');
+    const hours = String(brasilDate.getHours()).padStart(2, '0');
+    const minutes = String(brasilDate.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
 
     try {
+      // Converter dataHoraInicio para timezone correto se for aula ao vivo
+      const dataHoraInicioISO = formData.tipo === 'ao_vivo' && formData.dataHoraInicio
+        ? convertToBrasiliaTimezone(formData.dataHoraInicio)
+        : undefined;
+
       if (editingLesson) {
         const updateData = {
           ...formData,
-          dataHoraInicio: formData.tipo === 'ao_vivo' && formData.dataHoraInicio ? formData.dataHoraInicio : undefined,
+          dataHoraInicio: dataHoraInicioISO,
           duracao: formData.duracao > 0 ? formData.duracao : 0,
           embedVideo: formData.embedVideo || undefined,
           topicoId: formData.topicoId || null,
@@ -333,7 +368,7 @@ const AdminLessons: React.FC = () => {
       } else {
         const createData = {
           ...formData,
-          dataHoraInicio: formData.tipo === 'ao_vivo' && formData.dataHoraInicio ? formData.dataHoraInicio : undefined,
+          dataHoraInicio: dataHoraInicioISO,
           duracao: formData.duracao || 0,
           embedVideo: formData.embedVideo || '',
           topicoId: formData.topicoId || undefined,
