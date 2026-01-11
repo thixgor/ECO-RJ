@@ -263,6 +263,9 @@ const Lesson: React.FC = () => {
       const client = ZoomMtgEmbedded.createClient();
       zoomClientRef.current = client;
 
+      // Aguardar um pouco para garantir que o container está completamente renderizado
+      await new Promise(resolve => setTimeout(resolve, 100));
+
       // Inicializar o container da reunião
       console.log('Initializing Zoom client...');
 
@@ -271,6 +274,11 @@ const Lesson: React.FC = () => {
       const containerHeight = zoomContainerRef.current.offsetHeight;
 
       console.log('Container dimensions:', { width: containerWidth, height: containerHeight });
+
+      // Verificar se as dimensões são válidas
+      if (containerWidth === 0 || containerHeight === 0) {
+        throw new Error('Container do Zoom não possui dimensões válidas');
+      }
 
       await client.init({
         zoomAppRoot: zoomContainerRef.current,
@@ -282,8 +290,8 @@ const Lesson: React.FC = () => {
             isResizable: true,
             viewSizes: {
               default: {
-                width: containerWidth || 1280,
-                height: containerHeight || 720
+                width: containerWidth,
+                height: containerHeight
               }
             }
           },
@@ -299,6 +307,9 @@ const Lesson: React.FC = () => {
         }
       });
       console.log('Zoom client initialized successfully');
+
+      // Aguardar mais um pouco após a inicialização antes de entrar na reunião
+      await new Promise(resolve => setTimeout(resolve, 200));
 
       console.log('Joining meeting with params:', {
         meetingNumber: cleanMeetingId,
@@ -372,16 +383,27 @@ const Lesson: React.FC = () => {
       try {
         // Sair do fullscreen se estiver ativo
         if (document.fullscreenElement) {
-          await document.exitFullscreen();
+          await document.exitFullscreen().catch(() => {});
         }
+
+        // Tentar sair da reunião
         await zoomClientRef.current.leaveMeeting();
         setIsZoomJoined(false);
         setZoomError(null);
         setIsFullscreen(false);
         toast.success('Você saiu da aula ao vivo');
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error leaving Zoom:', error);
-        toast.error('Erro ao sair da reunião');
+
+        // Se o erro for estado inválido (5004), considerar como saída bem-sucedida
+        if (error?.errorCode === 5004) {
+          setIsZoomJoined(false);
+          setZoomError(null);
+          setIsFullscreen(false);
+          toast.success('Você saiu da aula ao vivo');
+        } else {
+          toast.error('Erro ao sair da reunião');
+        }
       }
     }
   }, [isZoomJoined]);
@@ -434,9 +456,23 @@ const Lesson: React.FC = () => {
   useEffect(() => {
     return () => {
       if (zoomClientRef.current && isZoomJoined) {
-        zoomClientRef.current.leaveMeeting().catch((err: any) => {
-          console.error('Cleanup error:', err);
-        });
+        // Usar timeout para garantir que o cleanup não interfira com o estado do Zoom
+        setTimeout(() => {
+          try {
+            // Verificar se o cliente ainda existe e está em sessão válida
+            if (zoomClientRef.current) {
+              zoomClientRef.current.leaveMeeting().catch((err: any) => {
+                // Ignorar erros de estado inválido durante cleanup
+                if (err?.errorCode !== 5004) {
+                  console.error('Cleanup error:', err);
+                }
+              });
+            }
+          } catch (err) {
+            // Silenciar erros de cleanup
+            console.log('Zoom cleanup completed');
+          }
+        }, 100);
       }
     };
   }, [isZoomJoined]);
