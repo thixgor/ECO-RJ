@@ -14,6 +14,7 @@ import siteConfigRoutes from './siteConfigRoutes';
 import courseTopicRoutes from './courseTopicRoutes';
 import courseSubtopicRoutes from './courseSubtopicRoutes';
 import zoomRoutes from './zoomRoutes';
+import announcementRoutes from './announcementRoutes';
 
 const router = Router();
 
@@ -32,6 +33,7 @@ router.use('/site-config', siteConfigRoutes);
 router.use('/course-topics', courseTopicRoutes);
 router.use('/course-subtopics', courseSubtopicRoutes);
 router.use('/zoom', zoomRoutes);
+router.use('/announcements', announcementRoutes);
 
 export default router;
 

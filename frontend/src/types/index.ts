@@ -223,3 +223,18 @@ export interface ZoomMeetingState {
   isConnecting: boolean;
   error: string | null;
 }
+
+// Avisos/Anúncios
+export interface Announcement {
+  _id: string;
+  titulo: string;
+  conteudo: string;
+  tipo: 'geral' | 'alunos' | 'curso_especifico';
+  cursosAlvo: string[] | Course[];
+  criadoPor: string | User;
+  ativo: boolean;
+  prioridade: 'baixa' | 'normal' | 'alta';
+  dataExpiracao?: string;
+  createdAt: string;
+  updatedAt: string;
+}

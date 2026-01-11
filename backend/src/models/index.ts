@@ -8,3 +8,4 @@ export { default as Exercise } from './Exercise';
 export { default as ExerciseAnswer } from './ExerciseAnswer';
 export { default as SerialKey } from './SerialKey';
 export { default as ForumTopic } from './ForumTopic';
+export { default as Announcement } from './Announcement';

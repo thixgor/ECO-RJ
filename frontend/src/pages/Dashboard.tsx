@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, CheckCircle, Clock, MessageSquare, TrendingUp, AlertCircle, ArrowRight, Sparkles, User, Video, Calendar, PlayCircle, X } from 'lucide-react';
+import { BookOpen, CheckCircle, Clock, MessageSquare, TrendingUp, AlertCircle, ArrowRight, Sparkles, User, Video, Calendar, PlayCircle, X, Bell, Globe, Users, Info } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { courseService, lessonService } from '../services/api';
-import { Course, Lesson } from '../types';
+import { courseService, lessonService, announcementService } from '../services/api';
+import { Course, Lesson, Announcement } from '../types';
 import { GlassCard, GlassButton, GlassProgress, GlassBadge, SkeletonCard, SkeletonCourseItem } from '../components/ui';
 import { formatDuration } from '../utils/formatDuration';
 import toast from 'react-hot-toast';
@@ -24,6 +24,8 @@ const Dashboard: React.FC = () => {
   const [liveLessonsToday, setLiveLessonsToday] = useState<LiveLessonEvent[]>([]);
   const [dismissedNotifications, setDismissedNotifications] = useState<Set<string>>(new Set());
   const [notifiedLessons, setNotifiedLessons] = useState<Set<string>>(new Set());
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [isLoadingAnnouncements, setIsLoadingAnnouncements] = useState(true);
 
   // Carregar dados com otimização - usar Promise.all para paralelizar
   const loadData = useCallback(async () => {
@@ -133,9 +135,23 @@ const Dashboard: React.FC = () => {
     }
   }, []);
 
+  // Carregar avisos do usuario
+  const loadAnnouncements = useCallback(async () => {
+    setIsLoadingAnnouncements(true);
+    try {
+      const response = await announcementService.getUserAnnouncements();
+      setAnnouncements(response.data.announcements || []);
+    } catch (error) {
+      console.error('Erro ao carregar avisos:', error);
+    } finally {
+      setIsLoadingAnnouncements(false);
+    }
+  }, []);
+
   useEffect(() => {
     loadData();
-  }, [loadData]);
+    loadAnnouncements();
+  }, [loadData, loadAnnouncements]);
 
   // Atualizar minutesUntilStart a cada minuto e verificar notificações
   useEffect(() => {
@@ -246,6 +262,126 @@ const Dashboard: React.FC = () => {
                 <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
+          </div>
+        </GlassCard>
+      )}
+
+      {/* Announcements Section */}
+      {!isLoadingAnnouncements && announcements.length > 0 && (
+        <GlassCard hover={false} padding="none" className="overflow-hidden">
+          <div className="p-4 bg-gradient-to-r from-primary-500/10 to-transparent border-b border-[var(--glass-border)]">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary-500 flex items-center justify-center">
+                <Bell className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h2 className="font-heading text-lg font-semibold text-[var(--color-text-primary)]">
+                  Avisos
+                </h2>
+                <p className="text-sm text-[var(--color-text-muted)]">
+                  {announcements.length} aviso{announcements.length > 1 ? 's' : ''} para você
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="divide-y divide-[var(--glass-border)]">
+            {announcements.map((announcement) => {
+              const isHighPriority = announcement.prioridade === 'alta';
+              const isNormalPriority = announcement.prioridade === 'normal';
+              const cursosAlvo = announcement.cursosAlvo as Course[];
+
+              const getTipoIcon = () => {
+                switch (announcement.tipo) {
+                  case 'geral':
+                    return <Globe className="w-4 h-4" />;
+                  case 'alunos':
+                    return <Users className="w-4 h-4" />;
+                  case 'curso_especifico':
+                    return <BookOpen className="w-4 h-4" />;
+                  default:
+                    return <Info className="w-4 h-4" />;
+                }
+              };
+
+              const getTipoLabel = () => {
+                switch (announcement.tipo) {
+                  case 'geral':
+                    return 'Aviso Geral';
+                  case 'alunos':
+                    return 'Para Alunos';
+                  case 'curso_especifico':
+                    return cursosAlvo.length > 0
+                      ? cursosAlvo.map(c => typeof c === 'string' ? c : c.titulo).join(', ')
+                      : 'Curso Especifico';
+                  default:
+                    return 'Aviso';
+                }
+              };
+
+              return (
+                <div
+                  key={announcement._id}
+                  className={`p-4 transition-colors ${
+                    isHighPriority ? 'bg-red-500/5 border-l-4 border-l-red-500' :
+                    isNormalPriority ? 'bg-amber-500/5 border-l-4 border-l-amber-500' :
+                    'border-l-4 border-l-gray-300 dark:border-l-gray-600'
+                  }`}
+                >
+                  <div className="flex items-start gap-4">
+                    {/* Priority Icon */}
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                      isHighPriority ? 'bg-red-500/20' :
+                      isNormalPriority ? 'bg-amber-500/20' :
+                      'bg-gray-500/20'
+                    }`}>
+                      <Bell className={`w-5 h-5 ${
+                        isHighPriority ? 'text-red-500' :
+                        isNormalPriority ? 'text-amber-500' :
+                        'text-gray-500'
+                      }`} />
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <h3 className="font-semibold text-[var(--color-text-primary)]">
+                          {announcement.titulo}
+                        </h3>
+                        {isHighPriority && (
+                          <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-red-500 text-white">
+                            Importante
+                          </span>
+                        )}
+                      </div>
+
+                      <p className="text-[var(--color-text-muted)] text-sm whitespace-pre-line">
+                        {announcement.conteudo}
+                      </p>
+
+                      <div className="flex items-center gap-4 mt-3 text-xs text-[var(--color-text-muted)]">
+                        <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full ${
+                          announcement.tipo === 'geral' ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400' :
+                          announcement.tipo === 'alunos' ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400' :
+                          'bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400'
+                        }`}>
+                          {getTipoIcon()}
+                          {getTipoLabel()}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3.5 h-3.5" />
+                          {new Date(announcement.createdAt).toLocaleDateString('pt-BR', {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric'
+                          })}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </GlassCard>
       )}

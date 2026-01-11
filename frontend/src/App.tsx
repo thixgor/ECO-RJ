@@ -38,6 +38,7 @@ const AdminSerialKeys = lazy(() => import('./pages/admin/AdminSerialKeys'));
 const AdminAccessLogs = lazy(() => import('./pages/admin/AdminAccessLogs'));
 const AdminExercises = lazy(() => import('./pages/admin/AdminExercises'));
 const AdminSiteConfig = lazy(() => import('./pages/admin/AdminSiteConfig'));
+const AdminAnnouncements = lazy(() => import('./pages/admin/AdminAnnouncements'));
 
 const App: React.FC = () => {
   // Remove splash screen when App mounts
@@ -149,6 +150,7 @@ const App: React.FC = () => {
                 <Route path="/admin/aulas" element={<AdminLessons />} />
                 <Route path="/admin/exercicios" element={<AdminExercises />} />
                 <Route path="/admin/serial-keys" element={<AdminSerialKeys />} />
+                <Route path="/admin/avisos" element={<AdminAnnouncements />} />
                 <Route path="/admin/logs" element={<AdminAccessLogs />} />
                 <Route path="/admin/configuracoes" element={<AdminSiteConfig />} />
               </Route>

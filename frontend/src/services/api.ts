@@ -368,3 +368,40 @@ export const zoomService = {
   generateSignature: (meetingNumber: string, role?: number) =>
     api.post('/zoom/signature', { meetingNumber, role })
 };
+
+// Announcements (Avisos)
+export const announcementService = {
+  // Admin routes
+  getAll: (params?: { tipo?: string; ativo?: string; page?: number; limit?: number }) =>
+    api.get('/announcements', { params }),
+
+  getById: (id: string) => api.get(`/announcements/${id}`),
+
+  create: (data: {
+    titulo: string;
+    conteudo: string;
+    tipo: 'geral' | 'alunos' | 'curso_especifico';
+    cursosAlvo?: string[];
+    prioridade?: 'baixa' | 'normal' | 'alta';
+    dataExpiracao?: string;
+  }) => api.post('/announcements', data),
+
+  update: (id: string, data: {
+    titulo?: string;
+    conteudo?: string;
+    tipo?: 'geral' | 'alunos' | 'curso_especifico';
+    cursosAlvo?: string[];
+    prioridade?: 'baixa' | 'normal' | 'alta';
+    dataExpiracao?: string;
+    ativo?: boolean;
+  }) => api.put(`/announcements/${id}`, data),
+
+  toggle: (id: string) => api.put(`/announcements/${id}/toggle`),
+
+  delete: (id: string) => api.delete(`/announcements/${id}`),
+
+  deleteAll: () => api.delete('/announcements/all'),
+
+  // User route
+  getUserAnnouncements: () => api.get('/announcements/user')
+};
