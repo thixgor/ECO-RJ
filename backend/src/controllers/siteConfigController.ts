@@ -36,6 +36,10 @@ interface SiteConfig {
     opacity: number; // 0-100
     showForAdmins: boolean;
   };
+  // Zoom Nativo
+  zoomNative: {
+    enabled: boolean;
+  };
 }
 
 const DEFAULT_CONFIG: SiteConfig = {
@@ -57,6 +61,9 @@ const DEFAULT_CONFIG: SiteConfig = {
     enabled: true,
     opacity: 20,
     showForAdmins: false
+  },
+  zoomNative: {
+    enabled: true
   }
 };
 
@@ -299,5 +306,32 @@ export const updateWatermark = async (req: AuthRequest, res: Response) => {
   } catch (error) {
     console.error('Erro ao atualizar marca d\'água:', error);
     res.status(500).json({ message: 'Erro ao atualizar marca d\'água' });
+  }
+};
+
+// @desc    Atualizar configurações do Zoom Nativo
+// @route   PUT /api/site-config/zoom-native
+// @access  Private/Admin
+export const updateZoomNative = async (req: AuthRequest, res: Response) => {
+  try {
+    const { enabled } = req.body;
+
+    const currentSetting = await SystemSettings.findOne({ key: 'site_config' });
+    const currentConfig: SiteConfig = currentSetting?.value || DEFAULT_CONFIG;
+
+    currentConfig.zoomNative = {
+      enabled: enabled !== undefined ? enabled : currentConfig.zoomNative?.enabled ?? true
+    };
+
+    await SystemSettings.findOneAndUpdate(
+      { key: 'site_config' },
+      { value: currentConfig, updatedBy: req.user?._id },
+      { upsert: true, new: true }
+    );
+
+    res.json({ message: 'Configurações do Zoom Nativo atualizadas', zoomNative: currentConfig.zoomNative });
+  } catch (error) {
+    console.error('Erro ao atualizar Zoom Nativo:', error);
+    res.status(500).json({ message: 'Erro ao atualizar Zoom Nativo' });
   }
 };

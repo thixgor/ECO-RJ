@@ -1222,14 +1222,14 @@
   overflow: hidden !important;
 }
 
-/* Container raiz do Zoom SDK - FORÇAR escala 60% */
+/* Container raiz do Zoom SDK - FORÇAR escala 75% para evitar cortes */
 #zoom-meeting-container > div {
   position: absolute !important;
   top: 50% !important;
   left: 50% !important;
-  width: 166.67% !important; /* 100 / 0.6 = 166.67% */
-  height: 166.67% !important;
-  transform: translate(-50%, -50%) scale(0.6) !important;
+  width: 133.33% !important; /* 100 / 0.75 = 133.33% */
+  height: 133.33% !important;
+  transform: translate(-50%, -50%) scale(0.75) !important;
   transform-origin: center center !important;
   overflow: visible !important;
 }

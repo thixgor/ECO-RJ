@@ -46,6 +46,9 @@ interface SiteConfig {
     opacity: number;
     showForAdmins: boolean;
   };
+  zoomNative: {
+    enabled: boolean;
+  };
 }
 
 const AdminSiteConfig: React.FC = () => {
@@ -53,7 +56,7 @@ const AdminSiteConfig: React.FC = () => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<'featured' | 'testimonials' | 'video' | 'watermark'>('featured');
+  const [activeTab, setActiveTab] = useState<'featured' | 'testimonials' | 'video' | 'watermark' | 'zoom'>('featured');
 
   // Estado para novo depoimento
   const [newTestimonial, setNewTestimonial] = useState({
@@ -84,6 +87,9 @@ const AdminSiteConfig: React.FC = () => {
           enabled: false,
           opacity: 20,
           showForAdmins: false
+        },
+        zoomNative: configData.zoomNative || {
+          enabled: true
         }
       });
       setCourses(coursesRes.data.courses || []);
@@ -260,6 +266,39 @@ const AdminSiteConfig: React.FC = () => {
     }
   };
 
+  // === ZOOM NATIVO ===
+  const handleZoomNativeChange = (field: string, value: any) => {
+    if (!config) return;
+    setConfig({
+      ...config,
+      zoomNative: {
+        ...config.zoomNative,
+        [field]: value
+      }
+    });
+  };
+
+  const saveZoomNative = async () => {
+    if (!config || !config.zoomNative) {
+      toast.error('Configuração não carregada');
+      return;
+    }
+    setIsSaving(true);
+    try {
+      await siteConfigService.updateZoomNative({
+        enabled: config.zoomNative.enabled ?? true
+      });
+      toast.success('Configurações do Zoom Nativo salvas!');
+      loadData();
+    } catch (error: any) {
+      console.error('Erro ao salvar Zoom Nativo:', error);
+      const message = error.response?.data?.message || error.message || 'Erro ao salvar configurações do Zoom';
+      toast.error(message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   if (isLoading) return <Loading size="lg" text="Carregando configurações..." />;
 
   return (
@@ -320,6 +359,16 @@ const AdminSiteConfig: React.FC = () => {
         >
           <Droplet className="w-4 h-4" />
           Marca D'água
+        </button>
+        <button
+          onClick={() => setActiveTab('zoom')}
+          className={`px-4 py-2 rounded-t-lg font-medium transition-colors flex items-center gap-2 ${activeTab === 'zoom'
+              ? 'bg-primary-500 text-white'
+              : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-white/5'
+            }`}
+        >
+          <Video className="w-4 h-4" />
+          Zoom Nativo
         </button>
       </div>
 
@@ -793,6 +842,89 @@ const AdminSiteConfig: React.FC = () => {
                   }}
                   disabled={isSaving}
                   className="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Save className="w-4 h-4" />
+                  {isSaving ? 'Salvando...' : 'Salvar Alterações'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Tab: Zoom Nativo */}
+          {activeTab === 'zoom' && (
+            <div className="card p-6 space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center">
+                    <Video className="w-6 h-6 text-blue-500" />
+                  </div>
+                  <div>
+                    <h2 className="font-heading text-lg font-semibold text-[var(--color-text-primary)]">
+                      Aulas ao Vivo - Zoom Nativo
+                    </h2>
+                    <p className="text-sm text-[var(--color-text-muted)]">
+                      Habilite ou desabilite a opção de assistir aulas via Zoom integrado na plataforma
+                    </p>
+                  </div>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={config.zoomNative?.enabled ?? true}
+                    onChange={(e) => handleZoomNativeChange('enabled', e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 dark:bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"></div>
+                  <span className="ms-3 text-sm font-medium text-[var(--color-text-secondary)]">
+                    {config.zoomNative?.enabled ? 'Habilitado' : 'Desabilitado'}
+                  </span>
+                </label>
+              </div>
+
+              <div className="space-y-4 pt-4 border-t border-[var(--glass-border)]">
+                {/* Info box */}
+                <div className="p-4 bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30 rounded-lg">
+                  <h4 className="font-medium text-blue-900 dark:text-blue-400 mb-2 flex items-center gap-2">
+                    <Video className="w-4 h-4" />
+                    Como funciona
+                  </h4>
+                  <ul className="text-sm text-blue-800 dark:text-blue-300 space-y-1 list-disc list-inside">
+                    <li><strong>Habilitado:</strong> Exibe a opção "Assistir Aqui Nativamente" em destaque com badge "(em testes)"</li>
+                    <li><strong>Desabilitado:</strong> Oculta a opção nativa, mostrando apenas "Abrir no App" e "Abrir no Navegador"</li>
+                    <li>Alunos podem escolher entre assistir integrado na plataforma ou em app/navegador externo</li>
+                    <li>O Zoom nativo permite melhor controle e experiência dentro da plataforma</li>
+                  </ul>
+                </div>
+
+                {/* Status visual */}
+                {config.zoomNative?.enabled ? (
+                  <div className="p-4 bg-green-50 dark:bg-green-500/10 border border-green-200 dark:border-green-500/30 rounded-lg">
+                    <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
+                      <Sparkles className="w-5 h-5" />
+                      <span className="font-medium">Zoom Nativo Habilitado</span>
+                    </div>
+                    <p className="text-sm text-green-600 dark:text-green-300 mt-1">
+                      Os alunos verão a opção "Assistir Aqui Nativamente (em testes)" em destaque nas aulas ao vivo.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="p-4 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg">
+                    <div className="flex items-center gap-2 text-gray-700 dark:text-gray-400">
+                      <Settings className="w-5 h-5" />
+                      <span className="font-medium">Zoom Nativo Desabilitado</span>
+                    </div>
+                    <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                      Alunos só poderão abrir a aula no app Zoom ou navegador externo.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-end pt-4">
+                <button
+                  onClick={saveZoomNative}
+                  disabled={isSaving}
+                  className="btn btn-primary"
                 >
                   <Save className="w-4 h-4" />
                   {isSaving ? 'Salvando...' : 'Salvar Alterações'}

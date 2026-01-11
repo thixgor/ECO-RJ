@@ -357,7 +357,10 @@ export const siteConfigService = {
     api.put('/site-config/demo-video', data),
 
   updateWatermark: (data: { enabled?: boolean; opacity?: number; showForAdmins?: boolean }) =>
-    api.put('/site-config/watermark', data)
+    api.put('/site-config/watermark', data),
+
+  updateZoomNative: (data: { enabled?: boolean }) =>
+    api.put('/site-config/zoom-native', data)
 };
 
 // Zoom

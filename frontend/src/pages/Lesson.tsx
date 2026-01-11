@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Clock, CheckCircle, BookOpen, FileText, Play, ExternalLink, Download, Layers, X, ChevronRight, ChevronLeft, Award, Target, RotateCcw, AlertTriangle, Check, XCircle, Video, File, PlayCircle, Maximize, Minimize } from 'lucide-react';
-import { lessonService, exerciseService, zoomService } from '../services/api';
+import { lessonService, exerciseService, zoomService, siteConfigService } from '../services/api';
 import { Lesson as LessonType, Exercise, Course } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { generateExercisePDF } from '../utils/pdfGenerator';
@@ -52,6 +52,7 @@ const Lesson: React.FC = () => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showFullscreenSuggestion, setShowFullscreenSuggestion] = useState(false);
   const [joinedExternally, setJoinedExternally] = useState(false);
+  const [zoomNativeEnabled, setZoomNativeEnabled] = useState(true);
   const zoomClientRef = useRef<any>(null);
   const zoomContainerRef = useRef<HTMLDivElement>(null);
   const zoomWrapperRef = useRef<HTMLDivElement>(null);
@@ -60,7 +61,20 @@ const Lesson: React.FC = () => {
 
   useEffect(() => {
     if (id) loadLesson();
+    loadSiteConfig();
   }, [id]);
+
+  const loadSiteConfig = async () => {
+    try {
+      const response = await siteConfigService.get();
+      const zoomNative = response.data?.zoomNative;
+      setZoomNativeEnabled(zoomNative?.enabled ?? true);
+    } catch (error) {
+      console.error('Erro ao carregar configurações:', error);
+      // Default to enabled if error
+      setZoomNativeEnabled(true);
+    }
+  };
 
   const loadLesson = async () => {
     try {
@@ -545,6 +559,13 @@ const Lesson: React.FC = () => {
 
   const curso = lesson.cursoId as Course;
 
+  // Helper para verificar se é admin
+  const isAdmin = () => {
+    if (!user?.cargo) return false;
+    if (typeof user.cargo === 'string') return user.cargo === 'Administrador';
+    return (user.cargo as any).nome === 'Administrador';
+  };
+
   // Extract video ID from embed or URL
   const getVideoEmbed = () => {
     let embedCode = lesson.embedVideo || '';
@@ -638,25 +659,32 @@ const Lesson: React.FC = () => {
                       </div>
                     )}
 
-                    <div className="space-y-4 max-w-lg mx-auto w-full">
-                      {/* Opção 1: Ver nativamente aqui */}
-                      <button
-                        onClick={joinZoomMeeting}
-                        disabled={isZoomConnecting}
-                        className="w-full flex items-center justify-center gap-3 px-8 py-4 bg-primary-500 hover:bg-primary-600 text-white rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl transform hover:scale-105 disabled:opacity-50"
-                      >
-                        {isZoomConnecting ? (
-                          <>
-                            <div className="w-6 h-6 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
-                            Conectando...
-                          </>
-                        ) : (
-                          <>
-                            <Video className="w-6 h-6" />
-                            Assistir Aqui Nativamente
-                          </>
-                        )}
-                      </button>
+                    <div className="space-y-3 max-w-lg mx-auto w-full">
+                      {/* Opção 1: Ver nativamente aqui (só aparece se habilitado) */}
+                      {zoomNativeEnabled && (
+                        <button
+                          onClick={joinZoomMeeting}
+                          disabled={isZoomConnecting}
+                          className="relative w-full flex flex-col items-center justify-center gap-2 px-8 py-5 bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white rounded-xl font-bold transition-all shadow-xl hover:shadow-2xl transform hover:scale-105 disabled:opacity-50 border-2 border-primary-400"
+                        >
+                          {isZoomConnecting ? (
+                            <>
+                              <div className="w-6 h-6 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
+                              <span>Conectando...</span>
+                            </>
+                          ) : (
+                            <>
+                              <div className="flex items-center gap-3">
+                                <Video className="w-6 h-6" />
+                                <span>Assistir Aqui Nativamente</span>
+                              </div>
+                              <span className="text-xs bg-white/20 px-3 py-1 rounded-full font-medium">
+                                (em testes)
+                              </span>
+                            </>
+                          )}
+                        </button>
+                      )}
 
                       {/* Opção 2: Abrir no App Zoom */}
                       <button
@@ -678,18 +706,28 @@ const Lesson: React.FC = () => {
                     </div>
 
                     <div className="mt-8 pt-6 border-t border-[var(--glass-border)] w-full max-w-md mx-auto">
-                      <div className="flex flex-col sm:flex-row gap-4 justify-center text-xs text-[var(--color-text-muted)]">
-                        <div className="flex items-center gap-2 bg-white/30 dark:bg-white/5 px-4 py-2 rounded-lg">
-                          <span className="font-bold text-[var(--color-text-primary)]">Meeting ID:</span>
-                          <code className="bg-white/50 dark:bg-black/30 px-2 py-1 rounded font-mono">{lesson.zoomMeetingId}</code>
-                        </div>
-                        {lesson.zoomMeetingPassword && (
+                      {isAdmin() ? (
+                        <div className="flex flex-col sm:flex-row gap-4 justify-center text-xs text-[var(--color-text-muted)]">
                           <div className="flex items-center gap-2 bg-white/30 dark:bg-white/5 px-4 py-2 rounded-lg">
-                            <span className="font-bold text-[var(--color-text-primary)]">Senha:</span>
-                            <code className="bg-white/50 dark:bg-black/30 px-2 py-1 rounded font-mono">{lesson.zoomMeetingPassword}</code>
+                            <span className="font-bold text-[var(--color-text-primary)]">Meeting ID:</span>
+                            <code className="bg-white/50 dark:bg-black/30 px-2 py-1 rounded font-mono">{lesson.zoomMeetingId}</code>
                           </div>
-                        )}
-                      </div>
+                          {lesson.zoomMeetingPassword && (
+                            <div className="flex items-center gap-2 bg-white/30 dark:bg-white/5 px-4 py-2 rounded-lg">
+                              <span className="font-bold text-[var(--color-text-primary)]">Senha:</span>
+                              <code className="bg-white/50 dark:bg-black/30 px-2 py-1 rounded font-mono">{lesson.zoomMeetingPassword}</code>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-center">
+                          <div className="px-6 py-3 bg-white/30 dark:bg-white/5 rounded-lg">
+                            <p className="text-sm font-semibold text-[var(--color-text-primary)]">
+                              ECO RJ - Centro de Treinamento em Ecocardiografia
+                            </p>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

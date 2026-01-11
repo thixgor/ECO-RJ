@@ -7,7 +7,8 @@ import {
   addTestimonial,
   removeTestimonial,
   updateDemoVideo,
-  updateWatermark
+  updateWatermark,
+  updateZoomNative
 } from '../controllers/siteConfigController';
 import { protect, adminOnly } from '../middleware/auth';
 
@@ -24,5 +25,6 @@ router.post('/testimonials', protect, adminOnly, addTestimonial);
 router.delete('/testimonials/:id', protect, adminOnly, removeTestimonial);
 router.put('/demo-video', protect, adminOnly, updateDemoVideo);
 router.put('/watermark', protect, adminOnly, updateWatermark);
+router.put('/zoom-native', protect, adminOnly, updateZoomNative);
 
 export default router;
