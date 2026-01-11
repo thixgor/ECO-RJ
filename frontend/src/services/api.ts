@@ -188,6 +188,10 @@ export const lessonService = {
 
   getById: (id: string) => api.get(`/lessons/${id}`),
 
+  getLiveToday: () => api.get('/lessons/live-today'),
+
+  getUpcomingLive: () => api.get('/lessons/upcoming-live'),
+
   getAll: (params?: { cursoId?: string; tipo?: string; status?: string; topicoId?: string; subtopicoId?: string; page?: number; limit?: number }) =>
     api.get('/lessons', { params }),
 

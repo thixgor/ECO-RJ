@@ -354,6 +354,116 @@ export const getAllLessons = async (req: Request, res: Response) => {
   }
 };
 
+// @desc    Obter aulas ao vivo de hoje para os cursos do usuário
+// @route   GET /api/lessons/live-today
+// @access  Private
+export const getLiveLessonsToday = async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ message: 'Não autorizado' });
+    }
+
+    // Obter IDs dos cursos inscritos
+    const cursosInscritos = user.cursosInscritos || [];
+    if (cursosInscritos.length === 0) {
+      return res.json({ lessons: [] });
+    }
+
+    // Calcular início e fim do dia atual no timezone do Brasil (America/Sao_Paulo)
+    // Offset: UTC-3 (ou UTC-2 em horário de verão, mas Brasil não usa mais)
+    const now = new Date();
+
+    // Converter para horário de Brasília para calcular início/fim do dia
+    const brasilOffset = -3 * 60; // -3 horas em minutos
+    const localOffset = now.getTimezoneOffset();
+    const diffMinutes = brasilOffset - localOffset;
+
+    // Criar data ajustada para o timezone do Brasil
+    const brasilNow = new Date(now.getTime() + diffMinutes * 60 * 1000);
+
+    // Início do dia no Brasil (00:00:00 em Brasília)
+    const startOfDayBrasil = new Date(brasilNow);
+    startOfDayBrasil.setHours(0, 0, 0, 0);
+    // Converter de volta para UTC
+    const startOfDay = new Date(startOfDayBrasil.getTime() - diffMinutes * 60 * 1000);
+
+    // Fim do dia no Brasil (23:59:59 em Brasília)
+    const endOfDayBrasil = new Date(brasilNow);
+    endOfDayBrasil.setHours(23, 59, 59, 999);
+    // Converter de volta para UTC
+    const endOfDay = new Date(endOfDayBrasil.getTime() - diffMinutes * 60 * 1000);
+
+    // Buscar aulas ao vivo de hoje dos cursos inscritos
+    const lessons = await Lesson.find({
+      cursoId: { $in: cursosInscritos },
+      tipo: 'ao_vivo',
+      status: { $ne: 'inativa' },
+      dataHoraInicio: {
+        $gte: startOfDay,
+        $lte: endOfDay
+      }
+    })
+      .populate('cursoId', 'titulo imagemCapa')
+      .sort({ dataHoraInicio: 1 });
+
+    // Filtrar por permissão de cargo
+    const userCargo = user.cargo || 'Visitante';
+    const filteredLessons = lessons.filter(lesson =>
+      lesson.cargosPermitidos.includes(userCargo) || userCargo === 'Administrador'
+    );
+
+    res.json({ lessons: filteredLessons });
+  } catch (error) {
+    console.error('Erro ao buscar aulas ao vivo:', error);
+    res.status(500).json({ message: 'Erro ao buscar aulas ao vivo' });
+  }
+};
+
+// @desc    Obter próximas aulas ao vivo (próximos 7 dias)
+// @route   GET /api/lessons/upcoming-live
+// @access  Private
+export const getUpcomingLiveLessons = async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ message: 'Não autorizado' });
+    }
+
+    const cursosInscritos = user.cursosInscritos || [];
+    if (cursosInscritos.length === 0) {
+      return res.json({ lessons: [] });
+    }
+
+    const now = new Date();
+    const oneWeekFromNow = new Date(now);
+    oneWeekFromNow.setDate(oneWeekFromNow.getDate() + 7);
+
+    const lessons = await Lesson.find({
+      cursoId: { $in: cursosInscritos },
+      tipo: 'ao_vivo',
+      status: { $ne: 'inativa' },
+      dataHoraInicio: {
+        $gte: now,
+        $lte: oneWeekFromNow
+      }
+    })
+      .populate('cursoId', 'titulo imagemCapa')
+      .sort({ dataHoraInicio: 1 })
+      .limit(10);
+
+    const userCargo = user.cargo || 'Visitante';
+    const filteredLessons = lessons.filter(lesson =>
+      lesson.cargosPermitidos.includes(userCargo) || userCargo === 'Administrador'
+    );
+
+    res.json({ lessons: filteredLessons });
+  } catch (error) {
+    console.error('Erro ao buscar próximas aulas ao vivo:', error);
+    res.status(500).json({ message: 'Erro ao buscar próximas aulas ao vivo' });
+  }
+};
+
 // @desc    Reordenar aulas (Admin)
 // @route   PUT /api/lessons/reorder
 // @access  Private/Admin

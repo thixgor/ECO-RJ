@@ -78,9 +78,6 @@ const Dashboard: React.FC = () => {
       setProgress(progressData);
       setCourses(courseResults);
 
-      // Carregar aulas ao vivo do dia para os cursos inscritos
-      await loadLiveLessonsToday(cursoIds, courseResults);
-
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
     } finally {
@@ -88,32 +85,15 @@ const Dashboard: React.FC = () => {
     }
   }, [user]);
 
-  // Carregar aulas ao vivo do dia
-  const loadLiveLessonsToday = useCallback(async (cursoIds: string[], loadedCourses: Course[]) => {
+  // Carregar aulas ao vivo do dia usando a API dedicada
+  const loadLiveLessonsToday = useCallback(async () => {
     try {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-
-      // Buscar todas as aulas ao vivo dos cursos inscritos
-      const lessonPromises = cursoIds.map(cursoId =>
-        lessonService.getByCourse(cursoId).catch(() => ({ data: [] }))
-      );
-
-      const lessonResponses = await Promise.all(lessonPromises);
-      const allLessons: Lesson[] = lessonResponses.flatMap(r => r.data || []);
-
-      // Filtrar apenas aulas ao vivo que acontecem hoje
-      const liveLessons = allLessons.filter(lesson => {
-        if (lesson.tipo !== 'ao_vivo' || !lesson.dataHoraInicio) return false;
-        const lessonDate = new Date(lesson.dataHoraInicio);
-        return lessonDate >= today && lessonDate < tomorrow;
-      });
+      const response = await lessonService.getLiveToday();
+      const lessons = response.data.lessons || [];
 
       // Mapear aulas para eventos com informações do curso
-      const events: LiveLessonEvent[] = liveLessons.map(lesson => {
-        const course = loadedCourses.find(c => c._id === (typeof lesson.cursoId === 'string' ? lesson.cursoId : (lesson.cursoId as any)?._id));
+      const events: LiveLessonEvent[] = lessons.map((lesson: any) => {
+        const course = lesson.cursoId as Course;
         const startsAt = new Date(lesson.dataHoraInicio!);
         const now = new Date();
         const minutesUntilStart = Math.floor((startsAt.getTime() - now.getTime()) / 60000);
@@ -124,7 +104,7 @@ const Dashboard: React.FC = () => {
           startsAt,
           minutesUntilStart
         };
-      }).filter(e => e.course); // Filtrar eventos sem curso
+      }).filter((e: LiveLessonEvent) => e.course);
 
       // Ordenar por horário de início
       events.sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
@@ -151,7 +131,8 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     loadData();
     loadAnnouncements();
-  }, [loadData, loadAnnouncements]);
+    loadLiveLessonsToday();
+  }, [loadData, loadAnnouncements, loadLiveLessonsToday]);
 
   // Atualizar minutesUntilStart a cada minuto e verificar notificações
   useEffect(() => {
@@ -175,16 +156,21 @@ const Dashboard: React.FC = () => {
         const key = `${event.lesson._id}`;
         const minutes = event.minutesUntilStart;
 
-        // Notificar em 10, 5 e 1 minuto
-        const notifyAt = [10, 5, 1];
+        // Notificar em 1h, 30min, 10min, 5min e 1min antes
+        const notifyAt = [60, 30, 10, 5, 1];
 
         notifyAt.forEach(threshold => {
           const notifyKey = `${key}-${threshold}`;
           if (minutes <= threshold && minutes > threshold - 1 && !notifiedLessons.has(notifyKey)) {
             // Disparar notificação
-            const message = minutes <= 1
-              ? `A aula "${event.lesson.titulo}" está começando agora!`
-              : `A aula "${event.lesson.titulo}" começa em ${threshold} minutos!`;
+            let message: string;
+            if (minutes <= 1) {
+              message = `A aula "${event.lesson.titulo}" está começando agora!`;
+            } else if (threshold === 60) {
+              message = `A aula "${event.lesson.titulo}" começa em 1 hora!`;
+            } else {
+              message = `A aula "${event.lesson.titulo}" começa em ${threshold} minutos!`;
+            }
 
             toast(message, {
               icon: '🔴',
@@ -467,7 +453,7 @@ const Dashboard: React.FC = () => {
                         </span>
                         <span className="flex items-center gap-1">
                           <Clock className="w-4 h-4" />
-                          {event.startsAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                          {event.startsAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })}
                           {event.lesson.duracao && ` (${formatDuration(event.lesson.duracao)})`}
                         </span>
                       </div>

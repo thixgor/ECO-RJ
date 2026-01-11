@@ -7,11 +7,17 @@ import {
   deleteLesson,
   markAsWatched,
   getAllLessons,
-  reorderLessons
+  reorderLessons,
+  getLiveLessonsToday,
+  getUpcomingLiveLessons
 } from '../controllers/lessonController';
 import { protect, adminOnly, canViewLessons, optionalAuth } from '../middleware/auth';
 
 const router = Router();
+
+// Rotas para aulas ao vivo (devem vir antes das rotas com parâmetros)
+router.get('/live-today', protect, getLiveLessonsToday);
+router.get('/upcoming-live', protect, getUpcomingLiveLessons);
 
 // Rotas públicas (permite não logados verem estrutura)
 router.get('/course/:courseId', optionalAuth, getLessonsByCourse);
