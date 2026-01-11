@@ -523,7 +523,7 @@ const Lesson: React.FC = () => {
   useEffect(() => {
     if (!isZoomJoined) return;
 
-    let resizeTimeout: NodeJS.Timeout;
+    let resizeTimeout: ReturnType<typeof setTimeout>;
 
     const handleResize = () => {
       // Debounce para evitar muitas chamadas
