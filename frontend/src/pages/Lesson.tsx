@@ -48,6 +48,7 @@ const Lesson: React.FC = () => {
   // Zoom meeting states
   const [isZoomJoined, setIsZoomJoined] = useState(false);
   const [isZoomConnecting, setIsZoomConnecting] = useState(false);
+  const [isZoomInitializing, setIsZoomInitializing] = useState(false); // Para mostrar container durante init
   const [zoomError, setZoomError] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showFullscreenSuggestion, setShowFullscreenSuggestion] = useState(false);
@@ -218,6 +219,7 @@ const Lesson: React.FC = () => {
     }
 
     setIsZoomConnecting(true);
+    setIsZoomInitializing(true); // Mostrar container para obter dimensões
     setZoomError(null);
 
     try {
@@ -358,6 +360,7 @@ const Lesson: React.FC = () => {
       console.error('Zoom initialization error:', error);
       setZoomError(error.message || 'Erro ao inicializar Zoom');
       setIsZoomConnecting(false);
+      setIsZoomInitializing(false); // Esconder container em caso de erro
       toast.error('Não foi possível carregar o Zoom integrado');
     }
   }, [lesson, user]);
@@ -677,7 +680,7 @@ const Lesson: React.FC = () => {
           {lesson?.zoomMeetingId && lesson.tipo === 'ao_vivo' ? (
             <div className="card overflow-hidden">
               {/* Tela de entrada (antes de conectar) ou tela de "já entrou externamente" */}
-              {!isZoomJoined && !joinedExternally && (
+              {!isZoomJoined && !joinedExternally && !isZoomInitializing && (
                 <div className="w-full bg-gradient-to-br from-[#0a1628] to-[#1a2744] rounded-xl">
                   <div className="flex flex-col items-center justify-center p-6 sm:p-8 text-center">
                     <div className="w-14 h-14 sm:w-16 sm:h-16 mb-3 sm:mb-4 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-xl">
@@ -779,12 +782,13 @@ const Lesson: React.FC = () => {
                 </div>
               )}
 
-              {/* Container do Zoom SDK - sempre visível para ter dimensões, mas ocultado visualmente quando não conectado */}
+              {/* Container do Zoom SDK - visível durante inicialização e quando conectado */}
               <div
                 ref={zoomWrapperRef}
-                className={`relative bg-black w-full overflow-hidden ${!isZoomJoined ? 'absolute inset-0 opacity-0 pointer-events-none' : ''}`}
+                className="relative bg-black w-full overflow-hidden"
                 style={{
-                  paddingBottom: '56.25%' /* 16:9 aspect ratio */
+                  paddingBottom: (isZoomInitializing || isZoomJoined) ? '56.25%' : '0', /* 16:9 aspect ratio */
+                  display: (isZoomInitializing || isZoomJoined) ? 'block' : 'none'
                 }}
               >
                 {/* Container interno do Zoom SDK */}
@@ -792,7 +796,6 @@ const Lesson: React.FC = () => {
                   ref={zoomContainerRef}
                   id="zoom-meeting-container"
                   className="absolute inset-0 w-full h-full"
-                  style={{ minWidth: '100%', minHeight: '100%' }}
                 />
 
                 {/* Controles sobrepostos */}
