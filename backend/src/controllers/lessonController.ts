@@ -395,15 +395,6 @@ export const getLiveLessonsToday = async (req: AuthRequest, res: Response) => {
     endOfDay.setUTCDate(endOfDay.getUTCDate() + 1);
     endOfDay.setUTCMilliseconds(-1); // 23:59:59.999 em Brasília
 
-    console.log('[getLiveLessonsToday] Debug:', {
-      userId: user._id,
-      userCargo: user.cargo,
-      cursoIds,
-      now: now.toISOString(),
-      startOfDay: startOfDay.toISOString(),
-      endOfDay: endOfDay.toISOString()
-    });
-
     // Buscar aulas ao vivo de hoje dos cursos inscritos
     const lessons = await Lesson.find({
       cursoId: { $in: cursoIds },
@@ -417,22 +408,11 @@ export const getLiveLessonsToday = async (req: AuthRequest, res: Response) => {
       .populate('cursoId', 'titulo imagemCapa')
       .sort({ dataHoraInicio: 1 });
 
-    console.log('[getLiveLessonsToday] Aulas encontradas:', lessons.length, lessons.map(l => ({
-      id: l._id,
-      titulo: l.titulo,
-      tipo: l.tipo,
-      status: l.status,
-      dataHoraInicio: l.dataHoraInicio,
-      cursoId: l.cursoId
-    })));
-
     // Filtrar por permissão de cargo
     const userCargo = user.cargo || 'Visitante';
     const filteredLessons = lessons.filter(lesson =>
       lesson.cargosPermitidos.includes(userCargo) || userCargo === 'Administrador'
     );
-
-    console.log('[getLiveLessonsToday] Após filtro de cargo:', filteredLessons.length);
 
     res.json({ lessons: filteredLessons });
   } catch (error) {

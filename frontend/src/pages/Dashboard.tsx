@@ -88,9 +88,7 @@ const Dashboard: React.FC = () => {
   // Carregar aulas ao vivo do dia usando a API dedicada
   const loadLiveLessonsToday = useCallback(async () => {
     try {
-      console.log('[Dashboard] Carregando aulas ao vivo...');
       const response = await lessonService.getLiveToday();
-      console.log('[Dashboard] Resposta da API:', response.data);
       const lessons = response.data.lessons || [];
 
       // Mapear aulas para eventos com informações do curso
@@ -99,14 +97,6 @@ const Dashboard: React.FC = () => {
         const startsAt = new Date(lesson.dataHoraInicio!);
         const now = new Date();
         const minutesUntilStart = Math.floor((startsAt.getTime() - now.getTime()) / 60000);
-
-        console.log('[Dashboard] Processando aula:', {
-          titulo: lesson.titulo,
-          dataHoraInicio: lesson.dataHoraInicio,
-          startsAt: startsAt.toISOString(),
-          minutesUntilStart,
-          course: course?.titulo
-        });
 
         return {
           lesson,
@@ -119,7 +109,6 @@ const Dashboard: React.FC = () => {
       // Ordenar por horário de início
       events.sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
 
-      console.log('[Dashboard] Eventos filtrados:', events.length);
       setLiveLessonsToday(events);
     } catch (error) {
       console.error('Erro ao carregar aulas ao vivo:', error);
@@ -210,11 +199,18 @@ const Dashboard: React.FC = () => {
     setDismissedNotifications(prev => new Set([...prev, lessonId]));
   };
 
-  // Filtrar eventos não dispensados
+  // Filtrar eventos não dispensados - mostrar aulas do dia até a duração terminar
   const visibleLiveLessons = useMemo(() => {
-    return liveLessonsToday.filter(
-      event => !dismissedNotifications.has(event.lesson._id) && event.minutesUntilStart > -60 // Mostrar até 1h após início
-    );
+    return liveLessonsToday.filter(event => {
+      if (dismissedNotifications.has(event.lesson._id)) return false;
+
+      // Calcular quando a aula termina (início + duração)
+      const duracao = event.lesson.duracao || 60; // default 60 min
+      const minutosAteTerminar = event.minutesUntilStart + duracao;
+
+      // Mostrar se ainda não terminou (com margem de 30 min após o fim)
+      return minutosAteTerminar > -30;
+    });
   }, [liveLessonsToday, dismissedNotifications]);
 
   const isVisitante = user?.cargo === 'Visitante';
