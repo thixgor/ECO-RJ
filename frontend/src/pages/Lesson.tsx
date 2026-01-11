@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Clock, CheckCircle, BookOpen, FileText, Play, ExternalLink, Download, Layers, X, ChevronRight, ChevronLeft, Award, Target, RotateCcw, AlertTriangle, Check, XCircle, Video, File, PlayCircle, Maximize, Minimize } from 'lucide-react';
+import { ArrowLeft, Clock, CheckCircle, BookOpen, FileText, Play, ExternalLink, Download, Layers, X, ChevronRight, ChevronLeft, Award, Target, RotateCcw, AlertTriangle, Check, XCircle, Video, File, PlayCircle, Maximize, Minimize, MessageCircle } from 'lucide-react';
 import { lessonService, exerciseService, zoomService, siteConfigService } from '../services/api';
 import { Lesson as LessonType, Exercise, Course } from '../types';
 import { useAuth } from '../contexts/AuthContext';
@@ -54,6 +54,7 @@ const Lesson: React.FC = () => {
   const [showFullscreenSuggestion, setShowFullscreenSuggestion] = useState(false);
   const [joinedExternally, setJoinedExternally] = useState(false);
   const [zoomNativeEnabled, setZoomNativeEnabled] = useState(true);
+  const [isChatOpen, setIsChatOpen] = useState(false);
   const zoomClientRef = useRef<any>(null);
   const zoomContainerRef = useRef<HTMLDivElement>(null);
   const zoomWrapperRef = useRef<HTMLDivElement>(null);
@@ -501,6 +502,29 @@ const Lesson: React.FC = () => {
     }
   }, [isZoomJoined]);
 
+  // Função para abrir/fechar chat do Zoom
+  const toggleChat = useCallback(() => {
+    if (!zoomClientRef.current || !isZoomJoined) return;
+
+    try {
+      const newChatState = !isChatOpen;
+      setIsChatOpen(newChatState);
+
+      // Tentar usar a API do Zoom SDK para controlar o chat
+      if (newChatState) {
+        // Abrir chat
+        zoomClientRef.current.openChat?.();
+      } else {
+        // Fechar chat
+        zoomClientRef.current.closeChat?.();
+      }
+
+      console.log('Chat toggled:', newChatState);
+    } catch (error) {
+      console.error('Error toggling chat:', error);
+    }
+  }, [isZoomJoined, isChatOpen]);
+
   // Detectar mudanças de fullscreen e redimensionar
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -860,7 +884,7 @@ const Lesson: React.FC = () => {
               {/* Container do Zoom SDK - visível durante inicialização e quando conectado */}
               <div
                 ref={zoomWrapperRef}
-                className={`relative bg-black w-full overflow-hidden ${isFullscreen ? 'fixed inset-0 z-[9998]' : ''}`}
+                className={`zoom-meeting-wrapper relative bg-black w-full overflow-hidden ${isFullscreen ? 'fixed inset-0 z-[9998]' : ''} ${isChatOpen ? 'chat-open' : ''}`}
                 style={{
                   // Em tela cheia: 100% da viewport; Modo normal: aspect ratio 16:9
                   ...(isFullscreen ? {
@@ -877,37 +901,53 @@ const Lesson: React.FC = () => {
                 <div
                   ref={zoomContainerRef}
                   id="zoom-meeting-container"
-                  className="absolute inset-0 w-full h-full"
+                  className="zoom-sdk-container absolute inset-0 w-full h-full"
                   style={isFullscreen ? { width: '100vw', height: '100vh' } : undefined}
                 />
 
                 {/* Controles sobrepostos */}
                 {isZoomJoined && (
-                  <div className={`absolute top-4 z-[9999] flex gap-3 ${isFullscreen ? 'left-4' : 'right-4'}`}>
+                  <div className={`absolute top-4 z-[9999] flex gap-2 ${isFullscreen ? 'left-4' : 'right-4'}`}>
+                    {/* Botão de Chat */}
+                    <button
+                      onClick={toggleChat}
+                      className={`px-4 py-2.5 rounded-lg font-semibold shadow-xl transition-all flex items-center gap-2 backdrop-blur-sm ${
+                        isChatOpen
+                          ? 'bg-primary-500 hover:bg-primary-600 text-white'
+                          : 'bg-gray-800/90 hover:bg-gray-700 text-white'
+                      }`}
+                      title={isChatOpen ? 'Fechar Chat' : 'Abrir Chat'}
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                      {!isFullscreen && <span className="hidden sm:inline">Chat</span>}
+                    </button>
+
+                    {/* Botão Tela Cheia */}
                     <button
                       onClick={toggleFullscreen}
-                      className="px-5 py-2.5 bg-gray-800/90 hover:bg-gray-700 text-white rounded-lg font-semibold shadow-xl transition-all hover:shadow-2xl flex items-center gap-2 backdrop-blur-sm"
+                      className="px-4 py-2.5 bg-gray-800/90 hover:bg-gray-700 text-white rounded-lg font-semibold shadow-xl transition-all hover:shadow-2xl flex items-center gap-2 backdrop-blur-sm"
                       title={isFullscreen ? 'Sair da tela cheia' : 'Tela cheia'}
                     >
                       {isFullscreen ? (
                         <>
                           <Minimize className="w-4 h-4" />
-                          Sair
+                          <span className="hidden sm:inline">Sair</span>
                         </>
                       ) : (
                         <>
                           <Maximize className="w-4 h-4" />
-                          Tela Cheia
+                          <span className="hidden sm:inline">Tela Cheia</span>
                         </>
                       )}
                     </button>
 
+                    {/* Botão Sair da Aula */}
                     <button
                       onClick={leaveZoomMeeting}
-                      className="px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-lg font-bold shadow-xl transition-all hover:shadow-red-500/50 flex items-center gap-2 transform hover:scale-105"
+                      className="px-4 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-lg font-bold shadow-xl transition-all hover:shadow-red-500/50 flex items-center gap-2"
                     >
                       <X className="w-4 h-4" />
-                      Sair da Aula
+                      <span className="hidden sm:inline">Sair</span>
                     </button>
                   </div>
                 )}
