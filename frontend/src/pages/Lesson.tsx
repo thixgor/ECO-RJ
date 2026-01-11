@@ -680,50 +680,50 @@ const Lesson: React.FC = () => {
               {!isZoomJoined && !joinedExternally && (
                 <div className="relative w-full bg-gradient-to-br from-[#0a1628] to-[#1a2744]"
                      style={{ paddingBottom: '56.25%' /* 16:9 aspect ratio */ }}>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center p-6 sm:p-8">
-                    <div className="w-20 h-20 mb-6 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-xl animate-pulse">
-                      <Video className="w-10 h-10 text-white" />
+                  <div className="absolute inset-0 flex flex-col items-center justify-center p-4 sm:p-6 text-center">
+                    <div className="w-14 h-14 sm:w-16 sm:h-16 mb-3 sm:mb-4 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-xl">
+                      <Video className="w-7 h-7 sm:w-8 sm:h-8 text-white" />
                     </div>
 
-                    <h3 className="text-xl sm:text-2xl font-bold text-white mb-2">
+                    <h3 className="text-lg sm:text-xl font-bold text-white mb-1 sm:mb-2">
                       Aula ao Vivo via Zoom
                     </h3>
 
-                    <p className="text-gray-300 text-sm sm:text-base mb-4 sm:mb-6">
+                    <p className="text-gray-400 text-xs sm:text-sm mb-2 sm:mb-3">
                       Escolha como deseja participar da aula.
                     </p>
 
-                    <div className="inline-block mb-4 sm:mb-6 px-4 py-2 bg-white/10 rounded-lg text-sm text-gray-200">
+                    <div className="inline-block mb-3 sm:mb-4 px-3 py-1.5 bg-white/10 rounded-lg text-xs sm:text-sm text-gray-300">
                       Você entrará como: <strong className="text-cyan-400">{user?.nomeCompleto}</strong>
                     </div>
 
                     {zoomError && (
-                      <div className="mb-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-300 text-sm max-w-md mx-auto">
-                        <strong className="block mb-1">Erro ao conectar:</strong>
+                      <div className="mb-3 p-2 bg-red-500/20 border border-red-500/30 rounded-lg text-red-300 text-xs max-w-sm mx-auto">
+                        <strong className="block mb-0.5">Erro ao conectar:</strong>
                         {zoomError}
                       </div>
                     )}
 
-                    <div className="space-y-2 sm:space-y-3 max-w-sm sm:max-w-md w-full">
+                    <div className="space-y-2 w-full max-w-xs sm:max-w-sm">
                       {/* Opção 1: Ver nativamente aqui (só aparece se habilitado) */}
                       {zoomNativeEnabled && (
                         <button
                           onClick={joinZoomMeeting}
                           disabled={isZoomConnecting}
-                          className="relative w-full flex flex-col items-center justify-center gap-1 px-6 py-3 sm:py-4 bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-600 hover:to-cyan-700 text-white rounded-xl font-bold transition-all shadow-lg hover:shadow-xl disabled:opacity-50 border border-cyan-400/50"
+                          className="relative w-full flex flex-col items-center justify-center gap-0.5 px-4 py-2.5 sm:py-3 bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-600 hover:to-cyan-700 text-white rounded-xl font-bold transition-all shadow-lg hover:shadow-xl disabled:opacity-50 border border-cyan-400/50"
                         >
                           {isZoomConnecting ? (
                             <>
-                              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                              <span className="text-sm">Conectando...</span>
+                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                              <span className="text-xs">Conectando...</span>
                             </>
                           ) : (
                             <>
                               <div className="flex items-center gap-2">
-                                <Video className="w-5 h-5" />
-                                <span>Assistir Aqui Nativamente</span>
+                                <Video className="w-4 h-4" />
+                                <span className="text-sm">Assistir Aqui Nativamente</span>
                               </div>
-                              <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full font-medium">
+                              <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-medium">
                                 (em testes)
                               </span>
                             </>
@@ -734,18 +734,18 @@ const Lesson: React.FC = () => {
                       {/* Opção 2: Abrir no App Zoom */}
                       <button
                         onClick={openZoomApp}
-                        className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-all shadow-md hover:shadow-lg"
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-all shadow-md hover:shadow-lg text-sm"
                       >
-                        <Video className="w-5 h-5" />
+                        <Video className="w-4 h-4" />
                         Abrir no App Zoom
                       </button>
 
                       {/* Opção 3: Abrir no Navegador */}
                       <button
                         onClick={openZoomBrowser}
-                        className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-xl font-semibold transition-all shadow-md hover:shadow-lg"
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-600 hover:bg-gray-700 text-white rounded-xl font-semibold transition-all shadow-md hover:shadow-lg text-sm"
                       >
-                        <ExternalLink className="w-5 h-5" />
+                        <ExternalLink className="w-4 h-4" />
                         Abrir no Navegador
                       </button>
                     </div>
