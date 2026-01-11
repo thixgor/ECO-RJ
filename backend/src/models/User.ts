@@ -1,5 +1,6 @@
 import mongoose, { Document, Schema } from 'mongoose';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 
 export interface IUser extends Document {
   email: string;
@@ -21,7 +22,7 @@ export interface IUser extends Document {
   ultimoLogin?: Date;
   ipsAcesso: string[];
   ativo: boolean;
-  tokenRecuperacao: string; // Token único para recuperação de senha
+  tokenRecuperacao?: string; // Token único para recuperação de senha (gerado automaticamente)
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
@@ -117,14 +118,23 @@ const UserSchema = new Schema<IUser>(
     },
     tokenRecuperacao: {
       type: String,
-      required: true,
-      unique: true
+      unique: true,
+      sparse: true // Permite múltiplos documentos sem este campo durante migração
     }
   },
   {
     timestamps: true
   }
 );
+
+// Generate recovery token if not exists
+UserSchema.pre('save', async function (next) {
+  // Gerar token de recuperação se não existir
+  if (!this.tokenRecuperacao) {
+    this.tokenRecuperacao = crypto.randomBytes(24).toString('hex').toUpperCase();
+  }
+  next();
+});
 
 // Hash password before saving
 UserSchema.pre('save', async function (next) {

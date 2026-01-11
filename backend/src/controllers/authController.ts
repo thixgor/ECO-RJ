@@ -287,6 +287,11 @@ export const resetPasswordWithToken = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Token inválido. Verifique as informações e tente novamente.' });
     }
 
+    // Verificar se o usuário tem token de recuperação
+    if (!user.tokenRecuperacao) {
+      return res.status(400).json({ message: 'Token de recuperação não configurado para este usuário. Entre em contato com o suporte.' });
+    }
+
     // Verificar se o token corresponde (comparação case-insensitive)
     if (user.tokenRecuperacao.toUpperCase() !== tokenRecuperacao.toUpperCase()) {
       return res.status(400).json({ message: 'Token inválido. Verifique as informações e tente novamente.' });
