@@ -460,7 +460,7 @@ const Dashboard: React.FC = () => {
                         </span>
                         <span className="flex items-center gap-1">
                           <Clock className="w-4 h-4" />
-                          {event.startsAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                          {event.startsAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })}
                           {event.lesson.duracao ? ` (${formatDuration(event.lesson.duracao)})` : ''}
                         </span>
                       </div>
