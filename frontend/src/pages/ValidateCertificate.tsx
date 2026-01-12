@@ -106,15 +106,15 @@ const ValidateCertificate: React.FC = () => {
         <div className="card p-6 mb-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="label">Codigo de Validacao</label>
+              <label className="label">Código de Validação</label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
                   type="text"
                   value={code}
-                  onChange={(e) => setCode(e.target.value.toUpperCase())}
-                  className="input pl-10 font-mono text-lg"
-                  placeholder="CERT-2026-XXXXXXXX"
+                  onChange={(e) => setCode(e.target.value.toLowerCase())}
+                  className="input pl-10 font-mono text-sm"
+                  placeholder="Digite o código SHA-256 do certificado"
                   autoFocus
                 />
               </div>
@@ -215,8 +215,8 @@ const ValidateCertificate: React.FC = () => {
 
         {/* Instructions */}
         <div className="mt-8 text-center text-sm text-[var(--color-text-muted)]">
-          <p>O codigo de validacao pode ser encontrado no certificado impresso ou no PDF.</p>
-          <p className="mt-1">Formato: CERT-AAAA-XXXXXXXX</p>
+          <p>O código de validação pode ser encontrado no certificado impresso ou no PDF.</p>
+          <p className="mt-1">O código é um hash SHA-256 de 64 caracteres hexadecimais.</p>
         </div>
       </main>
 

@@ -206,7 +206,7 @@ const Profile: React.FC = () => {
           <div>
             <h3 className="font-medium text-yellow-800 dark:text-amber-400">Acesso Limitado</h3>
             <p className="text-yellow-700 dark:text-amber-300/80 text-sm mt-1">
-              Voce esta como Visitante. Aplique uma serial key abaixo para ter acesso completo as aulas e exercicios.
+              Você está como Visitante. Aplique uma serial key abaixo para ter acesso completo às aulas e exercícios.
             </p>
           </div>
         </div>
@@ -223,7 +223,7 @@ const Profile: React.FC = () => {
                   : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
                 }`}
             >
-              Informacoes
+              Informações
             </button>
             <button
               onClick={() => setActiveTab('certificados')}
@@ -346,7 +346,7 @@ const Profile: React.FC = () => {
                     <Stethoscope className="w-5 h-5 text-gray-400" />
                     <div>
                       <p className="text-sm text-[var(--color-text-muted)]">Especialidade</p>
-                      <p className="font-medium text-[var(--color-text-primary)]">{user?.especialidade || 'Nao informada'}</p>
+                      <p className="font-medium text-[var(--color-text-primary)]">{user?.especialidade || 'Não informada'}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
@@ -413,8 +413,15 @@ const Profile: React.FC = () => {
                                 <span>{formatDate(cert.dataEmissao)}</span>
                               </div>
                               <div className="col-span-2 md:col-span-1">
-                                <code className="text-xs bg-gray-100 dark:bg-white/10 px-2 py-1 rounded font-mono text-primary-600 dark:text-primary-400">
-                                  {cert.codigoValidacao}
+                                <code
+                                  className="text-xs bg-gray-100 dark:bg-white/10 px-2 py-1 rounded font-mono text-primary-600 dark:text-primary-400 cursor-pointer hover:bg-gray-200 dark:hover:bg-white/20 transition-colors"
+                                  title={cert.codigoValidacao}
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(cert.codigoValidacao);
+                                    toast.success('Código copiado!');
+                                  }}
+                                >
+                                  {cert.codigoValidacao.substring(0, 12)}...
                                 </code>
                               </div>
                             </div>
@@ -442,7 +449,7 @@ const Profile: React.FC = () => {
               <div className="bg-primary-50 dark:bg-primary-500/10 p-4 rounded-lg">
                 <h3 className="font-medium text-primary-800 dark:text-primary-300 mb-2">Como funciona?</h3>
                 <p className="text-primary-700 dark:text-primary-300/80 text-sm">
-                  Insira sua serial key para atualizar seu cargo e ter acesso completo as aulas e exercicios.
+                  Insira sua serial key para atualizar seu cargo e ter acesso completo às aulas e exercícios.
                   Cada chave pode ser utilizada apenas uma vez.
                 </p>
               </div>
@@ -473,7 +480,7 @@ const Profile: React.FC = () => {
               {/* History */}
               {user?.serialKeysUsadas && user.serialKeysUsadas.length > 0 && (
                 <div>
-                  <h3 className="font-medium mb-3">Historico de Chaves</h3>
+                  <h3 className="font-medium mb-3">Histórico de Chaves</h3>
                   <div className="space-y-2">
                     {(user.serialKeysUsadas as any[]).map((key, index) => (
                       <div key={index} className="p-3 bg-gray-50 dark:bg-white/5 rounded-lg flex justify-between items-center">
@@ -514,7 +521,7 @@ const Profile: React.FC = () => {
                     value={passwordData.novaSenha}
                     onChange={(e) => setPasswordData({ ...passwordData, novaSenha: e.target.value })}
                     className="input pl-10"
-                    placeholder="Minimo 6 caracteres"
+                    placeholder="Mínimo 6 caracteres"
                     required
                   />
                 </div>

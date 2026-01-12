@@ -1,4 +1,5 @@
 import mongoose, { Document, Schema, Model } from 'mongoose';
+import crypto from 'crypto';
 
 export interface ICertificate extends Document {
   codigoValidacao: string;
@@ -11,7 +12,7 @@ export interface ICertificate extends Document {
 }
 
 interface ICertificateModel extends Model<ICertificate> {
-  generateValidationCode(): Promise<string>;
+  generateValidationCode(alunoId: string, cursoId: string): Promise<string>;
 }
 
 const CertificateSchema = new Schema<ICertificate>(
@@ -20,7 +21,8 @@ const CertificateSchema = new Schema<ICertificate>(
       type: String,
       required: true,
       unique: true,
-      trim: true
+      trim: true,
+      lowercase: true
     },
     alunoId: {
       type: Schema.Types.ObjectId,
@@ -54,29 +56,33 @@ CertificateSchema.index({ codigoValidacao: 1 });
 CertificateSchema.index({ alunoId: 1, cursoId: 1 });
 CertificateSchema.index({ dataEmissao: -1 });
 
-// Static method to generate unique validation code
-CertificateSchema.statics.generateValidationCode = async function(): Promise<string> {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  const now = new Date();
-  const year = now.getFullYear();
-
-  let code = '';
+// Static method to generate unique validation code using SHA-256
+CertificateSchema.statics.generateValidationCode = async function(
+  alunoId: string,
+  cursoId: string
+): Promise<string> {
+  let hash: string;
   let isUnique = false;
 
+  // Loop until we find a unique hash (virtually always first try)
   while (!isUnique) {
-    let randomPart = '';
-    for (let i = 0; i < 8; i++) {
-      randomPart += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    code = `CERT-${year}-${randomPart}`;
+    const timestamp = Date.now().toString();
+    const randomBytes = crypto.randomBytes(16).toString('hex');
 
-    const existing = await this.findOne({ codigoValidacao: code });
+    // Create a unique string combining aluno, curso, timestamp, and random bytes
+    const dataToHash = `${alunoId}-${cursoId}-${timestamp}-${randomBytes}`;
+
+    // Generate SHA-256 hash
+    hash = crypto.createHash('sha256').update(dataToHash).digest('hex');
+
+    // Verify uniqueness (SHA-256 collisions are extremely unlikely, but we check anyway)
+    const existing = await this.findOne({ codigoValidacao: hash });
     if (!existing) {
       isUnique = true;
     }
   }
 
-  return code;
+  return hash!;
 };
 
 export default mongoose.model<ICertificate, ICertificateModel>('Certificate', CertificateSchema);

@@ -274,8 +274,15 @@ const AdminCertificates: React.FC = () => {
                   return (
                     <tr key={cert._id} className="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
                       <td className="px-6 py-4">
-                        <code className="bg-gray-100 dark:bg-white/10 px-2 py-1 rounded font-mono text-sm text-[var(--color-text-primary)]">
-                          {cert.codigoValidacao}
+                        <code
+                          className="bg-gray-100 dark:bg-white/10 px-2 py-1 rounded font-mono text-xs text-[var(--color-text-primary)] cursor-pointer hover:bg-gray-200 dark:hover:bg-white/20 transition-colors"
+                          title={cert.codigoValidacao}
+                          onClick={() => {
+                            navigator.clipboard.writeText(cert.codigoValidacao);
+                            toast.success('Código copiado!');
+                          }}
+                        >
+                          {cert.codigoValidacao.substring(0, 12)}...
                         </code>
                       </td>
                       <td className="px-6 py-4">

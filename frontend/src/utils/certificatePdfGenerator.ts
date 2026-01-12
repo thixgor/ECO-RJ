@@ -5,11 +5,13 @@ import toast from 'react-hot-toast';
 
 const LOGO_URL = 'https://i.imgur.com/vyCPuyf.png';
 
-// Cores do tema ECO RJ
-const PRIMARY_BLUE = [30, 144, 255]; // #1E90FF
-const DARK_BLUE = [25, 25, 112];     // #191970
-const GOLD = [218, 165, 32];         // Dourado para detalhes
-const TEXT_DARK = [31, 41, 55];      // Cinza escuro
+// Cores do tema ECO RJ - Design moderno e elegante
+const PRIMARY_BLUE = [30, 144, 255];    // #1E90FF - Azul primário
+const DARK_BLUE = [25, 25, 112];        // #191970 - Azul escuro
+const ACCENT_BLUE = [135, 206, 235];    // #87CEEB - Azul claro
+const TEXT_DARK = [31, 41, 55];         // Cinza escuro para texto
+const TEXT_MUTED = [107, 114, 128];     // Cinza médio
+const BORDER_LIGHT = [229, 231, 235];   // Cinza claro para bordas
 
 // Helper para carregar imagem como base64
 const loadImageAsBase64 = async (url: string): Promise<string | null> => {
@@ -33,11 +35,11 @@ const formatCPF = (cpf: string): string => {
   return cleaned.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
 };
 
-// Formatar data por extenso
+// Formatar data por extenso com acentuação correta
 const formatDateExtended = (dateStr: string): string => {
   const date = new Date(dateStr);
   const months = [
-    'janeiro', 'fevereiro', 'marco', 'abril', 'maio', 'junho',
+    'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
     'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'
   ];
   const day = date.getDate();
@@ -55,16 +57,31 @@ const formatDateSimple = (dateStr: string): string => {
 const generateQRCode = async (text: string): Promise<string> => {
   try {
     return await QRCode.toDataURL(text, {
-      width: 150,
-      margin: 1,
+      width: 200,
+      margin: 2,
       color: {
-        dark: '#191970',
+        dark: '#1E90FF',
         light: '#FFFFFF'
-      }
+      },
+      errorCorrectionLevel: 'H'
     });
   } catch {
     return '';
   }
+};
+
+// Desenhar cantos arredondados decorativos
+const drawCornerDecoration = (doc: jsPDF, x: number, y: number, size: number, rotation: number) => {
+  doc.setDrawColor(PRIMARY_BLUE[0], PRIMARY_BLUE[1], PRIMARY_BLUE[2]);
+  doc.setLineWidth(0.8);
+
+  const cos = Math.cos(rotation * Math.PI / 180);
+  const sin = Math.sin(rotation * Math.PI / 180);
+
+  // Linha horizontal
+  doc.line(x, y, x + size * cos, y + size * sin);
+  // Linha vertical
+  doc.line(x, y, x - size * sin, y + size * cos);
 };
 
 export interface CertificateData {
@@ -77,7 +94,7 @@ export const generateCertificatePDF = async (data: CertificateData): Promise<voi
   try {
     const { certificate, aluno, curso } = data;
 
-    // Criar documento A4 paisagem para certificado mais elegante
+    // Criar documento A4 paisagem para certificado elegante
     const doc = new jsPDF({
       orientation: 'landscape',
       unit: 'mm',
@@ -86,9 +103,9 @@ export const generateCertificatePDF = async (data: CertificateData): Promise<voi
 
     const pageWidth = doc.internal.pageSize.width;   // 297mm
     const pageHeight = doc.internal.pageSize.height; // 210mm
-    const margin = 15;
+    const margin = 12;
 
-    // URL de validacao
+    // URL de validação
     const validationUrl = `${window.location.origin}/validar?code=${certificate.codigoValidacao}`;
 
     // Carregar logo e QR Code em paralelo
@@ -97,169 +114,226 @@ export const generateCertificatePDF = async (data: CertificateData): Promise<voi
       generateQRCode(validationUrl)
     ]);
 
-    // ============= FUNDO E BORDAS =============
+    // ============= FUNDO =============
 
-    // Fundo branco
+    // Fundo branco limpo
     doc.setFillColor(255, 255, 255);
     doc.rect(0, 0, pageWidth, pageHeight, 'F');
 
-    // Borda externa dourada
-    doc.setDrawColor(GOLD[0], GOLD[1], GOLD[2]);
-    doc.setLineWidth(2);
-    doc.rect(margin - 5, margin - 5, pageWidth - 2 * margin + 10, pageHeight - 2 * margin + 10, 'S');
+    // ============= BORDA DECORATIVA MODERNA =============
 
-    // Borda interna azul
-    doc.setDrawColor(PRIMARY_BLUE[0], PRIMARY_BLUE[1], PRIMARY_BLUE[2]);
+    // Borda externa fina azul claro
+    doc.setDrawColor(ACCENT_BLUE[0], ACCENT_BLUE[1], ACCENT_BLUE[2]);
     doc.setLineWidth(0.5);
     doc.rect(margin, margin, pageWidth - 2 * margin, pageHeight - 2 * margin, 'S');
 
-    // ============= CABECALHO =============
+    // Borda interna azul primário
+    doc.setDrawColor(PRIMARY_BLUE[0], PRIMARY_BLUE[1], PRIMARY_BLUE[2]);
+    doc.setLineWidth(1.5);
+    doc.rect(margin + 4, margin + 4, pageWidth - 2 * margin - 8, pageHeight - 2 * margin - 8, 'S');
 
-    let y = margin + 15;
+    // Decorações nos cantos (linhas elegantes)
+    const cornerSize = 20;
+    const cornerOffset = margin + 8;
 
-    // Logo centralizado
+    // Canto superior esquerdo
+    drawCornerDecoration(doc, cornerOffset, cornerOffset, cornerSize, 0);
+    // Canto superior direito
+    drawCornerDecoration(doc, pageWidth - cornerOffset, cornerOffset, cornerSize, 90);
+    // Canto inferior direito
+    drawCornerDecoration(doc, pageWidth - cornerOffset, pageHeight - cornerOffset, cornerSize, 180);
+    // Canto inferior esquerdo
+    drawCornerDecoration(doc, cornerOffset, pageHeight - cornerOffset, cornerSize, 270);
+
+    // ============= CABEÇALHO =============
+
+    let y = margin + 20;
+
+    // Logo centralizado com proporções corretas
     if (logoBase64) {
-      const logoWidth = 50;
-      const logoHeight = 25;
+      const logoHeight = 22;
+      const logoWidth = logoHeight * 2.5; // Proporção aproximada 2.5:1
       const logoX = (pageWidth - logoWidth) / 2;
       doc.addImage(logoBase64, 'PNG', logoX, y, logoWidth, logoHeight);
-      y += logoHeight + 8;
+      y += logoHeight + 6;
     } else {
-      // Fallback: texto do logo
-      doc.setFont('times', 'bold');
-      doc.setFontSize(24);
+      // Fallback: texto do logo estilizado
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(28);
       doc.setTextColor(PRIMARY_BLUE[0], PRIMARY_BLUE[1], PRIMARY_BLUE[2]);
-      doc.text('ECO RJ', pageWidth / 2, y, { align: 'center' });
-      y += 12;
+      doc.text('ECO RJ', pageWidth / 2, y + 8, { align: 'center' });
+      y += 18;
     }
 
-    // Linha decorativa
-    doc.setDrawColor(GOLD[0], GOLD[1], GOLD[2]);
-    doc.setLineWidth(1);
-    doc.line(margin + 40, y, pageWidth - margin - 40, y);
-    y += 8;
+    // Subtítulo institucional
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(TEXT_MUTED[0], TEXT_MUTED[1], TEXT_MUTED[2]);
+    doc.text('Centro de Treinamento em Ecocardiografia', pageWidth / 2, y, { align: 'center' });
+    y += 10;
 
-    // ============= TITULO =============
+    // Linha decorativa gradiente (simulada com duas linhas)
+    const lineWidth = 120;
+    const lineStartX = (pageWidth - lineWidth) / 2;
+    doc.setDrawColor(ACCENT_BLUE[0], ACCENT_BLUE[1], ACCENT_BLUE[2]);
+    doc.setLineWidth(0.8);
+    doc.line(lineStartX, y, lineStartX + lineWidth, y);
+    doc.setDrawColor(PRIMARY_BLUE[0], PRIMARY_BLUE[1], PRIMARY_BLUE[2]);
+    doc.setLineWidth(0.3);
+    doc.line(lineStartX + 20, y + 2, lineStartX + lineWidth - 20, y + 2);
+    y += 12;
 
-    doc.setFont('times', 'bold');
-    doc.setFontSize(36);
+    // ============= TÍTULO =============
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(38);
     doc.setTextColor(DARK_BLUE[0], DARK_BLUE[1], DARK_BLUE[2]);
     doc.text('CERTIFICADO', pageWidth / 2, y, { align: 'center' });
-    y += 15;
+    y += 16;
 
     // ============= CORPO DO CERTIFICADO =============
 
-    doc.setFont('times', 'normal');
-    doc.setFontSize(14);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(13);
     doc.setTextColor(TEXT_DARK[0], TEXT_DARK[1], TEXT_DARK[2]);
     doc.text('Certificamos que', pageWidth / 2, y, { align: 'center' });
     y += 12;
 
     // Nome do aluno em destaque
-    doc.setFont('times', 'bold');
-    doc.setFontSize(22);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(24);
     doc.setTextColor(DARK_BLUE[0], DARK_BLUE[1], DARK_BLUE[2]);
     doc.text(aluno.nomeCompleto.toUpperCase(), pageWidth / 2, y, { align: 'center' });
-    y += 10;
+    y += 9;
 
-    // Dados pessoais
-    doc.setFont('times', 'normal');
-    doc.setFontSize(11);
+    // Dados pessoais em linha única
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(TEXT_MUTED[0], TEXT_MUTED[1], TEXT_MUTED[2]);
+    const personalInfo = `CPF: ${formatCPF(aluno.cpf)}  •  Data de Nascimento: ${formatDateSimple(aluno.dataNascimento)}`;
+    doc.text(personalInfo, pageWidth / 2, y, { align: 'center' });
+    y += 12;
+
+    // Texto de conclusão
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(13);
     doc.setTextColor(TEXT_DARK[0], TEXT_DARK[1], TEXT_DARK[2]);
-    doc.text(`CPF: ${formatCPF(aluno.cpf)}`, pageWidth / 2, y, { align: 'center' });
-    y += 6;
-    doc.text(`Data de Nascimento: ${formatDateSimple(aluno.dataNascimento)}`, pageWidth / 2, y, { align: 'center' });
-    y += 10;
-
-    // Texto de conclusao
-    doc.setFontSize(14);
-    doc.text('concluiu com exito o curso', pageWidth / 2, y, { align: 'center' });
+    doc.text('concluiu com êxito o curso', pageWidth / 2, y, { align: 'center' });
     y += 12;
 
     // Nome do curso em destaque
-    doc.setFont('times', 'bold');
+    doc.setFont('helvetica', 'bold');
     doc.setFontSize(20);
     doc.setTextColor(PRIMARY_BLUE[0], PRIMARY_BLUE[1], PRIMARY_BLUE[2]);
 
-    // Quebrar titulo se for muito longo
+    // Quebrar título se for muito longo
     const cursoTitle = curso.titulo.toUpperCase();
-    const maxWidth = pageWidth - 2 * margin - 40;
+    const maxWidth = pageWidth - 2 * margin - 60;
     const titleLines = doc.splitTextToSize(cursoTitle, maxWidth);
     doc.text(titleLines, pageWidth / 2, y, { align: 'center' });
     y += titleLines.length * 8 + 8;
 
-    // Carga horaria
-    doc.setFont('times', 'normal');
-    doc.setFontSize(14);
+    // Carga horária
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(13);
     doc.setTextColor(TEXT_DARK[0], TEXT_DARK[1], TEXT_DARK[2]);
     const hoursText = certificate.cargaHoraria < 1
       ? `${Math.round(certificate.cargaHoraria * 60)} minutos`
-      : `${certificate.cargaHoraria} horas`;
-    doc.text(`com carga horaria total de ${hoursText}.`, pageWidth / 2, y, { align: 'center' });
-    y += 10;
+      : `${certificate.cargaHoraria} hora${certificate.cargaHoraria !== 1 ? 's' : ''}`;
+    doc.text(`com carga horária total de ${hoursText}.`, pageWidth / 2, y, { align: 'center' });
+    y += 8;
 
-    // Data de emissao
-    doc.text(`Data de emissao: ${formatDateExtended(certificate.dataEmissao)}`, pageWidth / 2, y, { align: 'center' });
+    // Data de emissão
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(11);
+    doc.setTextColor(TEXT_MUTED[0], TEXT_MUTED[1], TEXT_MUTED[2]);
+    doc.text(`Emitido em ${formatDateExtended(certificate.dataEmissao)}`, pageWidth / 2, y, { align: 'center' });
 
-    // ============= RODAPE =============
+    // ============= RODAPÉ =============
 
-    // Posicionar elementos do rodape
-    const footerY = pageHeight - margin - 45;
+    const footerY = pageHeight - margin - 48;
 
-    // QR Code (esquerda)
+    // QR Code (esquerda) - dentro de um card sutil
     if (qrCodeBase64) {
-      const qrSize = 35;
-      doc.addImage(qrCodeBase64, 'PNG', margin + 20, footerY, qrSize, qrSize);
+      const qrSize = 32;
+      const qrX = margin + 25;
+
+      // Background sutil para o QR
+      doc.setFillColor(250, 250, 252);
+      doc.setDrawColor(BORDER_LIGHT[0], BORDER_LIGHT[1], BORDER_LIGHT[2]);
+      doc.setLineWidth(0.3);
+      doc.roundedRect(qrX - 4, footerY - 2, qrSize + 8, qrSize + 16, 2, 2, 'FD');
+
+      doc.addImage(qrCodeBase64, 'PNG', qrX, footerY, qrSize, qrSize);
 
       // Texto abaixo do QR
-      doc.setFontSize(8);
-      doc.setTextColor(TEXT_DARK[0], TEXT_DARK[1], TEXT_DARK[2]);
-      doc.text('Escaneie para validar', margin + 20 + qrSize / 2, footerY + qrSize + 5, { align: 'center' });
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7);
+      doc.setTextColor(TEXT_MUTED[0], TEXT_MUTED[1], TEXT_MUTED[2]);
+      doc.text('Escaneie para validar', qrX + qrSize / 2, footerY + qrSize + 6, { align: 'center' });
     }
 
     // Assinatura (centro)
     const signatureX = pageWidth / 2;
 
-    // Linha de assinatura
-    doc.setDrawColor(TEXT_DARK[0], TEXT_DARK[1], TEXT_DARK[2]);
-    doc.setLineWidth(0.3);
-    doc.line(signatureX - 50, footerY + 15, signatureX + 50, footerY + 15);
+    // Linha de assinatura elegante
+    doc.setDrawColor(BORDER_LIGHT[0], BORDER_LIGHT[1], BORDER_LIGHT[2]);
+    doc.setLineWidth(0.5);
+    doc.line(signatureX - 45, footerY + 18, signatureX + 45, footerY + 18);
 
     // Nome do coordenador
-    doc.setFont('times', 'bold');
+    doc.setFont('helvetica', 'bold');
     doc.setFontSize(12);
     doc.setTextColor(DARK_BLUE[0], DARK_BLUE[1], DARK_BLUE[2]);
-    doc.text('Ronaldo Campos Rodrigues', signatureX, footerY + 22, { align: 'center' });
+    doc.text('Ronaldo Campos Rodrigues', signatureX, footerY + 25, { align: 'center' });
 
-    // Cargo
-    doc.setFont('times', 'normal');
-    doc.setFontSize(10);
-    doc.setTextColor(TEXT_DARK[0], TEXT_DARK[1], TEXT_DARK[2]);
-    doc.text('Coordenador', signatureX, footerY + 28, { align: 'center' });
-    doc.text('ECO RJ - Centro de Treinamento em Ecocardiografia', signatureX, footerY + 34, { align: 'center' });
-
-    // Codigo de validacao (direita)
-    const codeX = pageWidth - margin - 60;
-    doc.setFont('times', 'normal');
+    // Cargo e instituição
+    doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
-    doc.setTextColor(TEXT_DARK[0], TEXT_DARK[1], TEXT_DARK[2]);
-    doc.text('Codigo de Validacao:', codeX, footerY + 10, { align: 'center' });
+    doc.setTextColor(TEXT_MUTED[0], TEXT_MUTED[1], TEXT_MUTED[2]);
+    doc.text('Coordenador', signatureX, footerY + 31, { align: 'center' });
+    doc.text('ECO RJ - Centro de Treinamento em Ecocardiografia', signatureX, footerY + 36, { align: 'center' });
 
-    doc.setFont('times', 'bold');
-    doc.setFontSize(11);
+    // Código de validação (direita) - em um card destacado
+    const codeX = pageWidth - margin - 55;
+
+    // Background para o código
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(PRIMARY_BLUE[0], PRIMARY_BLUE[1], PRIMARY_BLUE[2]);
+    doc.setLineWidth(0.4);
+    doc.roundedRect(codeX - 30, footerY, 60, 28, 2, 2, 'FD');
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(TEXT_MUTED[0], TEXT_MUTED[1], TEXT_MUTED[2]);
+    doc.text('Código de Validação', codeX, footerY + 8, { align: 'center' });
+
+    // Código SHA-256 truncado para exibição
+    const displayCode = certificate.codigoValidacao.length > 16
+      ? certificate.codigoValidacao.substring(0, 16) + '...'
+      : certificate.codigoValidacao;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
     doc.setTextColor(PRIMARY_BLUE[0], PRIMARY_BLUE[1], PRIMARY_BLUE[2]);
-    doc.text(certificate.codigoValidacao, codeX, footerY + 18, { align: 'center' });
+    doc.text(displayCode, codeX, footerY + 16, { align: 'center' });
 
-    // ============= RODAPE INSTITUCIONAL =============
+    // URL completa em fonte menor
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6);
+    doc.setTextColor(TEXT_MUTED[0], TEXT_MUTED[1], TEXT_MUTED[2]);
+    doc.text('cursodeecocardiografia.com/validar', codeX, footerY + 22, { align: 'center' });
+
+    // ============= RODAPÉ INSTITUCIONAL =============
 
     const currentYear = new Date().getFullYear();
-    doc.setFont('times', 'normal');
-    doc.setFontSize(8);
-    doc.setTextColor(100, 100, 100);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(TEXT_MUTED[0], TEXT_MUTED[1], TEXT_MUTED[2]);
     doc.text(
-      `© ${currentYear} ECO RJ - Centro de Treinamento em Ecocardiografia · CNPJ: 21.847.609/0001-70`,
+      `© ${currentYear} ECO RJ - Centro de Treinamento em Ecocardiografia  •  CNPJ: 21.847.609/0001-70  •  Todos os direitos reservados`,
       pageWidth / 2,
-      pageHeight - margin - 3,
+      pageHeight - margin - 2,
       { align: 'center' }
     );
 

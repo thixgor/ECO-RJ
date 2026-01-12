@@ -177,8 +177,8 @@ export const generateCertificate = async (req: AuthRequest, res: Response) => {
     const totalMinutes = lessons.reduce((sum, lesson) => sum + (lesson.duracao || 0), 0);
     const cargaHoraria = Math.round((totalMinutes / 60) * 10) / 10; // Round to 1 decimal
 
-    // Generate unique validation code
-    const codigoValidacao = await Certificate.generateValidationCode();
+    // Generate unique validation code using SHA-256
+    const codigoValidacao = await Certificate.generateValidationCode(alunoId, cursoId);
 
     // Create certificate
     const certificate = await Certificate.create({
@@ -263,8 +263,8 @@ export const validateCertificate = async (req: Request, res: Response) => {
       });
     }
 
-    // Normalize code (uppercase, trim)
-    const normalizedCode = code.trim().toUpperCase();
+    // Normalize code (lowercase, trim) - SHA-256 hashes are stored in lowercase
+    const normalizedCode = code.trim().toLowerCase();
 
     const certificate = await Certificate.findOne({ codigoValidacao: normalizedCode })
       .populate('alunoId', 'nomeCompleto')

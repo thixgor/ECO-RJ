@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Clock, CheckCircle, BookOpen, FileText, Play, ExternalLink, Download, Layers, X, ChevronRight, ChevronLeft, Award, Target, RotateCcw, AlertTriangle, Check, XCircle, Video, File, PlayCircle, Maximize, Minimize, MessageCircle } from 'lucide-react';
+import { ArrowLeft, Clock, CheckCircle, BookOpen, FileText, Play, ExternalLink, Download, Layers, X, ChevronRight, ChevronLeft, Award, Target, RotateCcw, AlertTriangle, Check, XCircle, Video, File, PlayCircle, Maximize, Minimize, MessageCircle, Settings } from 'lucide-react';
 import { lessonService, exerciseService, zoomService, siteConfigService } from '../services/api';
 import { Lesson as LessonType, Exercise, Course } from '../types';
 import { useAuth } from '../contexts/AuthContext';
@@ -60,6 +60,7 @@ const Lesson: React.FC = () => {
   const zoomWrapperRef = useRef<HTMLDivElement>(null);
 
   const isWatched = user?.aulasAssistidas?.includes(id || '');
+  const isAdmin = user?.cargo === 'Administrador';
 
   useEffect(() => {
     if (id) loadLesson();
@@ -761,16 +762,32 @@ const Lesson: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fade-in">
-      {/* Back button */}
-      {curso && (
-        <Link
-          to={`/cursos/${typeof curso === 'string' ? curso : curso._id}`}
-          className="inline-flex items-center gap-2 text-[var(--color-text-secondary)] hover:text-primary-500 mb-6 group transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-          Voltar para o curso
-        </Link>
-      )}
+      {/* Navigation bar */}
+      <div className="flex items-center justify-between mb-6">
+        {/* Back button */}
+        {curso ? (
+          <Link
+            to={`/cursos/${typeof curso === 'string' ? curso : curso._id}`}
+            className="inline-flex items-center gap-2 text-[var(--color-text-secondary)] hover:text-primary-500 group transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+            Voltar para o curso
+          </Link>
+        ) : (
+          <div />
+        )}
+
+        {/* Admin Edit Button */}
+        {isAdmin && lesson && (
+          <Link
+            to={`/admin/aulas?edit=${lesson._id}`}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 rounded-lg hover:bg-amber-200 dark:hover:bg-amber-500/30 transition-colors text-sm font-medium"
+          >
+            <Settings className="w-4 h-4" />
+            Editar Aula
+          </Link>
+        )}
+      </div>
 
       <div className="grid lg:grid-cols-3 gap-8">
         {/* Main Content */}

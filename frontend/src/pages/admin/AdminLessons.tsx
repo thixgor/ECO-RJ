@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Plus, Edit, Trash2, PlayCircle, Clock, Video, ExternalLink, X, ChevronUp, ChevronDown, FolderOpen, GripVertical, FileText, Layers, Zap } from 'lucide-react';
 import { lessonService, courseService, courseTopicService, courseSubtopicService } from '../../services/api';
 import { Lesson, Course, CustomButton, CourseTopic, CourseSubtopic } from '../../types';
@@ -31,6 +32,7 @@ const AVAILABLE_ICONS = [
 ];
 
 const AdminLessons: React.FC = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [topics, setTopics] = useState<CourseTopic[]>([]);
@@ -41,6 +43,7 @@ const AdminLessons: React.FC = () => {
   const [filterCurso, setFilterCurso] = useState('');
   const [filterTopic, setFilterTopic] = useState('');
   const [filterSubtopic, setFilterSubtopic] = useState('');
+  const [pendingEditId, setPendingEditId] = useState<string | null>(null);
 
   // Topic creation state within modal
   const [showNewTopicForm, setShowNewTopicForm] = useState(false);
@@ -105,6 +108,17 @@ const AdminLessons: React.FC = () => {
   useEffect(() => {
     loadData();
   }, [filterCurso, filterTopic, filterSubtopic]);
+
+  // Check URL for edit parameter and open modal for that lesson
+  useEffect(() => {
+    const editId = searchParams.get('edit');
+    if (editId && !isLoading) {
+      setPendingEditId(editId);
+      // Clear the URL parameter
+      setSearchParams({});
+    }
+  }, [searchParams, isLoading, setSearchParams]);
+
 
   useEffect(() => {
     // Load topics when filter course changes
@@ -298,6 +312,32 @@ const AdminLessons: React.FC = () => {
     setNovoButton({ nome: '', icone: 'link', url: '' });
     setShowModal(true);
   };
+
+  // Open edit modal when pendingEditId is set and lessons are loaded
+  useEffect(() => {
+    const processEditId = async () => {
+      if (pendingEditId && lessons.length > 0) {
+        const lessonToEdit = lessons.find(l => l._id === pendingEditId);
+        if (lessonToEdit) {
+          openModal(lessonToEdit);
+          toast.success('Aula carregada para edição');
+        } else {
+          // Lesson not in current filter, try to load it directly
+          try {
+            const response = await lessonService.getById(pendingEditId);
+            const lesson = response.data;
+            openModal(lesson);
+            toast.success('Aula carregada para edição');
+          } catch (error) {
+            console.error('Erro ao carregar aula para edição:', error);
+            toast.error('Aula não encontrada');
+          }
+        }
+        setPendingEditId(null);
+      }
+    };
+    processEditId();
+  }, [pendingEditId, lessons]);
 
   const handleCourseChange = async (courseId: string) => {
     setFormData({ ...formData, cursoId: courseId, topicoId: '', subtopicoId: '' });
