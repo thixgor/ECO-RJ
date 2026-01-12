@@ -158,9 +158,9 @@ export const generateCertificatePDF = async (data: CertificateData): Promise<voi
       console.error('Falha ao carregar logo para o certificado:', e);
     }
 
-    // Logo centralizado com proporções corretas
+    // Logo centralizado com proporções corretas (565x621 = 0.91:1)
     const logoHeight = 22;
-    const logoWidth = logoHeight * 2.5; // Proporção aproximada 2.5:1
+    const logoWidth = logoHeight * 0.91; // Proporção real da logo: 565/621 ≈ 0.91
     const logoX = (pageWidth - logoWidth) / 2;
 
     if (logoBase64) {
