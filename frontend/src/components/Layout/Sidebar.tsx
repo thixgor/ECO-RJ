@@ -15,7 +15,8 @@ import {
   ClipboardList,
   X,
   Shield,
-  Bell
+  Bell,
+  Award
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { ThemeSwitch } from '../ui';
@@ -227,6 +228,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isVisible = true }) 
                 <NavLink to="/admin/avisos" className={navLinkClass} onClick={onClose}>
                   <Bell className="w-5 h-5 flex-shrink-0" />
                   <span>Avisos</span>
+                </NavLink>
+
+                <NavLink to="/admin/certificados" className={navLinkClass} onClick={onClose}>
+                  <Award className="w-5 h-5 flex-shrink-0" />
+                  <span>Certificados</span>
                 </NavLink>
 
                 <NavLink to="/admin/logs" className={navLinkClass} onClick={onClose}>

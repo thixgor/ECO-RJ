@@ -39,6 +39,8 @@ const AdminAccessLogs = lazy(() => import('./pages/admin/AdminAccessLogs'));
 const AdminExercises = lazy(() => import('./pages/admin/AdminExercises'));
 const AdminSiteConfig = lazy(() => import('./pages/admin/AdminSiteConfig'));
 const AdminAnnouncements = lazy(() => import('./pages/admin/AdminAnnouncements'));
+const AdminCertificates = lazy(() => import('./pages/admin/AdminCertificates'));
+const ValidateCertificate = lazy(() => import('./pages/ValidateCertificate'));
 
 const App: React.FC = () => {
   // Remove splash screen when App mounts
@@ -104,6 +106,9 @@ const App: React.FC = () => {
                 <Route path="/registro" element={<Register />} />
               </Route>
 
+              {/* Public Certificate Validation (standalone page) */}
+              <Route path="/validar" element={<ValidateCertificate />} />
+
               {/* Authenticated Routes */}
               <Route
                 element={
@@ -153,6 +158,7 @@ const App: React.FC = () => {
                 <Route path="/admin/avisos" element={<AdminAnnouncements />} />
                 <Route path="/admin/logs" element={<AdminAccessLogs />} />
                 <Route path="/admin/configuracoes" element={<AdminSiteConfig />} />
+                <Route path="/admin/certificados" element={<AdminCertificates />} />
               </Route>
 
               {/* Fallback */}

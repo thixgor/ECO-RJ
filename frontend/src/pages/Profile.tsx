@@ -1,12 +1,15 @@
-import React, { useState } from 'react';
-import { User, Mail, CreditCard, Calendar, Stethoscope, Key, Lock, Edit, Check, X, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { User, Mail, CreditCard, Calendar, Stethoscope, Key, Lock, Edit, Check, X, AlertCircle, Award, Download, Clock, BookOpen } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { authService, userService } from '../services/api';
+import { authService, userService, certificateService } from '../services/api';
+import { Certificate, User as UserType, Course } from '../types';
+import { generateCertificatePDF } from '../utils/certificatePdfGenerator';
+import Loading from '../components/common/Loading';
 import toast from 'react-hot-toast';
 
 const Profile: React.FC = () => {
   const { user, refreshUser } = useAuth();
-  const [activeTab, setActiveTab] = useState<'info' | 'serial' | 'password'>('info');
+  const [activeTab, setActiveTab] = useState<'info' | 'serial' | 'password' | 'certificados'>('info');
 
   // Edit profile state
   const [isEditing, setIsEditing] = useState(false);
@@ -28,6 +31,31 @@ const Profile: React.FC = () => {
     confirmarSenha: ''
   });
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+
+  // Certificates state
+  const [certificates, setCertificates] = useState<Certificate[]>([]);
+  const [isLoadingCertificates, setIsLoadingCertificates] = useState(false);
+  const [isDownloading, setIsDownloading] = useState<string | null>(null);
+
+  // Load certificates when tab changes to certificados
+  useEffect(() => {
+    if (activeTab === 'certificados') {
+      loadCertificates();
+    }
+  }, [activeTab]);
+
+  const loadCertificates = async () => {
+    setIsLoadingCertificates(true);
+    try {
+      const response = await certificateService.getMy();
+      setCertificates(response.data);
+    } catch (error) {
+      console.error('Erro ao carregar certificados:', error);
+      toast.error('Erro ao carregar certificados');
+    } finally {
+      setIsLoadingCertificates(false);
+    }
+  };
 
   const handleSaveProfile = async () => {
     setIsSaving(true);
@@ -88,8 +116,40 @@ const Profile: React.FC = () => {
     }
   };
 
+  const handleDownloadCertificate = async (cert: Certificate) => {
+    setIsDownloading(cert._id);
+    try {
+      const aluno = cert.alunoId as UserType;
+      const curso = cert.cursoId as Course;
+
+      // Se os dados do aluno não estão completos, usar os dados do usuário logado
+      const alunoCompleto: UserType = aluno?.nomeCompleto ? aluno : (user as UserType);
+
+      await generateCertificatePDF({
+        certificate: cert,
+        aluno: alunoCompleto,
+        curso
+      });
+    } catch (error) {
+      console.error('Erro ao baixar certificado:', error);
+      toast.error('Erro ao baixar certificado');
+    } finally {
+      setIsDownloading(null);
+    }
+  };
+
   const formatCPF = (cpf: string) => {
     return cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+  };
+
+  const formatDate = (date: string) => {
+    return new Date(date).toLocaleDateString('pt-BR');
+  };
+
+  const formatHours = (hours: number) => {
+    if (hours === 0) return '0h';
+    if (hours < 1) return `${Math.round(hours * 60)}min`;
+    return `${hours}h`;
   };
 
   return (
@@ -146,7 +206,7 @@ const Profile: React.FC = () => {
           <div>
             <h3 className="font-medium text-yellow-800 dark:text-amber-400">Acesso Limitado</h3>
             <p className="text-yellow-700 dark:text-amber-300/80 text-sm mt-1">
-              Você está como Visitante. Aplique uma serial key abaixo para ter acesso completo às aulas e exercícios.
+              Voce esta como Visitante. Aplique uma serial key abaixo para ter acesso completo as aulas e exercicios.
             </p>
           </div>
         </div>
@@ -154,20 +214,30 @@ const Profile: React.FC = () => {
 
       {/* Tabs */}
       <div className="card">
-        <div className="border-b">
-          <nav className="flex">
+        <div className="border-b overflow-x-auto">
+          <nav className="flex min-w-max">
             <button
               onClick={() => setActiveTab('info')}
-              className={`px-6 py-4 font-medium text-sm border-b-2 transition-colors ${activeTab === 'info'
+              className={`px-6 py-4 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${activeTab === 'info'
                   ? 'border-primary-500 text-primary-500'
                   : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
                 }`}
             >
-              Informações
+              Informacoes
+            </button>
+            <button
+              onClick={() => setActiveTab('certificados')}
+              className={`px-6 py-4 font-medium text-sm border-b-2 transition-colors whitespace-nowrap flex items-center gap-2 ${activeTab === 'certificados'
+                  ? 'border-primary-500 text-primary-500'
+                  : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
+                }`}
+            >
+              <Award className="w-4 h-4" />
+              Meus Certificados
             </button>
             <button
               onClick={() => setActiveTab('serial')}
-              className={`px-6 py-4 font-medium text-sm border-b-2 transition-colors ${activeTab === 'serial'
+              className={`px-6 py-4 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${activeTab === 'serial'
                   ? 'border-primary-500 text-primary-500'
                   : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
                 }`}
@@ -176,7 +246,7 @@ const Profile: React.FC = () => {
             </button>
             <button
               onClick={() => setActiveTab('password')}
-              className={`px-6 py-4 font-medium text-sm border-b-2 transition-colors ${activeTab === 'password'
+              className={`px-6 py-4 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${activeTab === 'password'
                   ? 'border-primary-500 text-primary-500'
                   : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
                 }`}
@@ -276,7 +346,7 @@ const Profile: React.FC = () => {
                     <Stethoscope className="w-5 h-5 text-gray-400" />
                     <div>
                       <p className="text-sm text-[var(--color-text-muted)]">Especialidade</p>
-                      <p className="font-medium text-[var(--color-text-primary)]">{user?.especialidade || 'Não informada'}</p>
+                      <p className="font-medium text-[var(--color-text-primary)]">{user?.especialidade || 'Nao informada'}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
@@ -301,13 +371,78 @@ const Profile: React.FC = () => {
             </div>
           )}
 
+          {/* Certificates Tab */}
+          {activeTab === 'certificados' && (
+            <div className="space-y-6">
+              {isLoadingCertificates ? (
+                <Loading />
+              ) : certificates.length === 0 ? (
+                <div className="text-center py-12">
+                  <Award className="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
+                  <h3 className="text-lg font-medium text-[var(--color-text-primary)] mb-2">
+                    Nenhum certificado encontrado
+                  </h3>
+                  <p className="text-[var(--color-text-muted)]">
+                    Seus certificados aparecerão aqui quando forem emitidos.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {certificates.map((cert) => {
+                    const curso = cert.cursoId as Course;
+                    return (
+                      <div
+                        key={cert._id}
+                        className="p-4 bg-gray-50 dark:bg-white/5 rounded-lg border border-[var(--glass-border)] hover:border-primary-300 dark:hover:border-primary-500/50 transition-colors"
+                      >
+                        <div className="flex flex-col md:flex-row md:items-center gap-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <BookOpen className="w-5 h-5 text-primary-500" />
+                              <h4 className="font-semibold text-[var(--color-text-primary)]">
+                                {curso?.titulo || 'Curso'}
+                              </h4>
+                            </div>
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
+                              <div className="flex items-center gap-1 text-[var(--color-text-muted)]">
+                                <Clock className="w-4 h-4" />
+                                <span>{formatHours(cert.cargaHoraria)}</span>
+                              </div>
+                              <div className="flex items-center gap-1 text-[var(--color-text-muted)]">
+                                <Calendar className="w-4 h-4" />
+                                <span>{formatDate(cert.dataEmissao)}</span>
+                              </div>
+                              <div className="col-span-2 md:col-span-1">
+                                <code className="text-xs bg-gray-100 dark:bg-white/10 px-2 py-1 rounded font-mono text-primary-600 dark:text-primary-400">
+                                  {cert.codigoValidacao}
+                                </code>
+                              </div>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => handleDownloadCertificate(cert)}
+                            disabled={isDownloading === cert._id}
+                            className="btn btn-primary flex items-center gap-2"
+                          >
+                            <Download className="w-4 h-4" />
+                            {isDownloading === cert._id ? 'Gerando...' : 'Baixar PDF'}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Serial Key Tab */}
           {activeTab === 'serial' && (
             <div className="space-y-6">
               <div className="bg-primary-50 dark:bg-primary-500/10 p-4 rounded-lg">
                 <h3 className="font-medium text-primary-800 dark:text-primary-300 mb-2">Como funciona?</h3>
                 <p className="text-primary-700 dark:text-primary-300/80 text-sm">
-                  Insira sua serial key para atualizar seu cargo e ter acesso completo às aulas e exercícios.
+                  Insira sua serial key para atualizar seu cargo e ter acesso completo as aulas e exercicios.
                   Cada chave pode ser utilizada apenas uma vez.
                 </p>
               </div>
@@ -338,7 +473,7 @@ const Profile: React.FC = () => {
               {/* History */}
               {user?.serialKeysUsadas && user.serialKeysUsadas.length > 0 && (
                 <div>
-                  <h3 className="font-medium mb-3">Histórico de Chaves</h3>
+                  <h3 className="font-medium mb-3">Historico de Chaves</h3>
                   <div className="space-y-2">
                     {(user.serialKeysUsadas as any[]).map((key, index) => (
                       <div key={index} className="p-3 bg-gray-50 dark:bg-white/5 rounded-lg flex justify-between items-center">
@@ -379,7 +514,7 @@ const Profile: React.FC = () => {
                     value={passwordData.novaSenha}
                     onChange={(e) => setPasswordData({ ...passwordData, novaSenha: e.target.value })}
                     className="input pl-10"
-                    placeholder="Mínimo 6 caracteres"
+                    placeholder="Minimo 6 caracteres"
                     required
                   />
                 </div>

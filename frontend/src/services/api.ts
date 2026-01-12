@@ -409,3 +409,29 @@ export const announcementService = {
   // User route
   getUserAnnouncements: () => api.get('/announcements/user')
 };
+
+// Certificates (Certificados)
+export const certificateService = {
+  // Admin routes
+  getAll: (params?: { alunoId?: string; cursoId?: string; page?: number; limit?: number }) =>
+    api.get('/certificates', { params }),
+
+  getById: (id: string) => api.get(`/certificates/${id}`),
+
+  getStats: () => api.get('/certificates/stats'),
+
+  getCourseHours: (courseId: string) => api.get(`/certificates/course-hours/${courseId}`),
+
+  generate: (data: { alunoId: string; cursoId: string }) =>
+    api.post('/certificates/generate', data),
+
+  delete: (id: string) => api.delete(`/certificates/${id}`),
+
+  deleteByUser: (userId: string) => api.delete(`/certificates/user/${userId}`),
+
+  // User routes
+  getMy: () => api.get('/certificates/my'),
+
+  // Public route
+  validate: (code: string) => api.get(`/certificates/validate/${code}`)
+};

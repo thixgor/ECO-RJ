@@ -238,3 +238,26 @@ export interface Announcement {
   createdAt: string;
   updatedAt: string;
 }
+
+// Certificados
+export interface Certificate {
+  _id: string;
+  codigoValidacao: string;
+  alunoId: string | User;
+  cursoId: string | Course;
+  dataEmissao: string;
+  cargaHoraria: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CertificateValidationResult {
+  valid: boolean;
+  message?: string;
+  data?: {
+    nomeAluno: string;
+    nomeCurso: string;
+    cargaHoraria: number;
+    dataEmissao: string;
+  };
+}
