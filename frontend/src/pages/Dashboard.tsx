@@ -204,12 +204,18 @@ const Dashboard: React.FC = () => {
     return liveLessonsToday.filter(event => {
       if (dismissedNotifications.has(event.lesson._id)) return false;
 
-      // Calcular quando a aula termina (início + duração)
-      const duracao = event.lesson.duracao || 60; // default 60 min
+      const duracao = event.lesson.duracao;
+
+      // Se não tem duração definida (0 ou undefined), mostrar o dia todo
+      if (!duracao || duracao === 0) {
+        return true;
+      }
+
+      // Se tem duração, calcular quando termina
       const minutosAteTerminar = event.minutesUntilStart + duracao;
 
-      // Mostrar se ainda não terminou (com margem de 30 min após o fim)
-      return minutosAteTerminar > -30;
+      // Mostrar enquanto não terminou
+      return minutosAteTerminar > 0;
     });
   }, [liveLessonsToday, dismissedNotifications]);
 
@@ -401,13 +407,18 @@ const Dashboard: React.FC = () => {
 
           <div className="divide-y divide-[var(--glass-border)]">
             {visibleLiveLessons.map((event) => {
+              const duracao = event.lesson.duracao;
+              const hasDuration = duracao && duracao > 0;
               const isStartingSoon = event.minutesUntilStart <= 10 && event.minutesUntilStart > 0;
-              const isLive = event.minutesUntilStart <= 0 && event.minutesUntilStart > -(event.lesson.duracao || 60);
-              const isPast = event.minutesUntilStart <= -(event.lesson.duracao || 60);
+              // Aula começou (minutesUntilStart <= 0)
+              const hasStarted = event.minutesUntilStart <= 0;
+              // Se tem duração, está "ao vivo" até terminar; se não tem, está "ao vivo" o dia todo
+              const isLive = hasStarted && (!hasDuration || event.minutesUntilStart > -duracao!);
+              const isPast = hasDuration && event.minutesUntilStart <= -duracao!;
 
               const formatTimeUntil = () => {
                 if (isPast) return 'Encerrada';
-                if (isLive) return 'AO VIVO AGORA';
+                if (hasStarted) return 'A aula já começou';
                 if (event.minutesUntilStart < 60) {
                   return `Começa em ${event.minutesUntilStart} min`;
                 }
