@@ -1,34 +1,43 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="ECO RJ - Centro de Treinamento em Ecocardiografia. Referência em atualização e ensino de ecocardiografia no Brasil com integração clínico-imagem." />
-    
-    <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://ecorj.com.br/" />
-    <meta property="og:title" content="ECO RJ - Centro de Treinamento em Ecocardiografia" />
-    <meta property="og:description" content="Domine a Ecocardiografia com os melhores especialistas. Cursos práticos e avançados com foco na excelência clínica e diagnóstica." />
-    <meta property="og:image" content="https://i.imgur.com/Rgz0BWF.png" />
 
-    <!-- Twitter -->
-    <meta property="twitter:card" content="summary_large_image" />
-    <meta property="twitter:url" content="https://ecorj.com.br/" />
-    <meta property="twitter:title" content="ECO RJ - Centro de Treinamento em Ecocardiografia" />
-    <meta property="twitter:description" content="Domine a Ecocardiografia com os melhores especialistas. Cursos práticos e avançados com foco na excelência clínica e diagnóstica." />
-    <meta property="twitter:image" content="https://i.imgur.com/Rgz0BWF.png" />
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description"
+    content="ECO RJ - Centro de Treinamento em Ecocardiografia. Referência em atualização e ensino de ecocardiografia no Brasil com integração clínico-imagem." />
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self' https: wss: data: blob:; img-src 'self' data: https://i.imgur.com https://*.zoom.us; connect-src 'self' https://i.imgur.com https://*.zoom.us wss://*.zoom.us https://*.cloudfront.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.zoom.us;">
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
-    <title>ECO RJ - Centro de Treinamento em Ecocardiografia</title>
-  </head>
-  <body>
-    <div id="root">
-      <!-- Splash screen instantâneo - aparece antes do React carregar -->
-      <div id="splash" style="
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://ecorj.com.br/" />
+  <meta property="og:title" content="ECO RJ - Centro de Treinamento em Ecocardiografia" />
+  <meta property="og:description"
+    content="Domine a Ecocardiografia com os melhores especialistas. Cursos práticos e avançados com foco na excelência clínica e diagnóstica." />
+  <meta property="og:image" content="https://i.imgur.com/Rgz0BWF.png" />
+
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image" />
+  <meta property="twitter:url" content="https://ecorj.com.br/" />
+  <meta property="twitter:title" content="ECO RJ - Centro de Treinamento em Ecocardiografia" />
+  <meta property="twitter:description"
+    content="Domine a Ecocardiografia com os melhores especialistas. Cursos práticos e avançados com foco na excelência clínica e diagnóstica." />
+  <meta property="twitter:image" content="https://i.imgur.com/Rgz0BWF.png" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap"
+    rel="stylesheet">
+  <title>ECO RJ - Centro de Treinamento em Ecocardiografia</title>
+</head>
+
+<body>
+  <div id="root">
+    <!-- Splash screen instantâneo - aparece antes do React carregar -->
+    <div id="splash" style="
         position: fixed;
         inset: 0;
         display: flex;
@@ -39,12 +48,9 @@
         z-index: 9999;
         transition: opacity 0.3s ease-out;
       ">
-        <img
-          src="https://i.imgur.com/Rgz0BWF.png"
-          alt="ECO RJ"
-          style="width: 120px; height: auto; margin-bottom: 24px; animation: pulse 2s ease-in-out infinite;"
-        />
-        <div style="
+      <img src="https://i.imgur.com/Rgz0BWF.png" alt="ECO RJ"
+        style="width: 120px; height: auto; margin-bottom: 24px; animation: pulse 2s ease-in-out infinite;" />
+      <div style="
           width: 40px;
           height: 40px;
           border: 3px solid rgba(135, 206, 235, 0.3);
@@ -52,15 +58,34 @@
           border-radius: 50%;
           animation: spin 0.8s linear infinite;
         "></div>
-        <style>
-          @keyframes spin { to { transform: rotate(360deg); } }
-          @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
-          @media (prefers-color-scheme: dark) {
-            #splash { background: linear-gradient(135deg, #0a0a0f 0%, #12121a 100%) !important; }
+      <style>
+        @keyframes spin {
+          to {
+            transform: rotate(360deg);
           }
-        </style>
-      </div>
+        }
+
+        @keyframes pulse {
+
+          0%,
+          100% {
+            opacity: 1;
+          }
+
+          50% {
+            opacity: 0.7;
+          }
+        }
+
+        @media (prefers-color-scheme: dark) {
+          #splash {
+            background: linear-gradient(135deg, #0a0a0f 0%, #12121a 100%) !important;
+          }
+        }
+      </style>
     </div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+  </div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+
 </html>
