@@ -3,9 +3,10 @@ import { Link } from 'react-router-dom';
 import { BookOpen, CheckCircle, Clock, MessageSquare, TrendingUp, AlertCircle, ArrowRight, Sparkles, User, Video, Calendar, PlayCircle, X, Bell, Globe, Users, Info } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { courseService, lessonService, announcementService } from '../services/api';
-import { Course, Lesson, Announcement } from '../types';
+import { Course, Lesson, Announcement, LastWatchedLesson } from '../types';
 import { GlassCard, GlassButton, GlassProgress, GlassBadge, SkeletonCard, SkeletonCourseItem } from '../components/ui';
 import { formatDuration } from '../utils/formatDuration';
+import ResumeLastLessonCard from '../components/dashboard/ResumeLastLessonCard';
 import toast from 'react-hot-toast';
 
 // Interface para aulas ao vivo do dia
@@ -26,6 +27,8 @@ const Dashboard: React.FC = () => {
   const [notifiedLessons, setNotifiedLessons] = useState<Set<string>>(new Set());
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [isLoadingAnnouncements, setIsLoadingAnnouncements] = useState(true);
+  const [lastWatchedLesson, setLastWatchedLesson] = useState<LastWatchedLesson | null>(null);
+  const [isLoadingLastWatched, setIsLoadingLastWatched] = useState(true);
 
   // Carregar dados com otimização - usar Promise.all para paralelizar
   const loadData = useCallback(async () => {
@@ -128,11 +131,25 @@ const Dashboard: React.FC = () => {
     }
   }, []);
 
+  // Carregar última aula assistida
+  const loadLastWatchedLesson = useCallback(async () => {
+    setIsLoadingLastWatched(true);
+    try {
+      const response = await lessonService.getLastWatched();
+      setLastWatchedLesson(response.data.lastWatched || null);
+    } catch (error) {
+      console.error('Erro ao carregar última aula:', error);
+    } finally {
+      setIsLoadingLastWatched(false);
+    }
+  }, []);
+
   useEffect(() => {
     loadData();
     loadAnnouncements();
     loadLiveLessonsToday();
-  }, [loadData, loadAnnouncements, loadLiveLessonsToday]);
+    loadLastWatchedLesson();
+  }, [loadData, loadAnnouncements, loadLiveLessonsToday, loadLastWatchedLesson]);
 
   // Atualizar minutesUntilStart a cada minuto e verificar notificações
   useEffect(() => {
@@ -651,6 +668,12 @@ const Dashboard: React.FC = () => {
 
         {/* Right Sidebar */}
         <div className="space-y-6">
+          {/* Resume Last Lesson */}
+          <ResumeLastLessonCard
+            lastLesson={lastWatchedLesson}
+            isLoading={isLoadingLastWatched}
+          />
+
           {/* Quick Actions */}
           <GlassCard hover={false} padding="none">
             <div className="p-6 border-b border-[var(--glass-border)]">

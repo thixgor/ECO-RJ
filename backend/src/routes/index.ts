@@ -16,6 +16,7 @@ import courseSubtopicRoutes from './courseSubtopicRoutes';
 import zoomRoutes from './zoomRoutes';
 import announcementRoutes from './announcementRoutes';
 import certificateRoutes from './certificateRoutes';
+import notesRoutes from './notesRoutes';
 
 const router = Router();
 
@@ -36,6 +37,7 @@ router.use('/course-subtopics', courseSubtopicRoutes);
 router.use('/zoom', zoomRoutes);
 router.use('/announcements', announcementRoutes);
 router.use('/certificates', certificateRoutes);
+router.use('/notes', notesRoutes);
 
 export default router;
 

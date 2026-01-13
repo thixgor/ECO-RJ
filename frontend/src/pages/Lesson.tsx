@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Clock, CheckCircle, BookOpen, FileText, Play, ExternalLink, Download, Layers, X, ChevronRight, ChevronLeft, Award, Target, RotateCcw, AlertTriangle, Check, XCircle, Video, File, PlayCircle, Maximize, Minimize, MessageCircle, Settings } from 'lucide-react';
+import { ArrowLeft, Clock, CheckCircle, BookOpen, FileText, Play, ExternalLink, Download, Layers, X, ChevronRight, ChevronLeft, Award, Target, RotateCcw, AlertTriangle, Check, XCircle, Video, File, PlayCircle, Maximize, Minimize, MessageCircle, Settings, StickyNote } from 'lucide-react';
 import { lessonService, exerciseService, zoomService, siteConfigService } from '../services/api';
 import { Lesson as LessonType, Exercise, Course } from '../types';
 import { useAuth } from '../contexts/AuthContext';
@@ -8,6 +8,9 @@ import { generateExercisePDF } from '../utils/pdfGenerator';
 import { LoadingPage } from '../components/common/Loading';
 import { formatDuration } from '../utils/formatDuration';
 import VideoWatermark from '../components/common/VideoWatermark';
+import AutoAdvanceOverlay from '../components/lesson/AutoAdvanceOverlay';
+import FloatingMiniPlayer from '../components/lesson/FloatingMiniPlayer';
+import NotesSidePanel from '../components/lesson/NotesSidePanel';
 import toast from 'react-hot-toast';
 
 // Interface for exercise result
@@ -58,6 +61,13 @@ const Lesson: React.FC = () => {
   const zoomClientRef = useRef<any>(null);
   const zoomContainerRef = useRef<HTMLDivElement>(null);
   const zoomWrapperRef = useRef<HTMLDivElement>(null);
+
+  // New feature states
+  const [showAutoAdvance, setShowAutoAdvance] = useState(false);
+  const [showMiniPlayer, setShowMiniPlayer] = useState(false);
+  const [showNotesPanel, setShowNotesPanel] = useState(false);
+  const [currentVideoTimestamp, setCurrentVideoTimestamp] = useState(0);
+  const videoContainerRef = useRef<HTMLDivElement>(null);
 
   const isWatched = user?.aulasAssistidas?.includes(id || '');
   const isAdmin = user?.cargo === 'Administrador';
@@ -205,6 +215,141 @@ const Lesson: React.FC = () => {
       setIsMarking(false);
     }
   };
+
+  // ========== New Feature Functions ==========
+
+  // Get current video timestamp (for notes)
+  const getCurrentTimestamp = useCallback((): number => {
+    return currentVideoTimestamp;
+  }, [currentVideoTimestamp]);
+
+  // Seek video to specific timestamp
+  const handleSeekToTimestamp = useCallback((timestamp: number) => {
+    // Try to communicate with YouTube or Vimeo iframe via postMessage
+    const iframe = videoContainerRef.current?.querySelector('iframe');
+    if (iframe && iframe.contentWindow) {
+      // YouTube API
+      if (iframe.src.includes('youtube.com')) {
+        iframe.contentWindow.postMessage(JSON.stringify({
+          event: 'command',
+          func: 'seekTo',
+          args: [timestamp, true]
+        }), '*');
+      }
+      // Vimeo API
+      else if (iframe.src.includes('vimeo.com')) {
+        iframe.contentWindow.postMessage(JSON.stringify({
+          method: 'setCurrentTime',
+          value: timestamp
+        }), '*');
+      }
+    }
+    // Close notes panel after seeking (optional UX improvement)
+    setShowNotesPanel(false);
+  }, []);
+
+  // Handle auto-advance navigation
+  const handleAutoAdvanceNavigate = useCallback(() => {
+    if (relatedLessons.length > 0) {
+      navigate(`/aulas/${relatedLessons[0]._id}`);
+    }
+    setShowAutoAdvance(false);
+  }, [relatedLessons, navigate]);
+
+  // Handle auto-advance cancel
+  const handleAutoAdvanceCancel = useCallback(() => {
+    setShowAutoAdvance(false);
+  }, []);
+
+  // Handle mini-player expand
+  const handleMiniPlayerExpand = useCallback(() => {
+    setShowMiniPlayer(false);
+    // Scroll to video container
+    videoContainerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
+
+  // Handle mini-player close
+  const handleMiniPlayerClose = useCallback(() => {
+    setShowMiniPlayer(false);
+  }, []);
+
+  // Listen for video events via postMessage
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      try {
+        let data = event.data;
+
+        // Parse if it's a JSON string
+        if (typeof data === 'string') {
+          try {
+            data = JSON.parse(data);
+          } catch {
+            return;
+          }
+        }
+
+        // YouTube player state change
+        if (data.event === 'onStateChange') {
+          // Player state 0 = ended
+          if (data.info === 0 && lesson?.tipo === 'gravada' && relatedLessons.length > 0) {
+            setShowAutoAdvance(true);
+          }
+        }
+
+        // YouTube current time update
+        if (data.event === 'infoDelivery' && data.info?.currentTime !== undefined) {
+          setCurrentVideoTimestamp(Math.floor(data.info.currentTime));
+        }
+
+        // Vimeo events
+        if (data.event === 'ended' && lesson?.tipo === 'gravada' && relatedLessons.length > 0) {
+          setShowAutoAdvance(true);
+        }
+
+        if (data.event === 'timeupdate' && data.data?.seconds !== undefined) {
+          setCurrentVideoTimestamp(Math.floor(data.data.seconds));
+        }
+      } catch (err) {
+        // Ignore parse errors from other sources
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [lesson?.tipo, relatedLessons.length]);
+
+  // Enable YouTube JS API by modifying iframe src
+  useEffect(() => {
+    const iframe = videoContainerRef.current?.querySelector('iframe');
+    if (iframe && iframe.src.includes('youtube.com') && !iframe.src.includes('enablejsapi')) {
+      const separator = iframe.src.includes('?') ? '&' : '?';
+      iframe.src = `${iframe.src}${separator}enablejsapi=1&origin=${window.location.origin}`;
+    }
+  }, [lesson?.embedVideo]);
+
+  // Intersection Observer for mini-player (desktop only)
+  useEffect(() => {
+    // Only enable for recorded lessons with video on desktop
+    if (!lesson || lesson.tipo !== 'gravada' || !lesson.embedVideo) return;
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) return; // Skip on mobile
+
+    const videoElement = videoContainerRef.current;
+    if (!videoElement) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        // Show mini-player when video is not visible
+        setShowMiniPlayer(!entry.isIntersecting);
+      },
+      {
+        threshold: 0.3, // Trigger when less than 30% visible
+        rootMargin: '-100px 0px 0px 0px'
+      }
+    );
+
+    observer.observe(videoElement);
+    return () => observer.disconnect();
+  }, [lesson?.tipo, lesson?.embedVideo]);
 
   // ========== Zoom Integration Functions ==========
   const joinZoomMeeting = useCallback(async () => {
@@ -1007,8 +1152,9 @@ const Lesson: React.FC = () => {
               </div>
             </div>
           ) : getVideoEmbed() ? (
-            <div className="card overflow-hidden">
+            <div className="card overflow-hidden relative">
               <div
+                ref={videoContainerRef}
                 id="video-container"
                 className="relative w-full"
                 style={{ paddingBottom: '56.25%' /* 16:9 aspect ratio */ }}
@@ -1018,7 +1164,29 @@ const Lesson: React.FC = () => {
                   dangerouslySetInnerHTML={{ __html: getVideoEmbed() }}
                 />
                 <VideoWatermark />
+
+                {/* Auto-Advance Overlay */}
+                {showAutoAdvance && relatedLessons.length > 0 && (
+                  <AutoAdvanceOverlay
+                    nextLesson={relatedLessons[0]}
+                    onNavigate={handleAutoAdvanceNavigate}
+                    onCancel={handleAutoAdvanceCancel}
+                    countdownSeconds={5}
+                  />
+                )}
               </div>
+
+              {/* Notes Button - Floating on video */}
+              {lesson.tipo === 'gravada' && (
+                <button
+                  onClick={() => setShowNotesPanel(true)}
+                  className="absolute top-3 right-3 z-20 flex items-center gap-2 px-3 py-2 bg-black/60 hover:bg-black/80 text-white rounded-lg text-sm font-medium transition-all hover:scale-105 backdrop-blur-sm"
+                  title="Minhas Notas"
+                >
+                  <StickyNote className="w-4 h-4" />
+                  <span className="hidden sm:inline">Notas</span>
+                </button>
+              )}
             </div>
           ) : null}
 
@@ -1604,6 +1772,27 @@ const Lesson: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Floating Mini-Player (desktop only, recorded lessons) */}
+      {lesson?.tipo === 'gravada' && lesson.embedVideo && (
+        <FloatingMiniPlayer
+          embedHtml={getVideoEmbed()}
+          isVisible={showMiniPlayer}
+          onExpand={handleMiniPlayerExpand}
+          onClose={handleMiniPlayerClose}
+        />
+      )}
+
+      {/* Notes Side Panel */}
+      {lesson?.tipo === 'gravada' && (
+        <NotesSidePanel
+          lessonId={id || ''}
+          isOpen={showNotesPanel}
+          onClose={() => setShowNotesPanel(false)}
+          getCurrentTimestamp={getCurrentTimestamp}
+          onSeekToTimestamp={handleSeekToTimestamp}
+        />
       )}
     </div>
   );

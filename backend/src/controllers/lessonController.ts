@@ -291,13 +291,119 @@ export const markAsWatched = async (req: AuthRequest, res: Response) => {
     // Verificar se já assistiu
     if (!user.aulasAssistidas.includes(lesson._id as any)) {
       user.aulasAssistidas.push(lesson._id as any);
-      await user.save();
     }
+
+    // Obter o cursoId corretamente
+    const cursoId = typeof lesson.cursoId === 'string'
+      ? lesson.cursoId
+      : (lesson.cursoId as any)?._id || lesson.cursoId;
+
+    // Atualizar última aula assistida
+    user.ultimaAulaAssistida = {
+      lessonId: lesson._id as any,
+      cursoId: cursoId as any,
+      assistidaEm: new Date(),
+      progresso: undefined
+    };
+
+    await user.save();
 
     res.json({ message: 'Aula marcada como assistida' });
   } catch (error) {
     console.error('Erro ao marcar aula:', error);
     res.status(500).json({ message: 'Erro ao marcar aula como assistida' });
+  }
+};
+
+// @desc    Atualizar progresso da aula (salva última aula assistida)
+// @route   POST /api/lessons/:id/update-progress
+// @access  Private
+export const updateLessonProgress = async (req: AuthRequest, res: Response) => {
+  try {
+    const { progresso } = req.body;
+
+    const lesson = await Lesson.findById(req.params.id);
+    if (!lesson) {
+      return res.status(404).json({ message: 'Aula não encontrada' });
+    }
+
+    const user = await User.findById(req.user?._id);
+    if (!user) {
+      return res.status(404).json({ message: 'Usuário não encontrado' });
+    }
+
+    // Obter o cursoId corretamente
+    const cursoId = typeof lesson.cursoId === 'string'
+      ? lesson.cursoId
+      : (lesson.cursoId as any)?._id || lesson.cursoId;
+
+    // Atualizar última aula assistida com progresso
+    user.ultimaAulaAssistida = {
+      lessonId: lesson._id as any,
+      cursoId: cursoId as any,
+      assistidaEm: new Date(),
+      progresso: progresso !== undefined ? Math.min(100, Math.max(0, Number(progresso))) : undefined
+    };
+
+    await user.save();
+
+    res.json({
+      message: 'Progresso atualizado',
+      ultimaAulaAssistida: user.ultimaAulaAssistida
+    });
+  } catch (error) {
+    console.error('Erro ao atualizar progresso:', error);
+    res.status(500).json({ message: 'Erro ao atualizar progresso' });
+  }
+};
+
+// @desc    Obter última aula assistida pelo usuário
+// @route   GET /api/lessons/last-watched
+// @access  Private
+export const getLastWatchedLesson = async (req: AuthRequest, res: Response) => {
+  try {
+    const user = await User.findById(req.user?._id)
+      .populate({
+        path: 'ultimaAulaAssistida.lessonId',
+        select: 'titulo tipo duracao embedVideo status'
+      })
+      .populate({
+        path: 'ultimaAulaAssistida.cursoId',
+        select: 'titulo imagemCapa'
+      });
+
+    if (!user) {
+      return res.status(404).json({ message: 'Usuário não encontrado' });
+    }
+
+    if (!user.ultimaAulaAssistida?.lessonId) {
+      return res.json({ lastWatched: null });
+    }
+
+    const lesson = user.ultimaAulaAssistida.lessonId as any;
+    const curso = user.ultimaAulaAssistida.cursoId as any;
+
+    // Verificar se a aula ainda existe e está ativa
+    if (!lesson || lesson.status === 'inativa') {
+      return res.json({ lastWatched: null });
+    }
+
+    res.json({
+      lastWatched: {
+        _id: lesson._id,
+        titulo: lesson.titulo,
+        tipo: lesson.tipo,
+        duracao: lesson.duracao,
+        cursoId: curso?._id,
+        cursoTitulo: curso?.titulo,
+        cursoImagem: curso?.imagemCapa,
+        progresso: user.ultimaAulaAssistida.progresso,
+        assistidaEm: user.ultimaAulaAssistida.assistidaEm
+      }
+    });
+  } catch (error) {
+    console.error('Erro ao buscar última aula:', error);
+    res.status(500).json({ message: 'Erro ao buscar última aula assistida' });
   }
 };
 

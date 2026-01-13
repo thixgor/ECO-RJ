@@ -192,6 +192,8 @@ export const lessonService = {
 
   getUpcomingLive: () => api.get('/lessons/upcoming-live'),
 
+  getLastWatched: () => api.get('/lessons/last-watched'),
+
   getAll: (params?: { cursoId?: string; tipo?: string; status?: string; topicoId?: string; subtopicoId?: string; page?: number; limit?: number }) =>
     api.get('/lessons', { params }),
 
@@ -231,6 +233,9 @@ export const lessonService = {
   delete: (id: string) => api.delete(`/lessons/${id}`),
 
   markAsWatched: (id: string) => api.post(`/lessons/${id}/watched`),
+
+  updateProgress: (id: string, progresso?: number) =>
+    api.post(`/lessons/${id}/update-progress`, { progresso }),
 
   reorder: (orders: { id: string; ordem: number; topicoId?: string | null; subtopicoId?: string | null }[]) =>
     api.put('/lessons/reorder', { orders })
@@ -434,4 +439,20 @@ export const certificateService = {
 
   // Public route
   validate: (code: string) => api.get(`/certificates/validate/${code}`)
+};
+
+// Notes (Anotações do usuário)
+export const notesService = {
+  create: (data: { lessonId: string; conteudo: string; timestamp: number }) =>
+    api.post('/notes', data),
+
+  getByLesson: (lessonId: string) => api.get(`/notes/lesson/${lessonId}`),
+
+  getMy: (params?: { cursoId?: string; lessonId?: string; page?: number; limit?: number }) =>
+    api.get('/notes/my', { params }),
+
+  update: (id: string, conteudo: string) =>
+    api.put(`/notes/${id}`, { conteudo }),
+
+  delete: (id: string) => api.delete(`/notes/${id}`)
 };

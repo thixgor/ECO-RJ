@@ -1,3 +1,10 @@
+export interface UltimaAulaAssistida {
+  lessonId: string;
+  cursoId: string;
+  assistidaEm: string;
+  progresso?: number;
+}
+
 export interface User {
   _id: string;
   email: string;
@@ -16,6 +23,7 @@ export interface User {
   serialKeysUsadas: string[] | SerialKey[];
   emailConfirmado: boolean;
   ultimoLogin?: string;
+  ultimaAulaAssistida?: UltimaAulaAssistida;
   ipsAcesso: string[];
   ativo: boolean;
   createdAt: string;
@@ -260,4 +268,43 @@ export interface CertificateValidationResult {
     cargaHoraria: number;
     dataEmissao: string;
   };
+}
+
+// Última aula assistida (para Dashboard)
+export interface LastWatchedLesson {
+  _id: string;
+  titulo: string;
+  tipo: 'ao_vivo' | 'gravada' | 'material';
+  duracao?: number;
+  cursoId: string;
+  cursoTitulo?: string;
+  cursoImagem?: string;
+  progresso?: number;
+  assistidaEm: string;
+}
+
+// Notas do usuário em aulas
+export interface UserNote {
+  _id: string;
+  userId: string;
+  lessonId: string | Lesson;
+  cursoId: string | Course;
+  conteudo: string;
+  timestamp: number; // segundos do vídeo
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Notas agrupadas por aula (para perfil)
+export interface GroupedNotesByLesson {
+  lessonId: string;
+  lessonTitulo: string;
+  notes: UserNote[];
+}
+
+// Notas agrupadas por curso (para perfil)
+export interface GroupedNotesByCourse {
+  cursoId: string;
+  cursoTitulo: string;
+  lessons: GroupedNotesByLesson[];
 }

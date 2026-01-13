@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { User, Mail, CreditCard, Calendar, Stethoscope, Key, Lock, Edit, Check, X, AlertCircle, Award, Download, Clock, BookOpen } from 'lucide-react';
+import { User, Mail, CreditCard, Calendar, Stethoscope, Key, Lock, Edit, Check, X, AlertCircle, Award, Download, Clock, BookOpen, StickyNote, Play, Trash2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { authService, userService, certificateService } from '../services/api';
-import { Certificate, User as UserType, Course } from '../types';
+import { authService, userService, certificateService, notesService } from '../services/api';
+import { Certificate, User as UserType, Course, UserNote, GroupedNotesByCourse } from '../types';
 import { generateCertificatePDF } from '../utils/certificatePdfGenerator';
 import Loading from '../components/common/Loading';
 import toast from 'react-hot-toast';
 
 const Profile: React.FC = () => {
   const { user, refreshUser } = useAuth();
-  const [activeTab, setActiveTab] = useState<'info' | 'serial' | 'password' | 'certificados'>('info');
+  const [activeTab, setActiveTab] = useState<'info' | 'serial' | 'password' | 'certificados' | 'notas'>('info');
 
   // Edit profile state
   const [isEditing, setIsEditing] = useState(false);
@@ -37,10 +38,18 @@ const Profile: React.FC = () => {
   const [isLoadingCertificates, setIsLoadingCertificates] = useState(false);
   const [isDownloading, setIsDownloading] = useState<string | null>(null);
 
+  // Notes state
+  const [userNotes, setUserNotes] = useState<GroupedNotesByCourse[]>([]);
+  const [isLoadingNotes, setIsLoadingNotes] = useState(false);
+  const [isDeletingNote, setIsDeletingNote] = useState<string | null>(null);
+
   // Load certificates when tab changes to certificados
   useEffect(() => {
     if (activeTab === 'certificados') {
       loadCertificates();
+    }
+    if (activeTab === 'notas') {
+      loadUserNotes();
     }
   }, [activeTab]);
 
@@ -55,6 +64,97 @@ const Profile: React.FC = () => {
     } finally {
       setIsLoadingCertificates(false);
     }
+  };
+
+  const loadUserNotes = async () => {
+    setIsLoadingNotes(true);
+    try {
+      const response = await notesService.getMy();
+      const notes: UserNote[] = response.data || [];
+
+      // Group notes by course and lesson
+      const groupedMap = new Map<string, GroupedNotesByCourse>();
+
+      notes.forEach(note => {
+        const cursoId = typeof note.cursoId === 'string' ? note.cursoId : (note.cursoId as any)?._id;
+        const cursoTitulo = typeof note.cursoId === 'object' ? (note.cursoId as any)?.titulo : 'Curso';
+
+        if (!groupedMap.has(cursoId)) {
+          groupedMap.set(cursoId, {
+            cursoId,
+            cursoTitulo,
+            lessons: []
+          });
+        }
+
+        const courseGroup = groupedMap.get(cursoId)!;
+        const lessonId = typeof note.lessonId === 'string' ? note.lessonId : (note.lessonId as any)?._id;
+        const lessonTitulo = typeof note.lessonId === 'object' ? (note.lessonId as any)?.titulo : 'Aula';
+
+        let lessonGroup = courseGroup.lessons.find(l => l.lessonId === lessonId);
+        if (!lessonGroup) {
+          lessonGroup = {
+            lessonId,
+            lessonTitulo,
+            notes: []
+          };
+          courseGroup.lessons.push(lessonGroup);
+        }
+
+        lessonGroup.notes.push(note);
+      });
+
+      // Sort notes within each lesson by timestamp
+      groupedMap.forEach(course => {
+        course.lessons.forEach(lesson => {
+          lesson.notes.sort((a, b) => a.timestamp - b.timestamp);
+        });
+      });
+
+      setUserNotes(Array.from(groupedMap.values()));
+    } catch (error) {
+      console.error('Erro ao carregar notas:', error);
+      toast.error('Erro ao carregar notas');
+    } finally {
+      setIsLoadingNotes(false);
+    }
+  };
+
+  const handleDeleteNote = async (noteId: string) => {
+    if (!confirm('Tem certeza que deseja excluir esta nota?')) return;
+
+    setIsDeletingNote(noteId);
+    try {
+      await notesService.delete(noteId);
+      // Remove note from state
+      setUserNotes(prev => {
+        const updated = prev.map(course => ({
+          ...course,
+          lessons: course.lessons.map(lesson => ({
+            ...lesson,
+            notes: lesson.notes.filter(n => n._id !== noteId)
+          })).filter(lesson => lesson.notes.length > 0)
+        })).filter(course => course.lessons.length > 0);
+        return updated;
+      });
+      toast.success('Nota excluída');
+    } catch (error) {
+      console.error('Erro ao excluir nota:', error);
+      toast.error('Erro ao excluir nota');
+    } finally {
+      setIsDeletingNote(null);
+    }
+  };
+
+  const formatTimestamp = (seconds: number): string => {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = Math.floor(seconds % 60);
+
+    if (hrs > 0) {
+      return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   const handleSaveProfile = async () => {
@@ -243,6 +343,16 @@ const Profile: React.FC = () => {
                 }`}
             >
               Serial Key
+            </button>
+            <button
+              onClick={() => setActiveTab('notas')}
+              className={`px-6 py-4 font-medium text-sm border-b-2 transition-colors whitespace-nowrap flex items-center gap-2 ${activeTab === 'notas'
+                  ? 'border-primary-500 text-primary-500'
+                  : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
+                }`}
+            >
+              <StickyNote className="w-4 h-4" />
+              Minhas Notas
             </button>
             <button
               onClick={() => setActiveTab('password')}
@@ -491,6 +601,109 @@ const Profile: React.FC = () => {
                       </div>
                     ))}
                   </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Notes Tab */}
+          {activeTab === 'notas' && (
+            <div className="space-y-6">
+              {isLoadingNotes ? (
+                <Loading />
+              ) : userNotes.length === 0 ? (
+                <div className="text-center py-12">
+                  <StickyNote className="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
+                  <h3 className="text-lg font-medium text-[var(--color-text-primary)] mb-2">
+                    Nenhuma nota encontrada
+                  </h3>
+                  <p className="text-[var(--color-text-muted)]">
+                    Suas notas de aula aparecerão aqui. Crie notas durante as aulas gravadas clicando no botão "Notas".
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {userNotes.map((courseGroup) => (
+                    <div key={courseGroup.cursoId} className="space-y-4">
+                      {/* Course Header */}
+                      <div className="flex items-center gap-2 pb-2 border-b border-[var(--glass-border)]">
+                        <BookOpen className="w-5 h-5 text-primary-500" />
+                        <h3 className="font-semibold text-[var(--color-text-primary)]">
+                          {courseGroup.cursoTitulo}
+                        </h3>
+                      </div>
+
+                      {/* Lessons */}
+                      {courseGroup.lessons.map((lessonGroup) => (
+                        <div key={lessonGroup.lessonId} className="ml-4 space-y-3">
+                          {/* Lesson Header */}
+                          <div className="flex items-center justify-between">
+                            <Link
+                              to={`/aulas/${lessonGroup.lessonId}`}
+                              className="flex items-center gap-2 text-sm font-medium text-[var(--color-text-secondary)] hover:text-primary-500 transition-colors"
+                            >
+                              <Play className="w-4 h-4" />
+                              {lessonGroup.lessonTitulo}
+                            </Link>
+                            <span className="text-xs text-[var(--color-text-muted)]">
+                              {lessonGroup.notes.length} nota{lessonGroup.notes.length !== 1 ? 's' : ''}
+                            </span>
+                          </div>
+
+                          {/* Notes List */}
+                          <div className="space-y-2">
+                            {lessonGroup.notes.map((note) => (
+                              <div
+                                key={note._id}
+                                className="p-3 bg-gray-50 dark:bg-white/5 rounded-lg border border-[var(--glass-border)] hover:border-primary-300 dark:hover:border-primary-500/50 transition-colors group"
+                              >
+                                <div className="flex items-start gap-3">
+                                  {/* Timestamp */}
+                                  <Link
+                                    to={`/aulas/${lessonGroup.lessonId}?t=${note.timestamp}`}
+                                    className="flex-shrink-0 px-2 py-1 bg-primary-100 dark:bg-primary-500/20 text-primary-600 dark:text-primary-400 rounded text-xs font-mono hover:bg-primary-200 dark:hover:bg-primary-500/30 transition-colors"
+                                    title="Ir para este momento"
+                                  >
+                                    {formatTimestamp(note.timestamp)}
+                                  </Link>
+
+                                  {/* Content */}
+                                  <p className="flex-1 text-sm text-[var(--color-text-primary)] whitespace-pre-wrap">
+                                    {note.conteudo}
+                                  </p>
+
+                                  {/* Delete Button */}
+                                  <button
+                                    onClick={() => handleDeleteNote(note._id)}
+                                    disabled={isDeletingNote === note._id}
+                                    className="flex-shrink-0 p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded transition-colors opacity-0 group-hover:opacity-100"
+                                    title="Excluir nota"
+                                  >
+                                    {isDeletingNote === note._id ? (
+                                      <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
+                                    ) : (
+                                      <Trash2 className="w-4 h-4" />
+                                    )}
+                                  </button>
+                                </div>
+
+                                {/* Date */}
+                                <p className="mt-2 text-xs text-[var(--color-text-muted)]">
+                                  {new Date(note.createdAt).toLocaleDateString('pt-BR', {
+                                    day: '2-digit',
+                                    month: 'short',
+                                    year: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
                 </div>
               )}
             </div>

@@ -2,6 +2,13 @@ import mongoose, { Document, Schema } from 'mongoose';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 
+export interface IUltimaAulaAssistida {
+  lessonId: mongoose.Types.ObjectId;
+  cursoId: mongoose.Types.ObjectId;
+  assistidaEm: Date;
+  progresso?: number; // Video progress percentage (0-100)
+}
+
 export interface IUser extends Document {
   email: string;
   password: string;
@@ -20,6 +27,7 @@ export interface IUser extends Document {
   serialKeysUsadas: mongoose.Types.ObjectId[];
   emailConfirmado: boolean;
   ultimoLogin?: Date;
+  ultimaAulaAssistida?: IUltimaAulaAssistida;
   ipsAcesso: string[];
   ativo: boolean;
   tokenRecuperacao?: string; // Token único para recuperação de senha (gerado automaticamente)
@@ -108,6 +116,24 @@ const UserSchema = new Schema<IUser>(
     },
     ultimoLogin: {
       type: Date
+    },
+    ultimaAulaAssistida: {
+      lessonId: {
+        type: Schema.Types.ObjectId,
+        ref: 'Lesson'
+      },
+      cursoId: {
+        type: Schema.Types.ObjectId,
+        ref: 'Course'
+      },
+      assistidaEm: {
+        type: Date
+      },
+      progresso: {
+        type: Number,
+        min: 0,
+        max: 100
+      }
     },
     ipsAcesso: [{
       type: String
