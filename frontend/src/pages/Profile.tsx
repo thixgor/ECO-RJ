@@ -70,48 +70,80 @@ const Profile: React.FC = () => {
     setIsLoadingNotes(true);
     try {
       const response = await notesService.getMy();
-      const notes: UserNote[] = Array.isArray(response.data) ? response.data : [];
+      const responseData = response.data as any;
 
-      // Group notes by course and lesson
-      const groupedMap = new Map<string, GroupedNotesByCourse>();
+      // Backend já retorna notas agrupadas em responseData.grouped
+      if (responseData.grouped && Array.isArray(responseData.grouped)) {
+        // Usar dados já agrupados do backend
+        const groupedNotes = responseData.grouped.map((course: any) => ({
+          cursoId: course.cursoId,
+          cursoTitulo: course.cursoTitulo,
+          lessons: (course.aulas || []).map((aula: any) => ({
+            lessonId: aula.lessonId,
+            lessonTitulo: aula.lessonTitulo,
+            notes: (aula.notas || []).map((nota: any) => ({
+              _id: nota._id,
+              conteudo: nota.conteudo,
+              timestamp: nota.timestamp,
+              createdAt: nota.createdAt,
+              updatedAt: nota.updatedAt
+            })).sort((a: any, b: any) => a.timestamp - b.timestamp)
+          }))
+        }));
+        setUserNotes(groupedNotes);
+      } else if (responseData.notes && Array.isArray(responseData.notes)) {
+        // Fallback: tentar agrupar manualmente se não vier agrupado
+        const notes: UserNote[] = responseData.notes;
 
-      notes.forEach(note => {
-        const cursoId = typeof note.cursoId === 'string' ? note.cursoId : (note.cursoId as any)?._id;
-        const cursoTitulo = typeof note.cursoId === 'object' ? (note.cursoId as any)?.titulo : 'Curso';
+        const groupedMap = new Map<string, GroupedNotesByCourse>();
 
-        if (!groupedMap.has(cursoId)) {
-          groupedMap.set(cursoId, {
-            cursoId,
-            cursoTitulo,
-            lessons: []
+        notes.forEach((note: any) => {
+          const cursoId = note.cursoId?._id?.toString() || note.cursoId?.toString() || 'unknown';
+          const cursoTitulo = note.cursoId?.titulo || 'Curso';
+
+          if (!groupedMap.has(cursoId)) {
+            groupedMap.set(cursoId, {
+              cursoId,
+              cursoTitulo,
+              lessons: []
+            });
+          }
+
+          const courseGroup = groupedMap.get(cursoId)!;
+          const lessonId = note.lessonId?._id?.toString() || note.lessonId?.toString() || 'unknown';
+          const lessonTitulo = note.lessonId?.titulo || 'Aula';
+
+          let lessonGroup = courseGroup.lessons.find((l: any) => l.lessonId === lessonId);
+          if (!lessonGroup) {
+            lessonGroup = {
+              lessonId,
+              lessonTitulo,
+              notes: []
+            };
+            courseGroup.lessons.push(lessonGroup);
+          }
+
+          lessonGroup.notes.push({
+            _id: note._id,
+            conteudo: note.conteudo,
+            timestamp: note.timestamp,
+            createdAt: note.createdAt,
+            updatedAt: note.updatedAt
           });
-        }
-
-        const courseGroup = groupedMap.get(cursoId)!;
-        const lessonId = typeof note.lessonId === 'string' ? note.lessonId : (note.lessonId as any)?._id;
-        const lessonTitulo = typeof note.lessonId === 'object' ? (note.lessonId as any)?.titulo : 'Aula';
-
-        let lessonGroup = courseGroup.lessons.find(l => l.lessonId === lessonId);
-        if (!lessonGroup) {
-          lessonGroup = {
-            lessonId,
-            lessonTitulo,
-            notes: []
-          };
-          courseGroup.lessons.push(lessonGroup);
-        }
-
-        lessonGroup.notes.push(note);
-      });
-
-      // Sort notes within each lesson by timestamp
-      groupedMap.forEach(course => {
-        course.lessons.forEach(lesson => {
-          lesson.notes.sort((a, b) => a.timestamp - b.timestamp);
         });
-      });
 
-      setUserNotes(Array.from(groupedMap.values()));
+        // Sort notes within each lesson by timestamp
+        groupedMap.forEach(course => {
+          course.lessons.forEach(lesson => {
+            lesson.notes.sort((a: any, b: any) => a.timestamp - b.timestamp);
+          });
+        });
+
+        setUserNotes(Array.from(groupedMap.values()));
+      } else {
+        // Nenhuma nota encontrada
+        setUserNotes([]);
+      }
     } catch (error) {
       console.error('Erro ao carregar notas:', error);
       toast.error('Erro ao carregar notas');
@@ -132,7 +164,7 @@ const Profile: React.FC = () => {
           ...course,
           lessons: course.lessons.map(lesson => ({
             ...lesson,
-            notes: lesson.notes.filter(n => n._id !== noteId)
+            notes: lesson.notes.filter((n: any) => n._id !== noteId)
           })).filter(lesson => lesson.notes.length > 0)
         })).filter(course => course.lessons.length > 0);
         return updated;
