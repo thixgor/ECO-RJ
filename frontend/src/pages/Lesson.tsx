@@ -296,7 +296,7 @@ const Lesson: React.FC = () => {
           }
         }
 
-        // YouTube current time update
+        // YouTube current time update (from infoDelivery)
         if (data.event === 'infoDelivery' && data.info?.currentTime !== undefined) {
           setCurrentVideoTimestamp(Math.floor(data.info.currentTime));
         }
@@ -306,8 +306,14 @@ const Lesson: React.FC = () => {
           setShowAutoAdvance(true);
         }
 
+        // Vimeo timeupdate
         if (data.event === 'timeupdate' && data.data?.seconds !== undefined) {
           setCurrentVideoTimestamp(Math.floor(data.data.seconds));
+        }
+
+        // Vimeo playProgress (alternative event)
+        if (data.method === 'playProgress' && data.value?.seconds !== undefined) {
+          setCurrentVideoTimestamp(Math.floor(data.value.seconds));
         }
       } catch (err) {
         // Ignore parse errors from other sources
@@ -318,14 +324,102 @@ const Lesson: React.FC = () => {
     return () => window.removeEventListener('message', handleMessage);
   }, [lesson?.tipo, relatedLessons.length]);
 
-  // Enable YouTube JS API by modifying iframe src
+  // Setup YouTube/Vimeo API communication
   useEffect(() => {
+    if (!lesson?.embedVideo || lesson.tipo !== 'gravada') return;
+
     const iframe = videoContainerRef.current?.querySelector('iframe');
-    if (iframe && iframe.src.includes('youtube.com') && !iframe.src.includes('enablejsapi')) {
-      const separator = iframe.src.includes('?') ? '&' : '?';
-      iframe.src = `${iframe.src}${separator}enablejsapi=1&origin=${window.location.origin}`;
+    if (!iframe) return;
+
+    // Function to send command to YouTube iframe
+    const sendYouTubeCommand = (func: string, args?: any[]) => {
+      if (iframe.contentWindow) {
+        iframe.contentWindow.postMessage(JSON.stringify({
+          event: 'command',
+          func,
+          args: args || []
+        }), '*');
+      }
+    };
+
+    // Function to send command to Vimeo iframe
+    const sendVimeoCommand = (method: string, value?: any) => {
+      if (iframe.contentWindow) {
+        iframe.contentWindow.postMessage(JSON.stringify({
+          method,
+          value
+        }), '*');
+      }
+    };
+
+    // Start listening for YouTube events
+    const startYouTubeListening = () => {
+      if (iframe.contentWindow) {
+        iframe.contentWindow.postMessage(JSON.stringify({
+          event: 'listening',
+          id: 'youtube-player'
+        }), '*');
+      }
+    };
+
+    // Poll for current time periodically (fallback for YouTube)
+    let pollInterval: ReturnType<typeof setInterval> | null = null;
+
+    if (iframe.src.includes('youtube.com')) {
+      // Wait for iframe to load, then start listening
+      const onIframeLoad = () => {
+        setTimeout(() => {
+          startYouTubeListening();
+          // Also request current time periodically
+          sendYouTubeCommand('getCurrentTime');
+        }, 1000);
+      };
+
+      iframe.addEventListener('load', onIframeLoad);
+
+      // If iframe already loaded
+      if (iframe.contentWindow) {
+        onIframeLoad();
+      }
+
+      // Poll for time updates every 500ms as fallback
+      pollInterval = setInterval(() => {
+        sendYouTubeCommand('getCurrentTime');
+      }, 500);
+
+      return () => {
+        iframe.removeEventListener('load', onIframeLoad);
+        if (pollInterval) clearInterval(pollInterval);
+      };
     }
-  }, [lesson?.embedVideo]);
+
+    if (iframe.src.includes('vimeo.com')) {
+      // Vimeo: add event listeners
+      const onIframeLoad = () => {
+        setTimeout(() => {
+          sendVimeoCommand('addEventListener', 'playProgress');
+          sendVimeoCommand('addEventListener', 'timeupdate');
+          sendVimeoCommand('addEventListener', 'ended');
+        }, 1000);
+      };
+
+      iframe.addEventListener('load', onIframeLoad);
+
+      if (iframe.contentWindow) {
+        onIframeLoad();
+      }
+
+      // Poll Vimeo for current time as well
+      pollInterval = setInterval(() => {
+        sendVimeoCommand('getCurrentTime');
+      }, 500);
+
+      return () => {
+        iframe.removeEventListener('load', onIframeLoad);
+        if (pollInterval) clearInterval(pollInterval);
+      };
+    }
+  }, [lesson?.embedVideo, lesson?.tipo]);
 
   // Intersection Observer for mini-player (desktop only)
   useEffect(() => {
@@ -864,8 +958,47 @@ const Lesson: React.FC = () => {
 
     if (!embedCode) return '';
 
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+
+    // Helper to add YouTube API params
+    const addYouTubeParams = (url: string) => {
+      const params = new URLSearchParams();
+      params.set('enablejsapi', '1');
+      params.set('origin', origin);
+      params.set('widget_referrer', origin);
+
+      const separator = url.includes('?') ? '&' : '?';
+      return `${url}${separator}${params.toString()}`;
+    };
+
+    // Helper to add Vimeo API params
+    const addVimeoParams = (url: string) => {
+      const params = new URLSearchParams();
+      params.set('api', '1');
+      params.set('player_id', 'vimeo-player');
+
+      const separator = url.includes('?') ? '&' : '?';
+      return `${url}${separator}${params.toString()}`;
+    };
+
     // 1. Priority: Check if it's already an iframe
     if (embedCode.trim().startsWith('<iframe')) {
+      // Extract src and modify it
+      const srcMatch = embedCode.match(/src=["']([^"']+)["']/);
+      if (srcMatch && srcMatch[1]) {
+        let src = srcMatch[1];
+
+        // Add API params based on provider
+        if (src.includes('youtube.com') && !src.includes('enablejsapi')) {
+          src = addYouTubeParams(src);
+        } else if (src.includes('vimeo.com') && !src.includes('api=1')) {
+          src = addVimeoParams(src);
+        }
+
+        // Replace src in iframe
+        embedCode = embedCode.replace(/src=["'][^"']+["']/, `src="${src}"`);
+      }
+
       // Add responsive styles if they don't exist
       if (!embedCode.includes('position:absolute')) {
         return embedCode.replace(/<iframe/gi, '<iframe style="position:absolute;top:0;left:0;width:100%;height:100%;"');
@@ -877,19 +1010,21 @@ const Lesson: React.FC = () => {
     const ytRegex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
     const ytMatch = embedCode.match(ytRegex);
     if (ytMatch && ytMatch[1]) {
-      return `<iframe width="100%" height="100%" src="https://www.youtube.com/embed/${ytMatch[1]}" frameborder="0" allowfullscreen style="position:absolute;top:0;left:0;width:100%;height:100%;"></iframe>`;
+      const ytUrl = addYouTubeParams(`https://www.youtube.com/embed/${ytMatch[1]}`);
+      return `<iframe id="youtube-player" width="100%" height="100%" src="${ytUrl}" frameborder="0" allowfullscreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" style="position:absolute;top:0;left:0;width:100%;height:100%;"></iframe>`;
     }
 
     // 3. Vimeo Regex
     const vimeoRegex = /(?:vimeo\.com\/|player\.vimeo\.com\/video\/)([0-9]+)/;
     const vimeoMatch = embedCode.match(vimeoRegex);
     if (vimeoMatch && vimeoMatch[1]) {
-      return `<iframe src="https://player.vimeo.com/video/${vimeoMatch[1]}" frameborder="0" allowfullscreen style="position:absolute;top:0;left:0;width:100%;height:100%;"></iframe>`;
+      const vimeoUrl = addVimeoParams(`https://player.vimeo.com/video/${vimeoMatch[1]}`);
+      return `<iframe id="vimeo-player" src="${vimeoUrl}" frameborder="0" allowfullscreen allow="autoplay; fullscreen; picture-in-picture" style="position:absolute;top:0;left:0;width:100%;height:100%;"></iframe>`;
     }
 
     // 4. Panda Video (example pattern, adjust if needed) or other generic URL handling
     if (embedCode.includes('pandavideo.com')) {
-      // Assuming it's a direct link or something that needs an iframe, but better safe to return as is if unsure, 
+      // Assuming it's a direct link or something that needs an iframe, but better safe to return as is if unsure,
       // OR wrap it in an iframe if it looks like a URL
       if (embedCode.startsWith('http')) {
         return `<iframe src="${embedCode}" frameborder="0" allowfullscreen style="position:absolute;top:0;left:0;width:100%;height:100%;"></iframe>`;
