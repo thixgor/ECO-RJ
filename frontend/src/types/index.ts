@@ -43,6 +43,7 @@ export interface Course {
   acessoRestrito: boolean;
   alunosAutorizados: string[] | User[];
   exibirDuracao?: boolean; // default: true - exibe tempo de conteúdo
+  tipo: 'online' | 'presencial'; // Tipo do curso
   createdAt: string;
 }
 

@@ -3,14 +3,13 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { UserProfileProvider } from './contexts/UserProfileContext';
 import { PublicLayout, AuthenticatedLayout, AdminLayout, PublicPageWrapper } from './components/Layout';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import { AnimatedBackground } from './components/ui';
 import { LoadingMinimal } from './components/common/Loading';
 import WelcomeModal from './components/common/WelcomeModal';
-
-// Home é carregada diretamente (sem lazy) para eliminar loading na landing page
-import Home from './pages/Home';
+import LandingPageWrapper from './components/common/LandingPageWrapper';
 
 // Lazy load pages for better performance
 // Public Pages
@@ -54,8 +53,9 @@ const App: React.FC = () => {
 
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <BrowserRouter>
+      <UserProfileProvider>
+        <AuthProvider>
+          <BrowserRouter>
           {/* Animated Background */}
           <AnimatedBackground intensity="subtle" />
 
@@ -93,7 +93,7 @@ const App: React.FC = () => {
               {/* Public Routes */}
               {/* Public Pages with Dynamic Layout (Sidebar if logged in) */}
               <Route element={<PublicPageWrapper />}>
-                <Route path="/" element={<Home />} />
+                <Route path="/" element={<LandingPageWrapper />} />
                 <Route path="/cursos" element={<Courses />} />
                 <Route path="/cursos/:id" element={<CourseDetail />} />
                 <Route path="/termos" element={<Terms />} />
@@ -165,8 +165,9 @@ const App: React.FC = () => {
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Suspense>
-        </BrowserRouter>
-      </AuthProvider>
+          </BrowserRouter>
+        </AuthProvider>
+      </UserProfileProvider>
     </ThemeProvider>
   );
 };

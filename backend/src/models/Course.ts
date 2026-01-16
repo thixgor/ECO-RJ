@@ -10,6 +10,7 @@ export interface ICourse extends Document {
   aulas: mongoose.Types.ObjectId[];
   ativo: boolean;
   ordem: number; // Ordem de exibição na listagem
+  tipo: 'online' | 'presencial'; // Tipo do curso
   // Controle de acesso
   acessoRestrito: boolean; // se true, apenas alunos autorizados podem ver
   alunosAutorizados: mongoose.Types.ObjectId[]; // lista de alunos com acesso
@@ -56,6 +57,11 @@ const CourseSchema = new Schema<ICourse>(
     ordem: {
       type: Number,
       default: 0
+    },
+    tipo: {
+      type: String,
+      enum: ['online', 'presencial'],
+      default: 'online'
     },
     acessoRestrito: {
       type: Boolean,

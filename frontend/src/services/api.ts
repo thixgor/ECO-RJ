@@ -86,7 +86,7 @@ export const userService = {
 
 // Courses
 export const courseService = {
-  getAll: (params?: { ativo?: string; page?: number; limit?: number }) =>
+  getAll: (params?: { ativo?: string; tipo?: string; page?: number; limit?: number }) =>
     api.get('/courses', { params }),
 
   getById: (id: string) => api.get(`/courses/${id}`),
@@ -96,6 +96,7 @@ export const courseService = {
     descricao: string;
     dataInicio: string;
     imagemCapa?: string;
+    tipo?: 'online' | 'presencial';
   }) => api.post('/courses', data),
 
   update: (id: string, data: {
@@ -104,6 +105,8 @@ export const courseService = {
     dataInicio?: string;
     imagemCapa?: string;
     ativo?: boolean;
+    tipo?: 'online' | 'presencial';
+    exibirDuracao?: boolean;
   }) => api.put(`/courses/${id}`, data),
 
   delete: (id: string) => api.delete(`/courses/${id}`),

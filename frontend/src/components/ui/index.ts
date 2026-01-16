@@ -7,6 +7,7 @@ export { GlassSelect } from './GlassSelect';
 export { GlassProgress } from './GlassProgress';
 export { GlassModal } from './GlassModal';
 export { GlassBadge } from './GlassBadge';
+export { GlassTabs } from './GlassTabs';
 export { ThemeSwitch } from './ThemeSwitch';
 export { AnimatedBackground } from './AnimatedBackground';
 export { Skeleton, SkeletonCard, SkeletonCourseItem } from './Skeleton';

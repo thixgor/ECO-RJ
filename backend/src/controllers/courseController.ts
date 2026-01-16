@@ -10,11 +10,14 @@ import { registrarAcesso } from './accessLogController';
 // @access  Public (todos veem todos os cursos, acesso ao conteúdo é controlado nas aulas)
 export const getCourses = async (req: AuthRequest, res: Response) => {
   try {
-    const { ativo, page = 1, limit = 1000 } = req.query;
+    const { ativo, tipo, page = 1, limit = 1000 } = req.query;
 
     const query: any = {};
     if (ativo !== undefined) {
       query.ativo = ativo === 'true';
+    }
+    if (tipo !== undefined) {
+      query.tipo = tipo;
     }
 
     const skip = (Number(page) - 1) * Number(limit);
@@ -138,7 +141,8 @@ export const createCourse = async (req: AuthRequest, res: Response) => {
       imagemCapa,
       dataLimiteInscricao,
       acessoRestrito,
-      alunosAutorizados
+      alunosAutorizados,
+      tipo
     } = req.body;
 
     if (!titulo || !descricao || !dataInicio) {
@@ -153,7 +157,8 @@ export const createCourse = async (req: AuthRequest, res: Response) => {
       imagemCapa,
       dataLimiteInscricao: dataLimiteInscricao ? new Date(dataLimiteInscricao) : undefined,
       acessoRestrito: acessoRestrito || false,
-      alunosAutorizados: alunosAutorizados || []
+      alunosAutorizados: alunosAutorizados || [],
+      tipo: tipo || 'online'
     });
 
     res.status(201).json(course);
@@ -176,7 +181,9 @@ export const updateCourse = async (req: Request, res: Response) => {
       ativo,
       dataLimiteInscricao,
       acessoRestrito,
-      alunosAutorizados
+      alunosAutorizados,
+      tipo,
+      exibirDuracao
     } = req.body;
 
     const course = await Course.findById(req.params.id);
@@ -194,6 +201,8 @@ export const updateCourse = async (req: Request, res: Response) => {
     }
     if (acessoRestrito !== undefined) course.acessoRestrito = acessoRestrito;
     if (alunosAutorizados !== undefined) course.alunosAutorizados = alunosAutorizados;
+    if (tipo !== undefined) course.tipo = tipo;
+    if (exibirDuracao !== undefined) course.exibirDuracao = exibirDuracao;
 
     await course.save();
 

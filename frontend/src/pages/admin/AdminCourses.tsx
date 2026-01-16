@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, BookOpen, Lock, Users, Calendar, ChevronUp, ChevronDown, GripVertical, FolderOpen, Layers } from 'lucide-react';
+import { Plus, Edit, Trash2, BookOpen, Lock, Users, Calendar, ChevronUp, ChevronDown, GripVertical, FolderOpen, Layers, Monitor, MapPin } from 'lucide-react';
 import { courseService, userService, courseTopicService, courseSubtopicService } from '../../services/api';
 import { Course, User, CourseTopic, CourseSubtopic } from '../../types';
 import Loading from '../../components/common/Loading';
@@ -19,7 +19,8 @@ const AdminCourses: React.FC = () => {
     imagemCapa: '',
     dataLimiteInscricao: '',
     acessoRestrito: true, // Padrão: curso restrito
-    exibirDuracao: true // Padrão: exibir duração do conteúdo
+    exibirDuracao: true, // Padrão: exibir duração do conteúdo
+    tipo: 'online' as 'online' | 'presencial'
   });
   const [isSaving, setIsSaving] = useState(false);
   const [showAuthorizedModal, setShowAuthorizedModal] = useState(false);
@@ -67,11 +68,12 @@ const AdminCourses: React.FC = () => {
         imagemCapa: course.imagemCapa || '',
         dataLimiteInscricao: course.dataLimiteInscricao ? course.dataLimiteInscricao.split('T')[0] : '',
         acessoRestrito: course.acessoRestrito || false,
-        exibirDuracao: course.exibirDuracao !== false // default true
+        exibirDuracao: course.exibirDuracao !== false, // default true
+        tipo: course.tipo || 'online'
       });
     } else {
       setEditingCourse(null);
-      setFormData({ titulo: '', descricao: '', dataInicio: '', imagemCapa: '', dataLimiteInscricao: '', acessoRestrito: true, exibirDuracao: true });
+      setFormData({ titulo: '', descricao: '', dataInicio: '', imagemCapa: '', dataLimiteInscricao: '', acessoRestrito: true, exibirDuracao: true, tipo: 'online' });
     }
     setShowModal(true);
   };
@@ -403,6 +405,14 @@ const AdminCourses: React.FC = () => {
                         }`}>
                         {course.ativo ? 'Ativo' : 'Inativo'}
                       </span>
+                      <span className={`px-2 py-0.5 rounded flex items-center gap-1 ${
+                        course.tipo === 'presencial'
+                          ? 'bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-400'
+                          : 'bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400'
+                      }`}>
+                        {course.tipo === 'presencial' ? <MapPin className="w-3 h-3" /> : <Monitor className="w-3 h-3" />}
+                        {course.tipo === 'presencial' ? 'Presencial' : 'Online'}
+                      </span>
                       {course.acessoRestrito && (
                         <span className="px-2 py-0.5 rounded bg-yellow-100 dark:bg-amber-500/20 text-yellow-700 dark:text-amber-400 flex items-center gap-1">
                           <Lock className="w-3 h-3" />
@@ -499,15 +509,28 @@ const AdminCourses: React.FC = () => {
                   required
                 />
               </div>
-              <div>
-                <label className="label">Data de Início *</label>
-                <input
-                  type="date"
-                  value={formData.dataInicio}
-                  onChange={(e) => setFormData({ ...formData, dataInicio: e.target.value })}
-                  className="input"
-                  required
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="label">Data de Início *</label>
+                  <input
+                    type="date"
+                    value={formData.dataInicio}
+                    onChange={(e) => setFormData({ ...formData, dataInicio: e.target.value })}
+                    className="input"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="label">Tipo do Curso *</label>
+                  <select
+                    value={formData.tipo}
+                    onChange={(e) => setFormData({ ...formData, tipo: e.target.value as 'online' | 'presencial' })}
+                    className="input"
+                  >
+                    <option value="online">Online</option>
+                    <option value="presencial">Presencial</option>
+                  </select>
+                </div>
               </div>
               <div>
                 <label className="label">URL da Imagem de Capa</label>

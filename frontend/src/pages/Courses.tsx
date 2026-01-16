@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, Calendar, User, Search, Mail, Key, Lock, ChevronDown, Star, Sparkles, Clock } from 'lucide-react';
+import { BookOpen, Calendar, User, Search, Mail, Key, Lock, ChevronDown, Star, Sparkles, Clock, Monitor, MapPin } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { courseService, siteConfigService } from '../services/api';
 import { Course, User as UserType } from '../types';
 import { CoursesGridSkeleton } from '../components/common/Loading';
 import { formatDuration } from '../utils/formatDuration';
+import { GlassTabs } from '../components/ui';
 
 const Courses: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
@@ -14,6 +15,7 @@ const Courses: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showScrollHint, setShowScrollHint] = useState(true);
   const [featuredCourseId, setFeaturedCourseId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'online' | 'presencial'>('online');
 
   useEffect(() => {
     loadData();
@@ -56,10 +58,22 @@ const Courses: React.FC = () => {
     }
   };
 
-  const filteredCourses = courses.filter(course =>
-    course.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    course.descricao.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filtrar por tipo (tab) e por termo de busca
+  const filteredCourses = courses.filter(course => {
+    const matchesType = (course.tipo || 'online') === activeTab;
+    const matchesSearch = course.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      course.descricao.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesType && matchesSearch;
+  });
+
+  // Contar cursos por tipo para exibir nas tabs
+  const onlineCount = courses.filter(c => (c.tipo || 'online') === 'online').length;
+  const presencialCount = courses.filter(c => c.tipo === 'presencial').length;
+
+  const courseTabs = [
+    { id: 'online', label: 'Cursos Online', icon: <Monitor className="w-4 h-4" />, count: onlineCount },
+    { id: 'presencial', label: 'Cursos Presenciais', icon: <MapPin className="w-4 h-4" />, count: presencialCount }
+  ];
 
   const scrollToContent = () => {
     window.scrollTo({ top: window.innerHeight * 0.5, behavior: 'smooth' });
@@ -97,13 +111,22 @@ const Courses: React.FC = () => {
         </p>
       </div>
 
+      {/* Tabs */}
+      <div className="mb-6">
+        <GlassTabs
+          tabs={courseTabs}
+          activeTab={activeTab}
+          onChange={(id) => setActiveTab(id as 'online' | 'presencial')}
+        />
+      </div>
+
       {/* Search */}
       <div className="mb-6">
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--color-text-muted)]" />
           <input
             type="text"
-            placeholder="Buscar cursos..."
+            placeholder={`Buscar cursos ${activeTab === 'online' ? 'online' : 'presenciais'}...`}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="input pl-10 bg-white dark:bg-white/5 border-gray-200 dark:border-white/10 text-[var(--color-text-primary)] transition-all"
