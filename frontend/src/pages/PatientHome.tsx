@@ -3,7 +3,7 @@ import { Heart, Activity, MapPin, Phone, CheckCircle, Stethoscope, ArrowRight, M
 import { GlassCard, GlassButton } from '../components/ui';
 
 const PROFESSOR_IMAGE = 'https://i.imgur.com/QmeotYH.jpeg';
-const WHATSAPP_NUMBER = '5521986226149';
+const WHATSAPP_NUMBER = '5521968084445';
 
 // SVG do coracao/ECG para decoracao
 const HeartbeatLine: React.FC<{ className?: string }> = ({ className }) => (
@@ -335,9 +335,9 @@ const PatientHome: React.FC = () => {
                   </GlassButton>
                   <GlassButton
                     leftIcon={<Phone className="w-5 h-5" />}
-                    onClick={() => window.open('tel:+5521986226149', '_self')}
+                    onClick={() => window.open('tel:+5521968084445', '_self')}
                   >
-                    (21) 986226149
+                    (21) 968084445
                   </GlassButton>
                 </div>
               </div>
