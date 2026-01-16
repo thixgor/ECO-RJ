@@ -300,7 +300,16 @@ export interface UserNote {
 export interface GroupedNotesByLesson {
   lessonId: string;
   lessonTitulo: string;
-  notes: UserNote[];
+  notes: NoteDisplay[];
+}
+
+// Tipo simplificado para nota exibida no perfil (sem userId, lessonId, cursoId)
+export interface NoteDisplay {
+  _id: string;
+  conteudo: string;
+  timestamp: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // Notas agrupadas por curso (para perfil)

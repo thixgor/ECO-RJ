@@ -3,7 +3,7 @@ import { User, Mail, CreditCard, Calendar, Stethoscope, Key, Lock, Edit, Check, 
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { authService, userService, certificateService, notesService } from '../services/api';
-import { Certificate, User as UserType, Course, UserNote, GroupedNotesByCourse } from '../types';
+import { Certificate, User as UserType, Course, UserNote, GroupedNotesByCourse, NoteDisplay } from '../types';
 import { generateCertificatePDF } from '../utils/certificatePdfGenerator';
 import Loading from '../components/common/Loading';
 import toast from 'react-hot-toast';
@@ -81,13 +81,13 @@ const Profile: React.FC = () => {
           lessons: (course.aulas || []).map((aula: any) => ({
             lessonId: aula.lessonId,
             lessonTitulo: aula.lessonTitulo,
-            notes: (aula.notas || []).map((nota: any) => ({
+            notes: (aula.notas || []).map((nota: any): NoteDisplay => ({
               _id: nota._id,
               conteudo: nota.conteudo,
               timestamp: nota.timestamp,
               createdAt: nota.createdAt,
               updatedAt: nota.updatedAt
-            })).sort((a: any, b: any) => a.timestamp - b.timestamp)
+            })).sort((a, b) => a.timestamp - b.timestamp)
           }))
         }));
         setUserNotes(groupedNotes);
@@ -129,13 +129,13 @@ const Profile: React.FC = () => {
             timestamp: note.timestamp,
             createdAt: note.createdAt,
             updatedAt: note.updatedAt
-          });
+          } as NoteDisplay);
         });
 
         // Sort notes within each lesson by timestamp
         groupedMap.forEach(course => {
           course.lessons.forEach(lesson => {
-            lesson.notes.sort((a: any, b: any) => a.timestamp - b.timestamp);
+            lesson.notes.sort((a: NoteDisplay, b: NoteDisplay) => a.timestamp - b.timestamp);
           });
         });
 
