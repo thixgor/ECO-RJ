@@ -87,7 +87,7 @@ const Profile: React.FC = () => {
               timestamp: nota.timestamp,
               createdAt: nota.createdAt,
               updatedAt: nota.updatedAt
-            })).sort((a, b) => a.timestamp - b.timestamp)
+            })).sort((a: NoteDisplay, b: NoteDisplay) => a.timestamp - b.timestamp)
           }))
         }));
         setUserNotes(groupedNotes);
