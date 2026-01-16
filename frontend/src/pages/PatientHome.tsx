@@ -168,7 +168,7 @@ const PatientHome: React.FC = () => {
                   </div>
                   <div>
                     <p className="font-semibold text-[var(--color-text-primary)]">Consulta Gratuita</p>
-                    <p className="text-sm text-[var(--color-text-muted)]">Atendimento pelo convenio ou SUS</p>
+                    <p className="text-sm text-[var(--color-text-muted)]">Atendimento distribuido pela ECO RJ</p>
                   </div>
                 </div>
               </button>
