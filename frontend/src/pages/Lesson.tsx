@@ -312,8 +312,13 @@ const Lesson: React.FC = () => {
         }
 
         // Vimeo playProgress (alternative event)
-        if (data.method === 'playProgress' && data.value?.seconds !== undefined) {
+        if (data.event === 'playProgress' && data.value?.seconds !== undefined) {
           setCurrentVideoTimestamp(Math.floor(data.value.seconds));
+        }
+
+        // Vimeo getCurrentTime response
+        if (data.method === 'getCurrentTime' && data.value !== undefined) {
+          setCurrentVideoTimestamp(Math.floor(data.value));
         }
       } catch (err) {
         // Ignore parse errors from other sources
@@ -408,11 +413,6 @@ const Lesson: React.FC = () => {
       if (iframe.contentWindow) {
         onIframeLoad();
       }
-
-      // Poll Vimeo for current time as well
-      pollInterval = setInterval(() => {
-        sendVimeoCommand('getCurrentTime');
-      }, 500);
 
       return () => {
         iframe.removeEventListener('load', onIframeLoad);
