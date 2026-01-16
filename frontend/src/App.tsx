@@ -51,6 +51,21 @@ const App: React.FC = () => {
     }
   }, []);
 
+  // Fix for Safari iOS: Clean up any stuck overflow state from previous sessions
+  React.useEffect(() => {
+    // Remove any data attributes from modals/sidebars
+    document.body.removeAttribute('data-original-overflow');
+    document.body.removeAttribute('data-sidebar-overflow');
+
+    // Ensure body overflow is not stuck at 'hidden'
+    const hasOpenModal = document.querySelector('[role="dialog"]');
+    const hasOpenSidebar = document.querySelector('.sidebar-open');
+
+    if (!hasOpenModal && !hasOpenSidebar) {
+      document.body.style.overflow = '';
+    }
+  }, []);
+
   return (
     <ThemeProvider>
       <UserProfileProvider>

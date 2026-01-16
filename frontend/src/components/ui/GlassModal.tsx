@@ -42,11 +42,16 @@ export const GlassModal: React.FC<GlassModalProps> = ({
     if (isOpen) {
       document.addEventListener('keydown', handleEscape);
       document.body.style.overflow = 'hidden';
+      // Fix for Safari iOS: save the overflow state
+      document.body.setAttribute('data-original-overflow', document.body.style.overflow || '');
     }
 
     return () => {
       document.removeEventListener('keydown', handleEscape);
-      document.body.style.overflow = '';
+      // Fix for Safari iOS: restore overflow or use empty string
+      const originalOverflow = document.body.getAttribute('data-original-overflow');
+      document.body.style.overflow = originalOverflow || '';
+      document.body.removeAttribute('data-original-overflow');
     };
   }, [isOpen, closeOnEscape, onClose]);
 

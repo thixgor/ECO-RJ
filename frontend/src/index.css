@@ -75,6 +75,17 @@
     -webkit-tap-highlight-color: transparent;
     /* Prevent pull-to-refresh on mobile Chrome */
     overscroll-behavior-y: contain;
+    /* Fix for Safari iOS viewport height issue */
+    height: 100%;
+    height: -webkit-fill-available;
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+  }
+
+  body {
+    /* Fix for Safari iOS viewport height issue */
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
   }
 
   body {

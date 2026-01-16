@@ -117,7 +117,7 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-[85vh] flex items-center justify-center py-12 px-4">
+    <div className="min-h-[85dvh] flex items-center justify-center py-12 px-4">
       <div className="max-w-md w-full animate-slide-up">
         {/* Header */}
         <div className="text-center mb-8">

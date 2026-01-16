@@ -57,11 +57,19 @@ export const AuthenticatedLayout: React.FC = () => {
   useEffect(() => {
     if (isSidebarOpen) {
       document.body.style.overflow = 'hidden';
+      // Fix for Safari iOS: save overflow state
+      document.body.setAttribute('data-sidebar-overflow', document.body.style.overflow || '');
     } else {
-      document.body.style.overflow = '';
+      // Restore overflow or use empty string
+      const originalOverflow = document.body.getAttribute('data-sidebar-overflow');
+      document.body.style.overflow = originalOverflow || '';
+      document.body.removeAttribute('data-sidebar-overflow');
     }
     return () => {
-      document.body.style.overflow = '';
+      // Cleanup: always restore overflow
+      const originalOverflow = document.body.getAttribute('data-sidebar-overflow');
+      document.body.style.overflow = originalOverflow || '';
+      document.body.removeAttribute('data-sidebar-overflow');
     };
   }, [isSidebarOpen]);
 
@@ -191,11 +199,19 @@ export const AdminLayout: React.FC = () => {
   useEffect(() => {
     if (isSidebarOpen) {
       document.body.style.overflow = 'hidden';
+      // Fix for Safari iOS: save overflow state
+      document.body.setAttribute('data-sidebar-overflow', document.body.style.overflow || '');
     } else {
-      document.body.style.overflow = '';
+      // Restore overflow or use empty string
+      const originalOverflow = document.body.getAttribute('data-sidebar-overflow');
+      document.body.style.overflow = originalOverflow || '';
+      document.body.removeAttribute('data-sidebar-overflow');
     }
     return () => {
-      document.body.style.overflow = '';
+      // Cleanup: always restore overflow
+      const originalOverflow = document.body.getAttribute('data-sidebar-overflow');
+      document.body.style.overflow = originalOverflow || '';
+      document.body.removeAttribute('data-sidebar-overflow');
     };
   }, [isSidebarOpen]);
 

@@ -92,7 +92,7 @@ const Home: React.FC = () => {
   return (
     <div className="animate-fade-in">
       {/* Hero Section - Com elementos de cardiologia */}
-      <section className="relative min-h-[80vh] sm:min-h-[85vh] flex items-center py-12 sm:py-16 overflow-hidden">
+      <section className="relative min-h-[80dvh] sm:min-h-[85dvh] flex items-center py-12 sm:py-16 overflow-hidden">
         {/* Background com elementos médicos */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           {/* Gradientes */}

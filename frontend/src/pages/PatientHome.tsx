@@ -67,7 +67,7 @@ const PatientHome: React.FC = () => {
   return (
     <div className="animate-fade-in">
       {/* Hero Section */}
-      <section className="relative min-h-[80vh] sm:min-h-[85vh] flex items-center py-12 sm:py-16 overflow-hidden">
+      <section className="relative min-h-[80dvh] sm:min-h-[85dvh] flex items-center py-12 sm:py-16 overflow-hidden">
         {/* Background decorativo */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-1/4 right-0 w-72 h-72 bg-red-400/10 rounded-full blur-3xl" />
