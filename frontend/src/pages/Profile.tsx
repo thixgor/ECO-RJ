@@ -70,7 +70,7 @@ const Profile: React.FC = () => {
     setIsLoadingNotes(true);
     try {
       const response = await notesService.getMy();
-      const notes: UserNote[] = response.data || [];
+      const notes: UserNote[] = Array.isArray(response.data) ? response.data : [];
 
       // Group notes by course and lesson
       const groupedMap = new Map<string, GroupedNotesByCourse>();

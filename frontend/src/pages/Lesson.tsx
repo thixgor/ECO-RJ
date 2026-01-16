@@ -275,6 +275,18 @@ const Lesson: React.FC = () => {
 
   // Listen for video events via postMessage
   useEffect(() => {
+    const iframe = videoContainerRef.current?.querySelector('iframe');
+
+    // Function to send command to Vimeo iframe
+    const sendVimeoCommand = (method: string, value?: any) => {
+      if (iframe && iframe.contentWindow) {
+        iframe.contentWindow.postMessage(JSON.stringify({
+          method,
+          value
+        }), '*');
+      }
+    };
+
     const handleMessage = (event: MessageEvent) => {
       try {
         let data = event.data;
@@ -319,6 +331,18 @@ const Lesson: React.FC = () => {
         // Vimeo getCurrentTime response
         if (data.method === 'getCurrentTime' && data.value !== undefined) {
           setCurrentVideoTimestamp(Math.floor(data.value));
+        }
+
+        // Vimeo play event - get current time
+        if (data.event === 'play') {
+          console.log('Vimeo play event received');
+          sendVimeoCommand('getCurrentTime');
+        }
+
+        // Vimeo pause event - get current time
+        if (data.event === 'pause') {
+          console.log('Vimeo pause event received');
+          sendVimeoCommand('getCurrentTime');
         }
       } catch (err) {
         // Ignore parse errors from other sources
@@ -402,9 +426,13 @@ const Lesson: React.FC = () => {
       // Vimeo: add event listeners
       const onIframeLoad = () => {
         setTimeout(() => {
+          sendVimeoCommand('addEventListener', 'play');
+          sendVimeoCommand('addEventListener', 'pause');
           sendVimeoCommand('addEventListener', 'playProgress');
           sendVimeoCommand('addEventListener', 'timeupdate');
           sendVimeoCommand('addEventListener', 'ended');
+          // Request initial time
+          sendVimeoCommand('getCurrentTime');
         }, 1000);
       };
 
@@ -413,6 +441,11 @@ const Lesson: React.FC = () => {
       if (iframe.contentWindow) {
         onIframeLoad();
       }
+
+      // Poll Vimeo for current time periodically as fallback
+      pollInterval = setInterval(() => {
+        sendVimeoCommand('getCurrentTime');
+      }, 500);
 
       return () => {
         iframe.removeEventListener('load', onIframeLoad);
