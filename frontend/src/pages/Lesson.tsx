@@ -954,7 +954,7 @@ const Lesson: React.FC = () => {
 
   // Extract video ID from embed or URL
   const getVideoEmbed = () => {
-    let embedCode = lesson.embedVideo || '';
+    let embedCode = typeof lesson.embedVideo === 'string' ? lesson.embedVideo : '';
 
     if (!embedCode) return '';
 
@@ -982,7 +982,7 @@ const Lesson: React.FC = () => {
     };
 
     // 1. Priority: Check if it's already an iframe
-    if (embedCode.trim().startsWith('<iframe')) {
+    if (typeof embedCode === 'string' && embedCode.trim().startsWith('<iframe')) {
       // Extract src and modify it
       const srcMatch = embedCode.match(/src=["']([^"']+)["']/);
       if (srcMatch && srcMatch[1]) {
