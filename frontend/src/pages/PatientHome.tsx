@@ -61,7 +61,7 @@ const PatientHome: React.FC = () => {
   };
 
   const openGoogleMaps = () => {
-    window.open('https://www.google.com/maps/@-23.0217124,-43.4894209,17z?entry=ttu&g_ep=EgoyMDI2MDExMy4wIKXMDSoASAFQAw%3D%3D', '_blank');
+    window.open('https://maps.google.com/?q=-23.0217124,-43.4894209', '_blank');
   };
 
   return (
@@ -107,8 +107,8 @@ const PatientHome: React.FC = () => {
             </h1>
 
             <p className="text-base sm:text-lg md:text-xl text-[var(--color-text-muted)] mb-8 sm:mb-10 leading-relaxed px-2">
-              <strong className="text-[var(--color-text-primary)]">Diagnostico vascular</strong> e avaliacao cardiovascular completa
-              com equipamentos de ultima geracao e equipe especializada.
+              <strong className="text-[var(--color-text-primary)]">Diagnóstico vascular</strong> e avaliação cardiovascular completa
+              com equipamentos de última geração e equipe especializada.
             </p>
 
             {/* CTA Principal */}
@@ -211,11 +211,11 @@ const PatientHome: React.FC = () => {
             <div className="flex items-center justify-center gap-2 mb-4">
               <Stethoscope className="w-6 h-6 text-primary-500" />
               <h2 className="font-heading text-2xl sm:text-3xl lg:text-4xl font-bold text-[var(--color-text-primary)]">
-                Nossos Servicos
+                Nossos Serviços
               </h2>
             </div>
             <p className="text-[var(--color-text-muted)] text-base sm:text-lg max-w-xl mx-auto">
-              Exames e avaliacoes realizados com equipamentos de ponta
+              Exames e avaliações realizados com equipamentos de ponta
             </p>
           </div>
 
@@ -344,7 +344,7 @@ const PatientHome: React.FC = () => {
 
               <div className="min-h-[300px]">
                 <iframe
-                  src="https://www.google.com/maps/@-23.0217124,-43.4894209,17z?entry=ttu&g_ep=EgoyMDI2MDExMy4wIKXMDSoASAFQAw%3D%3D&output=embed"
+                  src="https://www.openstreetmap.org/export/embed.html?bbox=-43.504,-23.034,-43.474,-23.009&layer=mapnik&marker=-23.0217124,-43.4894209"
                   width="100%"
                   height="100%"
                   style={{ border: 0, minHeight: '300px' }}
