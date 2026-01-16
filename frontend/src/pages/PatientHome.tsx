@@ -61,7 +61,7 @@ const PatientHome: React.FC = () => {
   };
 
   const openGoogleMaps = () => {
-    window.open('https://maps.app.goo.gl/oETvES3yvevUTqXp6?g_st=ic', '_blank');
+    window.open('https://www.google.com/maps/search/?api=1&query=Recreio+Shopping+Sala+336+Av.+das+Americas+19019+Rio+de+Janeiro', '_blank');
   };
 
   return (
@@ -123,13 +123,18 @@ const PatientHome: React.FC = () => {
                 Agendar Consulta via WhatsApp
               </GlassButton>
 
-              <button
+              <GlassCard
                 onClick={openGoogleMaps}
-                className="flex items-center gap-2 text-[var(--color-text-muted)] hover:text-primary-500 transition-colors text-sm"
+                className="!cursor-pointer hover:scale-105 transition-all duration-300"
               >
-                <MapPin className="w-4 h-4" />
-                Ver localizacao no mapa
-              </button>
+                <div className="flex items-center gap-3">
+                  <MapPin className="w-6 h-6 text-primary-500" />
+                  <div className="text-left">
+                    <p className="text-[var(--color-text-primary)] font-semibold">Nossa Localizacao</p>
+                    <p className="text-[var(--color-text-muted)] text-sm">Recreio Shopping - Sala 336</p>
+                  </div>
+                </div>
+              </GlassCard>
             </div>
           </div>
         </div>
@@ -305,33 +310,50 @@ const PatientHome: React.FC = () => {
             </div>
           </div>
 
-          <GlassCard className="text-center">
-            <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white shadow-lg shadow-primary-500/25">
-              <MapPin className="w-8 h-8" />
-            </div>
+          <GlassCard padding="none" className="overflow-hidden">
+            <div className="grid lg:grid-cols-2 gap-0">
+              <div className="p-6 sm:p-8 flex flex-col justify-center">
+                <div className="w-14 h-14 mx-auto mb-5 rounded-2xl bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white shadow-lg shadow-primary-500/25">
+                  <MapPin className="w-7 h-7" />
+                </div>
 
-            <address className="not-italic text-[var(--color-text-secondary)] text-base sm:text-lg leading-relaxed mb-6">
-              <strong className="text-[var(--color-text-primary)] block mb-2">Recreio Shopping - Sala 336</strong>
-              Av. das Americas, 19.019<br />
-              Recreio dos Bandeirantes<br />
-              Rio de Janeiro - RJ<br />
-              CEP: 22790-701
-            </address>
+                <address className="not-italic text-[var(--color-text-secondary)] text-base sm:text-lg leading-relaxed mb-6">
+                  <strong className="text-[var(--color-text-primary)] block mb-3 text-lg sm:text-xl">Recreio Shopping - Sala 336</strong>
+                  <p className="mb-1">Av. das Americas, 19.019</p>
+                  <p className="mb-1">Recreio dos Bandeirantes</p>
+                  <p className="mb-1">Rio de Janeiro - RJ</p>
+                  <p>CEP: 22790-701</p>
+                </address>
 
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <GlassButton
-                variant="primary"
-                leftIcon={<MapPin className="w-5 h-5" />}
-                onClick={openGoogleMaps}
-              >
-                Ver no Google Maps
-              </GlassButton>
-              <GlassButton
-                leftIcon={<Phone className="w-5 h-5" />}
-                onClick={() => window.open('tel:+552121371664', '_self')}
-              >
-                (21) 2137-1664
-              </GlassButton>
+                <div className="flex flex-col gap-3">
+                  <GlassButton
+                    variant="primary"
+                    leftIcon={<MapPin className="w-5 h-5" />}
+                    onClick={openGoogleMaps}
+                  >
+                    Ver no Google Maps
+                  </GlassButton>
+                  <GlassButton
+                    leftIcon={<Phone className="w-5 h-5" />}
+                    onClick={() => window.open('tel:+552121371664', '_self')}
+                  >
+                    (21) 2137-1664
+                  </GlassButton>
+                </div>
+              </div>
+
+              <div className="min-h-[300px]">
+                <iframe
+                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3675.560045470388!2d-43.4650989!3d-23.0037464!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x9bde018590415f%3A0x8a0c8c8f8f8f8f8f!2sRecreio+Shopping!5e0!3m2!1spt-BR!2sbr!4v1699999999999!5m2!1spt-BR!2sbr"
+                  width="100%"
+                  height="100%"
+                  style={{ border: 0, minHeight: '300px' }}
+                  allowFullScreen
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  className="w-full h-full min-h-[300px] lg:min-h-full"
+                />
+              </div>
             </div>
           </GlassCard>
         </div>
