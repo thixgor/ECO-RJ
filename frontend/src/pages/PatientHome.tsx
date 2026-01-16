@@ -29,21 +29,21 @@ const services: Service[] = [
   {
     icon: <Heart className="w-8 h-8" />,
     title: 'Ecocardiograma',
-    description: 'Exame de ultrassom do coracao para avaliacao completa da estrutura e funcao cardiaca.'
+    description: 'Exame de ultrassom do coração para avaliação completa da estrutura e função cardíaca.'
   },
   {
     icon: <Activity className="w-8 h-8" />,
     title: 'Doppler de Carotidas',
-    description: 'Avaliacao das arterias carotidas para prevencao de AVC e doencas cerebrovasculares.'
+    description: 'Avaliação das artérias carótidas para prevenção de AVC e doenças cerebrovasculares.'
   },
   {
     icon: <Stethoscope className="w-8 h-8" />,
     title: 'Doppler Vascular',
-    description: 'Exame de circulacao sanguinea para diagnostico de doencas vasculares perifericas.'
+    description: 'Exame de circulação sanguínea para diagnóstico de doenças vasculares periféricas.'
   },
   {
     icon: <CheckCircle className="w-8 h-8" />,
-    title: 'Avaliacao Cardiovascular',
+    title: 'Avaliação Cardiovascular',
     description: 'Check-up completo do sistema cardiovascular com equipe especializada.'
   }
 ];
@@ -53,15 +53,15 @@ const PatientHome: React.FC = () => {
 
   const openWhatsApp = (type: 'free' | 'private') => {
     const message = type === 'free'
-      ? 'Ola, quero marcar uma consulta Gratuita no ECO RJ.'
-      : 'Ola, quero marcar uma consulta Privada no ECO RJ.';
+      ? 'Olá, quero marcar uma consulta Gratuita no ECO RJ.'
+      : 'Olá, quero marcar uma consulta Privada no ECO RJ.';
     const encodedMessage = encodeURIComponent(message);
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodedMessage}`, '_blank');
     setShowWhatsAppOptions(false);
   };
 
   const openGoogleMaps = () => {
-    window.open('https://www.google.com/maps/search/?api=1&query=Recreio+Shopping+Sala+336+Av.+das+Americas+19019+Rio+de+Janeiro', '_blank');
+    window.open('https://www.google.com/maps/@-23.0217124,-43.4894209,17z?entry=ttu&g_ep=EgoyMDI2MDExMy4wIKXMDSoASAFQAw%3D%3D', '_blank');
   };
 
   return (
@@ -130,7 +130,7 @@ const PatientHome: React.FC = () => {
                 <div className="flex items-center gap-3">
                   <MapPin className="w-6 h-6 text-primary-500" />
                   <div className="text-left">
-                    <p className="text-[var(--color-text-primary)] font-semibold">Nossa Localizacao</p>
+                    <p className="text-[var(--color-text-primary)] font-semibold">Nossa Localização</p>
                     <p className="text-[var(--color-text-muted)] text-sm">Recreio Shopping - Sala 336</p>
                   </div>
                 </div>
@@ -305,7 +305,7 @@ const PatientHome: React.FC = () => {
             <div className="flex items-center justify-center gap-2 mb-4">
               <MapPin className="w-6 h-6 text-primary-500" />
               <h2 className="font-heading text-2xl sm:text-3xl font-bold text-[var(--color-text-primary)]">
-                Nossa Localizacao
+                Nossa Localização
               </h2>
             </div>
           </div>
@@ -344,7 +344,7 @@ const PatientHome: React.FC = () => {
 
               <div className="min-h-[300px]">
                 <iframe
-                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3675.560045470388!2d-43.4650989!3d-23.0037464!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x9bde018590415f%3A0x8a0c8c8f8f8f8f8f!2sRecreio+Shopping!5e0!3m2!1spt-BR!2sbr!4v1699999999999!5m2!1spt-BR!2sbr"
+                  src="https://www.google.com/maps/@-23.0217124,-43.4894209,17z?entry=ttu&g_ep=EgoyMDI2MDExMy4wIKXMDSoASAFQAw%3D%3D&output=embed"
                   width="100%"
                   height="100%"
                   style={{ border: 0, minHeight: '300px' }}
