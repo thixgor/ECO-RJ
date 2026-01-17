@@ -74,8 +74,6 @@ const Lesson: React.FC = () => {
   const [currentVideoTimestamp, setCurrentVideoTimestamp] = useState(0);
   const [videoDuration, setVideoDuration] = useState(0);
   const videoContainerRef = useRef<HTMLDivElement>(null);
-  const lastProgressUpdateRef = useRef<number>(0);
-  const progressUpdateIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const isWatched = user?.aulasAssistidas?.includes(id || '');
   const isAdmin = user?.cargo === 'Administrador';
@@ -533,43 +531,88 @@ const Lesson: React.FC = () => {
     return () => observer.disconnect();
   }, [lesson?.tipo, lesson?.embedVideo]);
 
-  // Automatic progress tracking for recorded lessons
+  // Refs to store latest values for use in cleanup/beforeunload
+  const currentTimestampRef = useRef(currentVideoTimestamp);
+  const videoDurationRef = useRef(videoDuration);
+  const lessonIdRef = useRef(id);
+  const lessonTypeRef = useRef(lesson?.tipo);
+  const hasEmbedVideoRef = useRef(!!lesson?.embedVideo);
+
+  // Keep refs in sync with state
+  useEffect(() => {
+    currentTimestampRef.current = currentVideoTimestamp;
+  }, [currentVideoTimestamp]);
+
+  useEffect(() => {
+    videoDurationRef.current = videoDuration;
+  }, [videoDuration]);
+
+  useEffect(() => {
+    lessonIdRef.current = id;
+    lessonTypeRef.current = lesson?.tipo;
+    hasEmbedVideoRef.current = !!lesson?.embedVideo;
+  }, [id, lesson?.tipo, lesson?.embedVideo]);
+
+  // Save progress when leaving the page (only if timestamp > 0)
   useEffect(() => {
     if (!lesson || lesson.tipo !== 'gravada' || !lesson.embedVideo) return;
 
-    const trackProgress = async () => {
-      if (!id || !videoDuration || videoDuration === 0) return;
+    const saveProgressOnExit = () => {
+      const timestamp = currentTimestampRef.current;
+      const duration = videoDurationRef.current;
+      const lessonId = lessonIdRef.current;
 
-      const progresso = Math.round((currentVideoTimestamp / videoDuration) * 100);
+      // Only save if we have a valid timestamp (user actually watched something)
+      if (!lessonId || timestamp <= 0 || duration <= 0) return;
 
-      // Update progress every 10 seconds or when user watches more than 10%
-      const now = Date.now();
-      if (now - lastProgressUpdateRef.current > 10000) {
-        lastProgressUpdateRef.current = now;
+      const progresso = Math.round((timestamp / duration) * 100);
 
-        try {
-          // Send both progress percentage and absolute timestamp in seconds
-          await lessonService.updateProgress(id, progresso, currentVideoTimestamp);
-        } catch (error) {
-          console.error('Erro ao atualizar progresso:', error);
-        }
+      // Use sendBeacon for reliable saving on page exit
+      const data = JSON.stringify({ progresso, timestamp });
+      const token = localStorage.getItem('token');
+
+      if (navigator.sendBeacon) {
+        const blob = new Blob([data], { type: 'application/json' });
+        // Note: sendBeacon doesn't support custom headers, so we use fetch with keepalive as fallback
+        navigator.sendBeacon(`/api/lessons/${lessonId}/update-progress`, blob);
+      }
+
+      // Also try fetch with keepalive for authenticated request
+      fetch(`/api/lessons/${lessonId}/update-progress`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: data,
+        keepalive: true
+      }).catch(() => {
+        // Ignore errors on page exit
+      });
+    };
+
+    // Save when user leaves/refreshes the page
+    const handleBeforeUnload = () => {
+      saveProgressOnExit();
+    };
+
+    // Save when visibility changes (user switches tabs or minimizes)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        saveProgressOnExit();
       }
     };
 
-    // Update progress whenever timestamp changes
-    trackProgress();
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // Set up interval to update progress periodically
-    progressUpdateIntervalRef.current = setInterval(() => {
-      trackProgress();
-    }, 10000);
-
+    // Cleanup: save progress when component unmounts (navigation away)
     return () => {
-      if (progressUpdateIntervalRef.current) {
-        clearInterval(progressUpdateIntervalRef.current);
-      }
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      saveProgressOnExit();
     };
-  }, [lesson?.tipo, lesson?.embedVideo, currentVideoTimestamp, videoDuration, id]);
+  }, [lesson?.tipo, lesson?.embedVideo]);
 
   // Resume video from saved timestamp when coming from "Continuar de onde parou"
   useEffect(() => {
