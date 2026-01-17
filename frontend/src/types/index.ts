@@ -281,6 +281,7 @@ export interface LastWatchedLesson {
   cursoTitulo?: string;
   cursoImagem?: string;
   progresso?: number;
+  savedTimestamp?: number; // Video timestamp in seconds where user stopped
   assistidaEm: string;
 }
 

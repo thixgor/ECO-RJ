@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Clock, CheckCircle, BookOpen, FileText, Play, ExternalLink, Download, Layers, X, ChevronRight, ChevronLeft, Award, Target, RotateCcw, AlertTriangle, Check, XCircle, Video, File, PlayCircle, Maximize, Minimize, MessageCircle, Settings, StickyNote } from 'lucide-react';
 import { lessonService, exerciseService, zoomService, siteConfigService } from '../services/api';
 import { Lesson as LessonType, Exercise, Course } from '../types';
@@ -31,8 +31,13 @@ interface ExerciseResult {
 
 const Lesson: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
   const { user, refreshUser } = useAuth();
   const navigate = useNavigate();
+
+  // Get resume timestamp from URL query parameter (if coming from "Continuar de onde parou")
+  const resumeTimestamp = searchParams.get('t') ? parseInt(searchParams.get('t')!, 10) : null;
+  const hasResumedRef = useRef(false); // Track if we already resumed to avoid multiple seeks
 
   const [lesson, setLesson] = useState<LessonType | null>(null);
   const [exercises, setExercises] = useState<Exercise[]>([]);
@@ -543,7 +548,8 @@ const Lesson: React.FC = () => {
         lastProgressUpdateRef.current = now;
 
         try {
-          await lessonService.updateProgress(id, progresso);
+          // Send both progress percentage and absolute timestamp in seconds
+          await lessonService.updateProgress(id, progresso, currentVideoTimestamp);
         } catch (error) {
           console.error('Erro ao atualizar progresso:', error);
         }
@@ -564,6 +570,48 @@ const Lesson: React.FC = () => {
       }
     };
   }, [lesson?.tipo, lesson?.embedVideo, currentVideoTimestamp, videoDuration, id]);
+
+  // Resume video from saved timestamp when coming from "Continuar de onde parou"
+  useEffect(() => {
+    if (!lesson || lesson.tipo !== 'gravada' || !lesson.embedVideo) return;
+    if (!resumeTimestamp || resumeTimestamp <= 0) return;
+    if (hasResumedRef.current) return; // Already resumed
+
+    const iframe = videoContainerRef.current?.querySelector('iframe');
+    if (!iframe || !iframe.contentWindow) return;
+
+    // Function to seek video to saved timestamp
+    const seekToSavedTimestamp = () => {
+      if (hasResumedRef.current) return;
+
+      if (iframe.src.includes('youtube.com')) {
+        iframe.contentWindow?.postMessage(JSON.stringify({
+          event: 'command',
+          func: 'seekTo',
+          args: [resumeTimestamp, true]
+        }), '*');
+        hasResumedRef.current = true;
+      } else if (iframe.src.includes('vimeo.com')) {
+        iframe.contentWindow?.postMessage(JSON.stringify({
+          method: 'setCurrentTime',
+          value: resumeTimestamp
+        }), '*');
+        hasResumedRef.current = true;
+      }
+    };
+
+    // Try to seek after a short delay to ensure iframe is ready
+    const timeoutId = setTimeout(() => {
+      seekToSavedTimestamp();
+    }, 2000);
+
+    // Also try when we first get video duration (indicates player is ready)
+    if (videoDuration > 0 && !hasResumedRef.current) {
+      seekToSavedTimestamp();
+    }
+
+    return () => clearTimeout(timeoutId);
+  }, [lesson?.tipo, lesson?.embedVideo, resumeTimestamp, videoDuration]);
 
   // ========== Zoom Integration Functions ==========
   const joinZoomMeeting = useCallback(async () => {

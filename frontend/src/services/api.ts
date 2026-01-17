@@ -237,8 +237,8 @@ export const lessonService = {
 
   markAsWatched: (id: string) => api.post(`/lessons/${id}/watched`),
 
-  updateProgress: (id: string, progresso?: number) =>
-    api.post(`/lessons/${id}/update-progress`, { progresso }),
+  updateProgress: (id: string, progresso?: number, timestamp?: number) =>
+    api.post(`/lessons/${id}/update-progress`, { progresso, timestamp }),
 
   reorder: (orders: { id: string; ordem: number; topicoId?: string | null; subtopicoId?: string | null }[]) =>
     api.put('/lessons/reorder', { orders })

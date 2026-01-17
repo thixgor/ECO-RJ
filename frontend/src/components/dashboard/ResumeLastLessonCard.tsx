@@ -47,8 +47,25 @@ const ResumeLastLessonCard: React.FC<ResumeLastLessonCardProps> = ({ lastLesson,
     }
   };
 
+  // Format timestamp in HH:MM:SS or MM:SS format
+  const formatTimestamp = (seconds: number): string => {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = Math.floor(seconds % 60);
+
+    if (hrs > 0) {
+      return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Build URL with timestamp parameter if available (for video resume)
+  const lessonUrl = lastLesson.savedTimestamp && lastLesson.savedTimestamp > 0 && lastLesson.tipo === 'gravada'
+    ? `/aulas/${lastLesson._id}?t=${lastLesson.savedTimestamp}`
+    : `/aulas/${lastLesson._id}`;
+
   return (
-    <Link to={`/aulas/${lastLesson._id}`} className="block group">
+    <Link to={lessonUrl} className="block group">
       <GlassCard
         hover={true}
         padding="none"
@@ -100,7 +117,14 @@ const ResumeLastLessonCard: React.FC<ResumeLastLessonCardProps> = ({ lastLesson,
               <div className="pt-2">
                 <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)] mb-1">
                   <span>Progresso</span>
-                  <span>{Math.round(lastLesson.progresso)}%</span>
+                  <span className="flex items-center gap-2">
+                    {lastLesson.savedTimestamp && lastLesson.savedTimestamp > 0 && lastLesson.tipo === 'gravada' && (
+                      <span className="text-primary-500 font-medium">
+                        {formatTimestamp(lastLesson.savedTimestamp)}
+                      </span>
+                    )}
+                    <span>{Math.round(lastLesson.progresso)}%</span>
+                  </span>
                 </div>
                 <GlassProgress value={lastLesson.progresso} size="sm" />
               </div>

@@ -7,6 +7,7 @@ export interface IUltimaAulaAssistida {
   cursoId: mongoose.Types.ObjectId;
   assistidaEm: Date;
   progresso?: number; // Video progress percentage (0-100)
+  savedTimestamp?: number; // Video timestamp in seconds where user stopped
 }
 
 export interface IUser extends Document {
@@ -133,6 +134,10 @@ const UserSchema = new Schema<IUser>(
         type: Number,
         min: 0,
         max: 100
+      },
+      savedTimestamp: {
+        type: Number,
+        min: 0
       }
     },
     ipsAcesso: [{

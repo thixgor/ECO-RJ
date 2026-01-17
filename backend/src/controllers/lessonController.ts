@@ -320,7 +320,7 @@ export const markAsWatched = async (req: AuthRequest, res: Response) => {
 // @access  Private
 export const updateLessonProgress = async (req: AuthRequest, res: Response) => {
   try {
-    const { progresso } = req.body;
+    const { progresso, timestamp } = req.body;
 
     const lesson = await Lesson.findById(req.params.id);
     if (!lesson) {
@@ -337,12 +337,13 @@ export const updateLessonProgress = async (req: AuthRequest, res: Response) => {
       ? lesson.cursoId
       : (lesson.cursoId as any)?._id || lesson.cursoId;
 
-    // Atualizar última aula assistida com progresso
+    // Atualizar última aula assistida com progresso e timestamp
     user.ultimaAulaAssistida = {
       lessonId: lesson._id as any,
       cursoId: cursoId as any,
       assistidaEm: new Date(),
-      progresso: progresso !== undefined ? Math.min(100, Math.max(0, Number(progresso))) : undefined
+      progresso: progresso !== undefined ? Math.min(100, Math.max(0, Number(progresso))) : undefined,
+      savedTimestamp: timestamp !== undefined ? Math.max(0, Number(timestamp)) : undefined
     };
 
     await user.save();
@@ -398,6 +399,7 @@ export const getLastWatchedLesson = async (req: AuthRequest, res: Response) => {
         cursoTitulo: curso?.titulo,
         cursoImagem: curso?.imagemCapa,
         progresso: user.ultimaAulaAssistida.progresso,
+        savedTimestamp: user.ultimaAulaAssistida.savedTimestamp,
         assistidaEm: user.ultimaAulaAssistida.assistidaEm
       }
     });
