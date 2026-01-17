@@ -67,7 +67,10 @@ const Lesson: React.FC = () => {
   const [showMiniPlayer, setShowMiniPlayer] = useState(false);
   const [showNotesPanel, setShowNotesPanel] = useState(false);
   const [currentVideoTimestamp, setCurrentVideoTimestamp] = useState(0);
+  const [videoDuration, setVideoDuration] = useState(0);
   const videoContainerRef = useRef<HTMLDivElement>(null);
+  const lastProgressUpdateRef = useRef<number>(0);
+  const progressUpdateIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const isWatched = user?.aulasAssistidas?.includes(id || '');
   const isAdmin = user?.cargo === 'Administrador';
@@ -287,6 +290,22 @@ const Lesson: React.FC = () => {
       }
     };
 
+    // Function to request video duration
+    const requestVideoDuration = useCallback(() => {
+      const iframe = videoContainerRef.current?.querySelector('iframe');
+      if (iframe && iframe.contentWindow) {
+        if (iframe.src.includes('youtube.com')) {
+          iframe.contentWindow.postMessage(JSON.stringify({
+            event: 'command',
+            func: 'getDuration',
+            args: []
+          }), '*');
+        } else if (iframe.src.includes('vimeo.com')) {
+          sendVimeoCommand('getDuration');
+        }
+      }
+    }, []);
+
     const handleMessage = (event: MessageEvent) => {
       try {
         let data = event.data;
@@ -305,7 +324,20 @@ const Lesson: React.FC = () => {
           // Player state 0 = ended
           if (data.info === 0 && lesson?.tipo === 'gravada' && relatedLessons.length > 0) {
             setShowAutoAdvance(true);
+            // Auto-mark as watched when video ends
+            if (id && !isWatched) {
+              handleMarkAsWatched();
+            }
           }
+          // Player state 1 = playing
+          if (data.info === 1) {
+            requestVideoDuration();
+          }
+        }
+
+        // YouTube player metadata (contains duration)
+        if (data.event === 'infoDelivery' && data.info?.duration !== undefined) {
+          setVideoDuration(Math.floor(data.info.duration));
         }
 
         // YouTube current time update (from infoDelivery)
@@ -316,6 +348,10 @@ const Lesson: React.FC = () => {
         // Vimeo events
         if (data.event === 'ended' && lesson?.tipo === 'gravada' && relatedLessons.length > 0) {
           setShowAutoAdvance(true);
+          // Auto-mark as watched when video ends
+          if (id && !isWatched) {
+            handleMarkAsWatched();
+          }
         }
 
         // Vimeo timeupdate
@@ -328,15 +364,26 @@ const Lesson: React.FC = () => {
           setCurrentVideoTimestamp(Math.floor(data.value.seconds));
         }
 
+        // Vimeo duration
+        if (data.event === 'durationchange' && data.data?.duration !== undefined) {
+          setVideoDuration(Math.floor(data.data.duration));
+        }
+
         // Vimeo getCurrentTime response
         if (data.method === 'getCurrentTime' && data.value !== undefined) {
           setCurrentVideoTimestamp(Math.floor(data.value));
         }
 
-        // Vimeo play event - get current time
+        // Vimeo getDuration response
+        if (data.method === 'getDuration' && data.value !== undefined) {
+          setVideoDuration(Math.floor(data.value));
+        }
+
+        // Vimeo play event - get current time and duration
         if (data.event === 'play') {
           console.log('Vimeo play event received');
           sendVimeoCommand('getCurrentTime');
+          sendVimeoCommand('getDuration');
         }
 
         // Vimeo pause event - get current time
@@ -414,6 +461,7 @@ const Lesson: React.FC = () => {
       // Poll for time updates every 500ms as fallback
       pollInterval = setInterval(() => {
         sendYouTubeCommand('getCurrentTime');
+        sendYouTubeCommand('getDuration');
       }, 500);
 
       return () => {
@@ -431,8 +479,10 @@ const Lesson: React.FC = () => {
           sendVimeoCommand('addEventListener', 'playProgress');
           sendVimeoCommand('addEventListener', 'timeupdate');
           sendVimeoCommand('addEventListener', 'ended');
-          // Request initial time
+          sendVimeoCommand('addEventListener', 'durationchange');
+          // Request initial time and duration
           sendVimeoCommand('getCurrentTime');
+          sendVimeoCommand('getDuration');
         }, 1000);
       };
 
@@ -477,6 +527,43 @@ const Lesson: React.FC = () => {
     observer.observe(videoElement);
     return () => observer.disconnect();
   }, [lesson?.tipo, lesson?.embedVideo]);
+
+  // Automatic progress tracking for recorded lessons
+  useEffect(() => {
+    if (!lesson || lesson.tipo !== 'gravada' || !lesson.embedVideo) return;
+
+    const trackProgress = async () => {
+      if (!id || !videoDuration || videoDuration === 0) return;
+
+      const progresso = Math.round((currentVideoTimestamp / videoDuration) * 100);
+
+      // Update progress every 10 seconds or when user watches more than 10%
+      const now = Date.now();
+      if (now - lastProgressUpdateRef.current > 10000) {
+        lastProgressUpdateRef.current = now;
+
+        try {
+          await lessonService.updateProgress(id, progresso);
+        } catch (error) {
+          console.error('Erro ao atualizar progresso:', error);
+        }
+      }
+    };
+
+    // Update progress whenever timestamp changes
+    trackProgress();
+
+    // Set up interval to update progress periodically
+    progressUpdateIntervalRef.current = setInterval(() => {
+      trackProgress();
+    }, 10000);
+
+    return () => {
+      if (progressUpdateIntervalRef.current) {
+        clearInterval(progressUpdateIntervalRef.current);
+      }
+    };
+  }, [lesson?.tipo, lesson?.embedVideo, currentVideoTimestamp, videoDuration, id]);
 
   // ========== Zoom Integration Functions ==========
   const joinZoomMeeting = useCallback(async () => {
