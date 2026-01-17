@@ -291,7 +291,7 @@ const Lesson: React.FC = () => {
     };
 
     // Function to request video duration
-    const requestVideoDuration = useCallback(() => {
+    const requestVideoDuration = () => {
       const iframe = videoContainerRef.current?.querySelector('iframe');
       if (iframe && iframe.contentWindow) {
         if (iframe.src.includes('youtube.com')) {
@@ -304,7 +304,7 @@ const Lesson: React.FC = () => {
           sendVimeoCommand('getDuration');
         }
       }
-    }, []);
+    };
 
     const handleMessage = (event: MessageEvent) => {
       try {
