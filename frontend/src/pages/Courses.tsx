@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, Calendar, User, Search, Mail, Key, Lock, ChevronDown, Star, Sparkles, Clock, Monitor, MapPin } from 'lucide-react';
+import { BookOpen, Calendar, User, Search, Mail, Key, Lock, ChevronDown, Star, Sparkles, Clock, Monitor, MapPin, Award } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { courseService, siteConfigService } from '../services/api';
 import { Course, User as UserType } from '../types';
@@ -173,6 +173,14 @@ const Courses: React.FC = () => {
                     <Star className="w-3.5 h-3.5 fill-white" />
                     DESTAQUE
                     <Sparkles className="w-3.5 h-3.5" />
+                  </div>
+                )}
+
+                {/* Certificate Badge */}
+                {(course.certificadoDisponivel !== false) && (
+                  <div className={`absolute ${isFeatured ? 'top-12' : 'top-3'} left-3 z-10 flex items-center gap-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-lg`}>
+                    <Award className="w-3.5 h-3.5" />
+                    <span>CERTIFICADO</span>
                   </div>
                 )}
 

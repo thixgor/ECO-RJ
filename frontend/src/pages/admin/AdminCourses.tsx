@@ -20,6 +20,7 @@ const AdminCourses: React.FC = () => {
     dataLimiteInscricao: '',
     acessoRestrito: true, // Padrão: curso restrito
     exibirDuracao: true, // Padrão: exibir duração do conteúdo
+    certificadoDisponivel: true, // Padrão: certificado disponível
     emissaoCertificadoImediata: false, // Padrão: certificado requer aprovação
     tipo: 'online' as 'online' | 'presencial'
   });
@@ -70,12 +71,13 @@ const AdminCourses: React.FC = () => {
         dataLimiteInscricao: course.dataLimiteInscricao ? course.dataLimiteInscricao.split('T')[0] : '',
         acessoRestrito: course.acessoRestrito || false,
         exibirDuracao: course.exibirDuracao !== false, // default true
+        certificadoDisponivel: course.certificadoDisponivel !== false, // default true
         emissaoCertificadoImediata: course.emissaoCertificadoImediata || false,
         tipo: course.tipo || 'online'
       });
     } else {
       setEditingCourse(null);
-      setFormData({ titulo: '', descricao: '', dataInicio: '', imagemCapa: '', dataLimiteInscricao: '', acessoRestrito: true, exibirDuracao: true, emissaoCertificadoImediata: false, tipo: 'online' });
+      setFormData({ titulo: '', descricao: '', dataInicio: '', imagemCapa: '', dataLimiteInscricao: '', acessoRestrito: true, exibirDuracao: true, certificadoDisponivel: true, emissaoCertificadoImediata: false, tipo: 'online' });
     }
     setShowModal(true);
   };
@@ -588,23 +590,42 @@ const AdminCourses: React.FC = () => {
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-3 p-4 bg-amber-50 dark:bg-amber-500/10 rounded-lg">
+              <div className="flex items-center gap-3 p-4 bg-teal-50 dark:bg-teal-500/10 rounded-lg">
                 <input
                   type="checkbox"
-                  id="emissaoCertificadoImediata"
-                  checked={formData.emissaoCertificadoImediata}
-                  onChange={(e) => setFormData({ ...formData, emissaoCertificadoImediata: e.target.checked })}
-                  className="w-4 h-4 rounded border-gray-300 text-amber-500 focus:ring-amber-500"
+                  id="certificadoDisponivel"
+                  checked={formData.certificadoDisponivel}
+                  onChange={(e) => setFormData({ ...formData, certificadoDisponivel: e.target.checked })}
+                  className="w-4 h-4 rounded border-gray-300 text-teal-500 focus:ring-teal-500"
                 />
                 <div>
-                  <label htmlFor="emissaoCertificadoImediata" className="font-medium text-[var(--color-text-primary)] cursor-pointer">
-                    Emissao Imediata de Certificado
+                  <label htmlFor="certificadoDisponivel" className="font-medium text-[var(--color-text-primary)] cursor-pointer">
+                    Certificado Disponivel
                   </label>
                   <p className="text-xs text-[var(--color-text-muted)]">
-                    Quando ativado, o aluno recebe o certificado automaticamente ao concluir 100% do curso (sem necessidade de aprovacao)
+                    Quando ativado, exibe badge "CERTIFICADO" no curso e permite emissao de certificado ao concluir
                   </p>
                 </div>
               </div>
+              {formData.certificadoDisponivel && (
+                <div className="flex items-center gap-3 p-4 bg-amber-50 dark:bg-amber-500/10 rounded-lg ml-4 border-l-2 border-amber-500">
+                  <input
+                    type="checkbox"
+                    id="emissaoCertificadoImediata"
+                    checked={formData.emissaoCertificadoImediata}
+                    onChange={(e) => setFormData({ ...formData, emissaoCertificadoImediata: e.target.checked })}
+                    className="w-4 h-4 rounded border-gray-300 text-amber-500 focus:ring-amber-500"
+                  />
+                  <div>
+                    <label htmlFor="emissaoCertificadoImediata" className="font-medium text-[var(--color-text-primary)] cursor-pointer">
+                      Emissao Imediata de Certificado
+                    </label>
+                    <p className="text-xs text-[var(--color-text-muted)]">
+                      Quando ativado, o aluno recebe o certificado automaticamente ao concluir 100% do curso (sem necessidade de aprovacao)
+                    </p>
+                  </div>
+                </div>
+              )}
               <div className="flex gap-3 pt-4">
                 <button type="submit" disabled={isSaving} className="btn btn-primary flex-1">
                   {isSaving ? 'Salvando...' : 'Salvar'}

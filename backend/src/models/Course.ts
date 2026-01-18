@@ -15,6 +15,7 @@ export interface ICourse extends Document {
   acessoRestrito: boolean; // se true, apenas alunos autorizados podem ver
   alunosAutorizados: mongoose.Types.ObjectId[]; // lista de alunos com acesso
   exibirDuracao: boolean; // se true, exibe "xh e ymin de conteúdo" na página do curso
+  certificadoDisponivel: boolean; // se true, certificado disponível para o curso (default: true)
   emissaoCertificadoImediata: boolean; // se true, emite certificado automaticamente ao concluir 100%
   createdAt: Date;
   updatedAt: Date;
@@ -73,6 +74,10 @@ const CourseSchema = new Schema<ICourse>(
       ref: 'User'
     }],
     exibirDuracao: {
+      type: Boolean,
+      default: true
+    },
+    certificadoDisponivel: {
       type: Boolean,
       default: true
     },

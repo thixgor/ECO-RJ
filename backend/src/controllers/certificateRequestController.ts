@@ -334,6 +334,16 @@ export const canRequestCertificate = async (req: AuthRequest, res: Response) => 
       return res.status(404).json({ message: 'Curso nao encontrado' });
     }
 
+    // Verificar se certificado esta disponivel para o curso
+    if (curso.certificadoDisponivel === false) {
+      return res.json({
+        canRequest: false,
+        reason: 'certificate_not_available',
+        message: 'Este curso nao oferece certificado',
+        certificadoDisponivel: false
+      });
+    }
+
     // Verificar se ja existe um certificado
     const existingCertificate = await Certificate.findOne({ alunoId, cursoId: courseId });
     if (existingCertificate) {
@@ -342,7 +352,8 @@ export const canRequestCertificate = async (req: AuthRequest, res: Response) => 
         reason: 'already_has_certificate',
         message: 'Voce ja possui um certificado para este curso',
         certificateId: existingCertificate._id,
-        emissaoImediata: curso.emissaoCertificadoImediata || false
+        emissaoImediata: curso.emissaoCertificadoImediata || false,
+        certificadoDisponivel: true
       });
     }
 
@@ -364,7 +375,8 @@ export const canRequestCertificate = async (req: AuthRequest, res: Response) => 
             dataSolicitacao: existingRequest.dataSolicitacao,
             motivoRecusa: existingRequest.motivoRecusa
           },
-          emissaoImediata: curso.emissaoCertificadoImediata || false
+          emissaoImediata: curso.emissaoCertificadoImediata || false,
+          certificadoDisponivel: true
         });
       } else if (existingRequest.status === 'recusado') {
         // Permitir nova solicitacao se a anterior foi recusada
@@ -379,7 +391,8 @@ export const canRequestCertificate = async (req: AuthRequest, res: Response) => 
             dataResposta: existingRequest.dataResposta,
             motivoRecusa: existingRequest.motivoRecusa
           },
-          emissaoImediata: curso.emissaoCertificadoImediata || false
+          emissaoImediata: curso.emissaoCertificadoImediata || false,
+          certificadoDisponivel: true
         });
       }
     }
@@ -410,7 +423,8 @@ export const canRequestCertificate = async (req: AuthRequest, res: Response) => 
         reason: 'incomplete_course',
         message: `Voce precisa concluir 100% do curso para solicitar o certificado. Progresso atual: ${progresso}%`,
         progresso,
-        emissaoImediata: curso.emissaoCertificadoImediata || false
+        emissaoImediata: curso.emissaoCertificadoImediata || false,
+        certificadoDisponivel: true
       });
     }
 
@@ -419,7 +433,8 @@ export const canRequestCertificate = async (req: AuthRequest, res: Response) => 
       reason: 'eligible',
       message: 'Voce pode solicitar o certificado',
       progresso,
-      emissaoImediata: curso.emissaoCertificadoImediata || false
+      emissaoImediata: curso.emissaoCertificadoImediata || false,
+      certificadoDisponivel: true
     });
   } catch (error: any) {
     console.error('Erro ao verificar elegibilidade:', error);
@@ -439,6 +454,13 @@ export const issueCertificateImmediate = async (req: AuthRequest, res: Response)
     const curso = await Course.findById(courseId);
     if (!curso) {
       return res.status(404).json({ message: 'Curso nao encontrado' });
+    }
+
+    // Verificar se certificado esta disponivel para o curso
+    if (curso.certificadoDisponivel === false) {
+      return res.status(400).json({
+        message: 'Este curso nao oferece certificado'
+      });
     }
 
     if (!curso.emissaoCertificadoImediata) {

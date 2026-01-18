@@ -184,6 +184,7 @@ export const updateCourse = async (req: Request, res: Response) => {
       alunosAutorizados,
       tipo,
       exibirDuracao,
+      certificadoDisponivel,
       emissaoCertificadoImediata
     } = req.body;
 
@@ -204,6 +205,7 @@ export const updateCourse = async (req: Request, res: Response) => {
     if (alunosAutorizados !== undefined) course.alunosAutorizados = alunosAutorizados;
     if (tipo !== undefined) course.tipo = tipo;
     if (exibirDuracao !== undefined) course.exibirDuracao = exibirDuracao;
+    if (certificadoDisponivel !== undefined) course.certificadoDisponivel = certificadoDisponivel;
     if (emissaoCertificadoImediata !== undefined) course.emissaoCertificadoImediata = emissaoCertificadoImediata;
 
     await course.save();
