@@ -39,6 +39,7 @@ const AdminExercises = lazy(() => import('./pages/admin/AdminExercises'));
 const AdminSiteConfig = lazy(() => import('./pages/admin/AdminSiteConfig'));
 const AdminAnnouncements = lazy(() => import('./pages/admin/AdminAnnouncements'));
 const AdminCertificates = lazy(() => import('./pages/admin/AdminCertificates'));
+const AdminCertificateRequests = lazy(() => import('./pages/admin/AdminCertificateRequests'));
 const ValidateCertificate = lazy(() => import('./pages/ValidateCertificate'));
 
 const App: React.FC = () => {
@@ -174,6 +175,7 @@ const App: React.FC = () => {
                 <Route path="/admin/logs" element={<AdminAccessLogs />} />
                 <Route path="/admin/configuracoes" element={<AdminSiteConfig />} />
                 <Route path="/admin/certificados" element={<AdminCertificates />} />
+                <Route path="/admin/solicitacoes-certificado" element={<AdminCertificateRequests />} />
               </Route>
 
               {/* Fallback */}

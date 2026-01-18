@@ -444,6 +444,31 @@ export const certificateService = {
   validate: (code: string) => api.get(`/certificates/validate/${code}`)
 };
 
+// Certificate Requests (Solicitacoes de Certificado)
+export const certificateRequestService = {
+  // Admin routes
+  getAll: (params?: { status?: string; cursoId?: string; page?: number; limit?: number }) =>
+    api.get('/certificate-requests', { params }),
+
+  getStats: () => api.get('/certificate-requests/stats'),
+
+  approve: (id: string) => api.put(`/certificate-requests/${id}/approve`),
+
+  reject: (id: string, motivoRecusa?: string) =>
+    api.put(`/certificate-requests/${id}/reject`, { motivoRecusa }),
+
+  delete: (id: string) => api.delete(`/certificate-requests/${id}`),
+
+  // User routes
+  getMy: () => api.get('/certificate-requests/my'),
+
+  create: (cursoId: string) => api.post('/certificate-requests', { cursoId }),
+
+  canRequest: (courseId: string) => api.get(`/certificate-requests/can-request/${courseId}`),
+
+  issueImmediate: (courseId: string) => api.post(`/certificate-requests/immediate/${courseId}`)
+};
+
 // Notes (Anotações do usuário)
 export const notesService = {
   create: (data: { lessonId: string; conteudo: string; timestamp: number }) =>

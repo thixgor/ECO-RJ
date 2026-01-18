@@ -183,7 +183,8 @@ export const updateCourse = async (req: Request, res: Response) => {
       acessoRestrito,
       alunosAutorizados,
       tipo,
-      exibirDuracao
+      exibirDuracao,
+      emissaoCertificadoImediata
     } = req.body;
 
     const course = await Course.findById(req.params.id);
@@ -203,6 +204,7 @@ export const updateCourse = async (req: Request, res: Response) => {
     if (alunosAutorizados !== undefined) course.alunosAutorizados = alunosAutorizados;
     if (tipo !== undefined) course.tipo = tipo;
     if (exibirDuracao !== undefined) course.exibirDuracao = exibirDuracao;
+    if (emissaoCertificadoImediata !== undefined) course.emissaoCertificadoImediata = emissaoCertificadoImediata;
 
     await course.save();
 
@@ -327,15 +329,23 @@ export const getCourseProgress = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: 'Usuário não encontrado' });
     }
 
-    const totalAulas = course.aulas.length;
+    // Filtrar apenas aulas válidas para progresso (excluir materiais)
+    const aulasValidas = course.aulas.filter((aula: any) => aula.tipo !== 'material');
+    const totalAulasValidas = aulasValidas.length;
+
+    // Contar apenas aulas assistidas que não são materiais
     const aulasAssistidas = user.aulasAssistidas.filter((aulaId) =>
-      course.aulas.some((aula: any) => aula._id.toString() === aulaId.toString())
+      aulasValidas.some((aula: any) => aula._id.toString() === aulaId.toString())
     ).length;
 
-    const progresso = totalAulas > 0 ? Math.round((aulasAssistidas / totalAulas) * 100) : 0;
+    const progresso = totalAulasValidas > 0 ? Math.round((aulasAssistidas / totalAulasValidas) * 100) : 0;
+
+    // Também retornar informações sobre materiais separadamente
+    const totalMateriais = course.aulas.filter((aula: any) => aula.tipo === 'material').length;
 
     res.json({
-      totalAulas,
+      totalAulas: totalAulasValidas,
+      totalMateriais,
       aulasAssistidas,
       progresso
     });

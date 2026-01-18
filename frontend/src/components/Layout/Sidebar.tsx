@@ -16,7 +16,8 @@ import {
   X,
   Shield,
   Bell,
-  Award
+  Award,
+  FileCheck
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { ThemeSwitch } from '../ui';
@@ -233,6 +234,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isVisible = true }) 
                 <NavLink to="/admin/certificados" className={navLinkClass} onClick={onClose}>
                   <Award className="w-5 h-5 flex-shrink-0" />
                   <span>Certificados</span>
+                </NavLink>
+
+                <NavLink to="/admin/solicitacoes-certificado" className={navLinkClass} onClick={onClose}>
+                  <FileCheck className="w-5 h-5 flex-shrink-0" />
+                  <span>Solicitacoes</span>
                 </NavLink>
 
                 <NavLink to="/admin/logs" className={navLinkClass} onClick={onClose}>

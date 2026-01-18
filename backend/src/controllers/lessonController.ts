@@ -283,6 +283,11 @@ export const markAsWatched = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: 'Aula não encontrada' });
     }
 
+    // Materiais não podem ser marcados como assistidos
+    if (lesson.tipo === 'material') {
+      return res.status(400).json({ message: 'Materiais não podem ser marcados como assistidos' });
+    }
+
     const user = await User.findById(req.user?._id);
     if (!user) {
       return res.status(404).json({ message: 'Usuário não encontrado' });

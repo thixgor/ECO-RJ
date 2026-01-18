@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { BookOpen, Calendar, User, PlayCircle, Clock, Lock, CheckCircle, ArrowLeft, FolderOpen, ChevronDown, FileText, Video, Layers } from 'lucide-react';
-import { courseService, lessonService, courseTopicService, courseSubtopicService } from '../services/api';
+import { BookOpen, Calendar, User, PlayCircle, Clock, Lock, CheckCircle, ArrowLeft, FolderOpen, ChevronDown, FileText, Video, Layers, Award, Loader2 } from 'lucide-react';
+import { courseService, lessonService, courseTopicService, courseSubtopicService, certificateRequestService } from '../services/api';
 import { Course, Lesson, User as UserType, CourseTopic, CourseSubtopic } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { CourseDetailSkeleton } from '../components/common/Loading';
@@ -19,9 +19,29 @@ const CourseDetail: React.FC = () => {
   const [subtopics, setSubtopics] = useState<CourseSubtopic[]>([]);
   const [expandedTopics, setExpandedTopics] = useState<Set<string>>(new Set());
   const [expandedSubtopics, setExpandedSubtopics] = useState<Set<string>>(new Set());
-  const [progress, setProgress] = useState({ totalAulas: 0, aulasAssistidas: 0, progresso: 0 });
+  const [progress, setProgress] = useState({ totalAulas: 0, aulasAssistidas: 0, progresso: 0, totalMateriais: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [isEnrolling, setIsEnrolling] = useState(false);
+  const [certificateStatus, setCertificateStatus] = useState<{
+    canRequest: boolean;
+    reason?: string;
+    message?: string;
+    certificateId?: string;
+    requestId?: string;
+    emissaoImediata?: boolean;
+    request?: {
+      status: string;
+      dataSolicitacao: string;
+      motivoRecusa?: string;
+    };
+    previousRequest?: {
+      status: string;
+      dataSolicitacao: string;
+      dataResposta?: string;
+      motivoRecusa?: string;
+    };
+  } | null>(null);
+  const [isRequestingCertificate, setIsRequestingCertificate] = useState(false);
 
   const isEnrolled = user?.cursosInscritos?.some(
     (c) => (typeof c === 'string' ? c : c._id) === id
@@ -118,6 +138,10 @@ const CourseDetail: React.FC = () => {
         try {
           const progressResponse = await courseService.getProgress(id!);
           setProgress(progressResponse.data);
+
+          // Verificar status do certificado
+          const certStatusResponse = await certificateRequestService.canRequest(id!);
+          setCertificateStatus(certStatusResponse.data);
         } catch {
           // Ignore progress errors
         }
@@ -127,6 +151,30 @@ const CourseDetail: React.FC = () => {
       toast.error('Erro ao carregar curso');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleRequestCertificate = async () => {
+    if (!id) return;
+
+    setIsRequestingCertificate(true);
+    try {
+      // Se o curso tem emissao imediata, usar a rota de emissao imediata
+      if (certificateStatus?.emissaoImediata) {
+        await certificateRequestService.issueImmediate(id);
+        toast.success('Certificado emitido com sucesso!');
+      } else {
+        await certificateRequestService.create(id);
+        toast.success('Solicitacao de certificado enviada com sucesso! Aguarde a aprovacao do administrador.');
+      }
+
+      // Atualizar status do certificado
+      const certStatusResponse = await certificateRequestService.canRequest(id);
+      setCertificateStatus(certStatusResponse.data);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Erro ao solicitar certificado');
+    } finally {
+      setIsRequestingCertificate(false);
     }
   };
 
@@ -388,11 +436,114 @@ const CourseDetail: React.FC = () => {
                   {progress.aulasAssistidas} de {progress.totalAulas} aulas
                 </p>
               </div>
+
+              {/* Botao de Solicitar Certificado */}
+              {certificateStatus && (
+                <div className="mb-4">
+                  {certificateStatus.reason === 'already_has_certificate' ? (
+                    <Link
+                      to="/perfil?tab=certificados"
+                      className="btn bg-green-500 hover:bg-green-600 text-white w-full flex items-center justify-center gap-2"
+                    >
+                      <Award className="w-5 h-5" />
+                      Ver Certificado
+                    </Link>
+                  ) : certificateStatus.reason === 'pending_request' && certificateStatus.request ? (
+                    <div className="p-3 bg-yellow-50 dark:bg-yellow-500/10 border border-yellow-200 dark:border-yellow-500/20 rounded-lg">
+                      <div className="flex items-center gap-2 text-yellow-700 dark:text-yellow-400">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span className="text-sm font-medium">Solicitacao pendente</span>
+                      </div>
+                      <p className="text-xs text-yellow-600 dark:text-yellow-500 mt-1">
+                        Aguardando aprovacao do administrador
+                      </p>
+                      <p className="text-xs text-[var(--color-text-muted)] mt-2">
+                        Solicitado em: {new Date(certificateStatus.request.dataSolicitacao).toLocaleDateString('pt-BR', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </p>
+                    </div>
+                  ) : certificateStatus.reason === 'previous_rejected' && certificateStatus.previousRequest ? (
+                    <div className="space-y-3">
+                      <div className="p-3 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-lg">
+                        <div className="flex items-center gap-2 text-red-700 dark:text-red-400">
+                          <span className="text-sm font-medium">Solicitacao anterior recusada</span>
+                        </div>
+                        <p className="text-xs text-[var(--color-text-muted)] mt-1">
+                          Solicitado em: {new Date(certificateStatus.previousRequest.dataSolicitacao).toLocaleDateString('pt-BR', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </p>
+                        {certificateStatus.previousRequest.dataResposta && (
+                          <p className="text-xs text-[var(--color-text-muted)]">
+                            Recusado em: {new Date(certificateStatus.previousRequest.dataResposta).toLocaleDateString('pt-BR', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </p>
+                        )}
+                        {certificateStatus.previousRequest.motivoRecusa && (
+                          <p className="text-xs text-red-600 dark:text-red-400 mt-2">
+                            Motivo: {certificateStatus.previousRequest.motivoRecusa}
+                          </p>
+                        )}
+                      </div>
+                      <button
+                        onClick={handleRequestCertificate}
+                        disabled={isRequestingCertificate}
+                        className="btn bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-white w-full flex items-center justify-center gap-2 shadow-lg"
+                      >
+                        {isRequestingCertificate ? (
+                          <>
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                            {certificateStatus.emissaoImediata ? 'Obtendo...' : 'Solicitando...'}
+                          </>
+                        ) : (
+                          <>
+                            <Award className="w-5 h-5" />
+                            {certificateStatus.emissaoImediata ? 'Obter Certificado' : 'Solicitar Novamente'}
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  ) : certificateStatus.canRequest ? (
+                    <button
+                      onClick={handleRequestCertificate}
+                      disabled={isRequestingCertificate}
+                      className="btn bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-white w-full flex items-center justify-center gap-2 shadow-lg"
+                    >
+                      {isRequestingCertificate ? (
+                        <>
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          {certificateStatus.emissaoImediata ? 'Obtendo...' : 'Solicitando...'}
+                        </>
+                      ) : (
+                        <>
+                          <Award className="w-5 h-5" />
+                          {certificateStatus.emissaoImediata ? 'Obter Certificado' : 'Solicitar Certificado'}
+                        </>
+                      )}
+                    </button>
+                  ) : null}
+                </div>
+              )}
+
               <button
                 onClick={handleUnenroll}
                 className="btn btn-outline w-full"
               >
-                Cancelar Inscrição
+                Cancelar Inscricao
               </button>
             </div>
           ) : (

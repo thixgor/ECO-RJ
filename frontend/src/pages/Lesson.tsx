@@ -1576,28 +1576,31 @@ const Lesson: React.FC = () => {
                 </div>
               </div>
 
-              <button
-                onClick={handleMarkAsWatched}
-                disabled={isWatched || isMarking}
-                className={`btn ${isWatched
-                  ? 'bg-green-100 text-green-600 cursor-default'
-                  : 'btn-primary'
-                  }`}
-              >
-                {isWatched ? (
-                  <>
-                    <CheckCircle className="w-5 h-5" />
-                    Assistida
-                  </>
-                ) : isMarking ? (
-                  'Marcando...'
-                ) : (
-                  <>
-                    <CheckCircle className="w-5 h-5" />
-                    Marcar como Assistida
-                  </>
-                )}
-              </button>
+              {/* Botão de marcar como assistida - oculto para materiais */}
+              {lesson.tipo !== 'material' && (
+                <button
+                  onClick={handleMarkAsWatched}
+                  disabled={isWatched || isMarking}
+                  className={`btn ${isWatched
+                    ? 'bg-green-100 text-green-600 cursor-default'
+                    : 'btn-primary'
+                    }`}
+                >
+                  {isWatched ? (
+                    <>
+                      <CheckCircle className="w-5 h-5" />
+                      Assistida
+                    </>
+                  ) : isMarking ? (
+                    'Marcando...'
+                  ) : (
+                    <>
+                      <CheckCircle className="w-5 h-5" />
+                      Marcar como Assistida
+                    </>
+                  )}
+                </button>
+              )}
             </div>
 
             {lesson.descricao && (
