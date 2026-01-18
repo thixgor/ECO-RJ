@@ -28,23 +28,48 @@ interface Service {
 const services: Service[] = [
   {
     icon: <Heart className="w-8 h-8" />,
-    title: 'Ecocardiograma',
-    description: 'Exame de ultrassom do coração para avaliação completa da estrutura e função cardíaca.'
+    title: 'Consulta Cardiologista',
+    description: 'Avaliação cardiológica completa com diagnóstico clínico especializado.'
   },
   {
     icon: <Activity className="w-8 h-8" />,
-    title: 'Doppler de Carotidas',
-    description: 'Avaliação das artérias carótidas para prevenção de AVC e doenças cerebrovasculares.'
+    title: 'Risco Cirúrgico',
+    description: 'Avaliação pré-operatória para segurança em procedimentos cirúrgicos.'
   },
   {
     icon: <Stethoscope className="w-8 h-8" />,
-    title: 'Doppler Vascular',
-    description: 'Exame de circulação sanguínea para diagnóstico de doenças vasculares periféricas.'
+    title: 'Ecocardiograma Transtorácico',
+    description: 'Exame de ultrassom do coração para avaliação completa da estrutura e função cardíaca.'
   },
   {
     icon: <CheckCircle className="w-8 h-8" />,
-    title: 'Avaliação Cardiovascular',
-    description: 'Check-up completo do sistema cardiovascular com equipe especializada.'
+    title: 'Doppler de Carótidas e Vertebrais',
+    description: 'Avaliação das artérias carótidas e vertebrais para prevenção de AVC.'
+  },
+  {
+    icon: <Heart className="w-8 h-8" />,
+    title: 'Ecocardiograma Pediátrico (< 14 anos)',
+    description: 'Avaliação cardíaca especializada para crianças e adolescentes.'
+  },
+  {
+    icon: <Activity className="w-8 h-8" />,
+    title: 'Speckle Tracking',
+    description: 'Análise avançada da função cardíaca por deformação miocárdica.'
+  },
+  {
+    icon: <Stethoscope className="w-8 h-8" />,
+    title: 'Strain',
+    description: 'Avaliação da deformação miocárdica para diagnóstico precoce.'
+  },
+  {
+    icon: <CheckCircle className="w-8 h-8" />,
+    title: 'Artéria Renal',
+    description: 'Avaliação das artérias renais para diagnóstico de hipertensão renovascular.'
+  },
+  {
+    icon: <Heart className="w-8 h-8" />,
+    title: 'Membros Inferiores - Venoso e Arterial',
+    description: 'Avaliação completa da circulação venosa e arterial dos membros inferiores.'
   }
 ];
 
