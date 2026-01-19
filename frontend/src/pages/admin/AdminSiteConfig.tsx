@@ -11,7 +11,10 @@ import {
   Quote,
   GraduationCap,
   Sparkles,
-  Droplet
+  Droplet,
+  Smartphone,
+  Monitor,
+  Apple
 } from 'lucide-react';
 import { siteConfigService, courseService } from '../../services/api';
 import { Course } from '../../types';
@@ -24,6 +27,18 @@ interface Testimonial {
   citacao: string;
   imagem?: string;
   cargo?: string;
+}
+
+interface AppDownloadPlatform {
+  enabled: boolean;
+  url?: string;
+  comingSoon: boolean;
+}
+
+interface AppDownloadConfig {
+  windows: AppDownloadPlatform;
+  ios: AppDownloadPlatform;
+  android: AppDownloadPlatform;
 }
 
 interface SiteConfig {
@@ -49,6 +64,7 @@ interface SiteConfig {
   zoomNative: {
     enabled: boolean;
   };
+  appDownload: AppDownloadConfig;
 }
 
 const AdminSiteConfig: React.FC = () => {
@@ -56,7 +72,7 @@ const AdminSiteConfig: React.FC = () => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<'featured' | 'testimonials' | 'video' | 'watermark' | 'zoom'>('featured');
+  const [activeTab, setActiveTab] = useState<'featured' | 'testimonials' | 'video' | 'watermark' | 'zoom' | 'app'>('featured');
 
   // Estado para novo depoimento
   const [newTestimonial, setNewTestimonial] = useState({
@@ -90,6 +106,11 @@ const AdminSiteConfig: React.FC = () => {
         },
         zoomNative: configData.zoomNative || {
           enabled: true
+        },
+        appDownload: configData.appDownload || {
+          windows: { enabled: false, url: '', comingSoon: true },
+          ios: { enabled: false, url: '', comingSoon: true },
+          android: { enabled: false, url: '', comingSoon: true }
         }
       });
       setCourses(coursesRes.data.courses || []);
@@ -299,6 +320,44 @@ const AdminSiteConfig: React.FC = () => {
     }
   };
 
+  // === APP DOWNLOAD ===
+  const handleAppDownloadChange = (platform: 'windows' | 'ios' | 'android', field: string, value: any) => {
+    if (!config) return;
+    setConfig({
+      ...config,
+      appDownload: {
+        ...config.appDownload,
+        [platform]: {
+          ...config.appDownload[platform],
+          [field]: value
+        }
+      }
+    });
+  };
+
+  const saveAppDownload = async () => {
+    if (!config || !config.appDownload) {
+      toast.error('Configuração não carregada');
+      return;
+    }
+    setIsSaving(true);
+    try {
+      await siteConfigService.updateAppDownload({
+        windows: config.appDownload.windows,
+        ios: config.appDownload.ios,
+        android: config.appDownload.android
+      });
+      toast.success('Configurações do App salvas!');
+      loadData();
+    } catch (error: any) {
+      console.error('Erro ao salvar App Download:', error);
+      const message = error.response?.data?.message || error.message || 'Erro ao salvar configurações do App';
+      toast.error(message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   if (isLoading) return <Loading size="lg" text="Carregando configurações..." />;
 
   return (
@@ -369,6 +428,16 @@ const AdminSiteConfig: React.FC = () => {
         >
           <Video className="w-4 h-4" />
           Zoom Nativo
+        </button>
+        <button
+          onClick={() => setActiveTab('app')}
+          className={`px-4 py-2 rounded-t-lg font-medium transition-colors flex items-center gap-2 ${activeTab === 'app'
+              ? 'bg-primary-500 text-white'
+              : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-white/5'
+            }`}
+        >
+          <Smartphone className="w-4 h-4" />
+          Download App
         </button>
       </div>
 
@@ -923,6 +992,171 @@ const AdminSiteConfig: React.FC = () => {
               <div className="flex justify-end pt-4">
                 <button
                   onClick={saveZoomNative}
+                  disabled={isSaving}
+                  className="btn btn-primary"
+                >
+                  <Save className="w-4 h-4" />
+                  {isSaving ? 'Salvando...' : 'Salvar Alterações'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Tab: Download App */}
+          {activeTab === 'app' && (
+            <div className="card p-6 space-y-6">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-green-500/10 rounded-xl flex items-center justify-center">
+                  <Smartphone className="w-6 h-6 text-green-500" />
+                </div>
+                <div>
+                  <h2 className="font-heading text-lg font-semibold text-[var(--color-text-primary)]">
+                    Download do Aplicativo
+                  </h2>
+                  <p className="text-sm text-[var(--color-text-muted)]">
+                    Configure os links de download para cada plataforma
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-6 pt-4 border-t border-[var(--glass-border)]">
+                {/* Windows */}
+                <div className="p-4 bg-gray-50 dark:bg-white/5 rounded-xl border border-[var(--glass-border)]">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-blue-500/10 rounded-lg flex items-center justify-center">
+                        <Monitor className="w-5 h-5 text-blue-500" />
+                      </div>
+                      <div>
+                        <h3 className="font-medium text-[var(--color-text-primary)]">Windows</h3>
+                        <p className="text-xs text-[var(--color-text-muted)]">Desktop para Windows</p>
+                      </div>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={config.appDownload?.windows?.comingSoon ?? true}
+                        onChange={(e) => handleAppDownloadChange('windows', 'comingSoon', e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-200 dark:bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+                      <span className="ms-3 text-sm font-medium text-[var(--color-text-secondary)]">
+                        {config.appDownload?.windows?.comingSoon ? 'Em breve' : 'Disponivel'}
+                      </span>
+                    </label>
+                  </div>
+                  {!config.appDownload?.windows?.comingSoon && (
+                    <div>
+                      <label className="label">URL de Download</label>
+                      <input
+                        type="url"
+                        value={config.appDownload?.windows?.url || ''}
+                        onChange={(e) => handleAppDownloadChange('windows', 'url', e.target.value)}
+                        className="input"
+                        placeholder="https://exemplo.com/app-windows.exe"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* iOS / App Store */}
+                <div className="p-4 bg-gray-50 dark:bg-white/5 rounded-xl border border-[var(--glass-border)]">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gray-900 rounded-lg flex items-center justify-center">
+                        <Apple className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="font-medium text-[var(--color-text-primary)]">App Store (iOS)</h3>
+                        <p className="text-xs text-[var(--color-text-muted)]">iPhone e iPad</p>
+                      </div>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={config.appDownload?.ios?.comingSoon ?? true}
+                        onChange={(e) => handleAppDownloadChange('ios', 'comingSoon', e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-200 dark:bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+                      <span className="ms-3 text-sm font-medium text-[var(--color-text-secondary)]">
+                        {config.appDownload?.ios?.comingSoon ? 'Em breve' : 'Disponivel'}
+                      </span>
+                    </label>
+                  </div>
+                  {!config.appDownload?.ios?.comingSoon && (
+                    <div>
+                      <label className="label">URL da App Store</label>
+                      <input
+                        type="url"
+                        value={config.appDownload?.ios?.url || ''}
+                        onChange={(e) => handleAppDownloadChange('ios', 'url', e.target.value)}
+                        className="input"
+                        placeholder="https://apps.apple.com/app/..."
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Android / Play Store */}
+                <div className="p-4 bg-gray-50 dark:bg-white/5 rounded-xl border border-[var(--glass-border)]">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-green-400 via-blue-500 to-purple-500 rounded-lg flex items-center justify-center">
+                        <svg viewBox="0 0 24 24" className="w-5 h-5 text-white" fill="currentColor">
+                          <path d="M3.609 1.814L13.792 12 3.61 22.186a.996.996 0 0 1-.61-.92V2.734a1 1 0 0 1 .609-.92zm10.89 10.893l2.302 2.302-10.937 6.333 8.635-8.635zm3.199-3.198l2.807 1.626a1 1 0 0 1 0 1.73l-2.808 1.626L15.206 12l2.492-2.491zM5.864 2.658L16.8 9.99l-2.302 2.302-8.634-8.634z"/>
+                        </svg>
+                      </div>
+                      <div>
+                        <h3 className="font-medium text-[var(--color-text-primary)]">Google Play (Android)</h3>
+                        <p className="text-xs text-[var(--color-text-muted)]">Dispositivos Android</p>
+                      </div>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={config.appDownload?.android?.comingSoon ?? true}
+                        onChange={(e) => handleAppDownloadChange('android', 'comingSoon', e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-200 dark:bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+                      <span className="ms-3 text-sm font-medium text-[var(--color-text-secondary)]">
+                        {config.appDownload?.android?.comingSoon ? 'Em breve' : 'Disponivel'}
+                      </span>
+                    </label>
+                  </div>
+                  {!config.appDownload?.android?.comingSoon && (
+                    <div>
+                      <label className="label">URL da Play Store</label>
+                      <input
+                        type="url"
+                        value={config.appDownload?.android?.url || ''}
+                        onChange={(e) => handleAppDownloadChange('android', 'url', e.target.value)}
+                        className="input"
+                        placeholder="https://play.google.com/store/apps/..."
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Info box */}
+                <div className="p-4 bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30 rounded-lg">
+                  <h4 className="font-medium text-blue-900 dark:text-blue-400 mb-2 flex items-center gap-2">
+                    <Smartphone className="w-4 h-4" />
+                    Informacoes
+                  </h4>
+                  <ul className="text-sm text-blue-800 dark:text-blue-300 space-y-1 list-disc list-inside">
+                    <li>A secao App aparece apenas para usuarios com cargo Aluno, Instrutor ou Administrador</li>
+                    <li>Usuarios em modo paciente nao veem essa secao</li>
+                    <li>A plataforma detecta automaticamente o dispositivo do usuario</li>
+                    <li>Marque "Em breve" para plataformas que ainda nao estao disponiveis</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-4">
+                <button
+                  onClick={saveAppDownload}
                   disabled={isSaving}
                   className="btn btn-primary"
                 >

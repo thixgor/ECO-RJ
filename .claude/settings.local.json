@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(npm run build:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: adicionar secao App e melhorias na pagina de cursos\n\n- Ocultar secao Cursos no sidebar para usuarios em modo paciente\n- Melhorar exibicao do badge de certificado em /cursos \\(mais visivel\\)\n- Adicionar indicador de \"INSCRITO\" nos cursos que o usuario esta matriculado\n- Criar secao App no sidebar \\(apenas para medico-aluno\\)\n- Criar pagina /app com botoes de download para Windows, App Store e Play Store\n- Adicionar painel admin para gerenciar links de download do App\n- Detectar automaticamente a plataforma do usuario na pagina de download\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
     ]
   }
 }

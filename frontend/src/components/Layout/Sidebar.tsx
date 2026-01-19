@@ -17,9 +17,11 @@ import {
   Shield,
   Bell,
   Award,
-  FileCheck
+  FileCheck,
+  Smartphone
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useUserProfile } from '../../contexts/UserProfileContext';
 import { ThemeSwitch } from '../ui';
 
 // Logos ECO RJ
@@ -36,10 +38,17 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isVisible = true }) => {
   const { isAdmin, user } = useAuth();
   const { isDark } = useTheme();
+  const { profileType } = useUserProfile();
   const location = useLocation();
+
+  // Verificar se está em modo paciente
+  const isPatientMode = profileType === 'patient';
 
   // Alunos, Instrutores e Admins podem ver a seção de exercícios
   const canAccessExercises = user?.cargo && ['Aluno', 'Instrutor', 'Administrador'].includes(user.cargo);
+
+  // Mostrar seção App apenas para alunos em modo médico (student)
+  const canAccessApp = user?.cargo && ['Aluno', 'Instrutor', 'Administrador'].includes(user.cargo) && !isPatientMode;
 
   // Close sidebar when route changes on mobile
   useEffect(() => {
@@ -156,10 +165,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isVisible = true }) 
                 <span>Dashboard</span>
               </NavLink>
 
-              <NavLink to="/cursos" className={navLinkClass} onClick={onClose}>
-                <BookOpen className="w-5 h-5 flex-shrink-0" />
-                <span>Cursos</span>
-              </NavLink>
+              {!isPatientMode && (
+                <NavLink to="/cursos" className={navLinkClass} onClick={onClose}>
+                  <BookOpen className="w-5 h-5 flex-shrink-0" />
+                  <span>Cursos</span>
+                </NavLink>
+              )}
 
               {canAccessExercises && (
                 <NavLink to="/exercicios" className={navLinkClass} onClick={onClose}>
@@ -173,6 +184,20 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isVisible = true }) 
                 <span>Fórum</span>
               </NavLink>
             </div>
+
+            {/* App Section - Only for students in doctor mode */}
+            {canAccessApp && (
+              <div className="mb-4">
+                <p className="px-4 mb-2 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">
+                  Aplicativo
+                </p>
+
+                <NavLink to="/app" className={navLinkClass} onClick={onClose}>
+                  <Smartphone className="w-5 h-5 flex-shrink-0" />
+                  <span>Baixar App</span>
+                </NavLink>
+              </div>
+            )}
 
             {/* Account Section */}
             <div className="mb-4">

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, Calendar, User, Search, Mail, Key, Lock, ChevronDown, Star, Sparkles, Clock, Monitor, MapPin, Award } from 'lucide-react';
+import { BookOpen, Calendar, User, Search, Mail, Key, Lock, ChevronDown, Star, Sparkles, Clock, Monitor, MapPin, Award, CheckCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { courseService, siteConfigService } from '../services/api';
 import { Course, User as UserType } from '../types';
@@ -154,6 +154,10 @@ const Courses: React.FC = () => {
           {filteredCourses.map((course) => {
             const instrutor = course.instrutor as UserType;
             const isFeatured = featuredCourseId === course._id;
+            // Verificar se usuario esta inscrito no curso
+            const isEnrolled = user?.cursosInscritos?.some((c: any) =>
+              typeof c === 'string' ? c === course._id : c._id === course._id
+            );
 
             return (
               <Link
@@ -162,13 +166,21 @@ const Courses: React.FC = () => {
                 className={`card overflow-hidden hover:-translate-y-1 transition-all duration-300 relative ${isFeatured
                   ? 'ring-2 ring-amber-500/50 shadow-lg shadow-amber-500/20'
                   : ''
-                  }`}
+                  } ${isEnrolled ? 'ring-2 ring-primary-500/30' : ''}`}
                 style={isFeatured ? {
                   animation: 'featured-glow 2s ease-in-out infinite'
                 } : undefined}
               >
+                {/* Enrolled Badge */}
+                {isEnrolled && (
+                  <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 bg-primary-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
+                    <CheckCircle className="w-3.5 h-3.5" />
+                    INSCRITO
+                  </div>
+                )}
+
                 {/* Featured Badge */}
-                {isFeatured && (
+                {isFeatured && !isEnrolled && (
                   <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg animate-pulse">
                     <Star className="w-3.5 h-3.5 fill-white" />
                     DESTAQUE
@@ -176,11 +188,13 @@ const Courses: React.FC = () => {
                   </div>
                 )}
 
-                {/* Certificate Badge */}
+                {/* Certificate Badge - Improved visibility */}
                 {(course.certificadoDisponivel !== false) && (
-                  <div className={`absolute ${isFeatured ? 'top-12' : 'top-3'} left-3 z-10 flex items-center gap-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-lg`}>
-                    <Award className="w-3.5 h-3.5" />
-                    <span>CERTIFICADO</span>
+                  <div className={`absolute ${(isFeatured && !isEnrolled) || isEnrolled ? 'top-12' : 'top-3'} left-3 z-10`}>
+                    <div className="flex items-center gap-1.5 bg-gradient-to-r from-emerald-500 via-emerald-400 to-teal-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg shadow-emerald-500/30 border border-white/20">
+                      <Award className="w-4 h-4 drop-shadow" />
+                      <span className="tracking-wide">CERTIFICADO</span>
+                    </div>
                   </div>
                 )}
 

@@ -27,6 +27,7 @@ const Profile = lazy(() => import('./pages/Profile'));
 const Forum = lazy(() => import('./pages/Forum'));
 const ForumTopic = lazy(() => import('./pages/ForumTopic'));
 const Exercises = lazy(() => import('./pages/Exercises'));
+const AppDownload = lazy(() => import('./pages/AppDownload'));
 
 // Admin Pages
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
@@ -139,6 +140,14 @@ const App: React.FC = () => {
                 <Route path="/perfil" element={<Profile />} />
                 <Route path="/forum" element={<Forum />} />
                 <Route path="/forum/:id" element={<ForumTopic />} />
+                <Route
+                  path="/app"
+                  element={
+                    <ProtectedRoute requireAluno>
+                      <AppDownload />
+                    </ProtectedRoute>
+                  }
+                />
                 <Route
                   path="/exercicios"
                   element={

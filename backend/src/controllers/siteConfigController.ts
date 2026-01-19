@@ -11,6 +11,25 @@ interface Testimonial {
   cargo?: string;
 }
 
+// Interface para download do App
+interface AppDownloadConfig {
+  windows: {
+    enabled: boolean;
+    url?: string;
+    comingSoon: boolean;
+  };
+  ios: {
+    enabled: boolean;
+    url?: string;
+    comingSoon: boolean;
+  };
+  android: {
+    enabled: boolean;
+    url?: string;
+    comingSoon: boolean;
+  };
+}
+
 // Interface para configurações do site
 interface SiteConfig {
   // Curso em destaque
@@ -40,6 +59,8 @@ interface SiteConfig {
   zoomNative: {
     enabled: boolean;
   };
+  // App Download
+  appDownload: AppDownloadConfig;
 }
 
 const DEFAULT_CONFIG: SiteConfig = {
@@ -64,6 +85,11 @@ const DEFAULT_CONFIG: SiteConfig = {
   },
   zoomNative: {
     enabled: true
+  },
+  appDownload: {
+    windows: { enabled: false, url: '', comingSoon: true },
+    ios: { enabled: false, url: '', comingSoon: true },
+    android: { enabled: false, url: '', comingSoon: true }
   }
 };
 
@@ -114,6 +140,10 @@ export const updateSiteConfig = async (req: AuthRequest, res: Response) => {
       zoomNative: {
         ...currentConfig.zoomNative,
         ...(updates.zoomNative || {})
+      },
+      appDownload: {
+        ...currentConfig.appDownload,
+        ...(updates.appDownload || {})
       }
     };
 
@@ -337,5 +367,58 @@ export const updateZoomNative = async (req: AuthRequest, res: Response) => {
   } catch (error) {
     console.error('Erro ao atualizar Zoom Nativo:', error);
     res.status(500).json({ message: 'Erro ao atualizar Zoom Nativo' });
+  }
+};
+
+// @desc    Atualizar configurações de download do App
+// @route   PUT /api/site-config/app-download
+// @access  Private/Admin
+export const updateAppDownload = async (req: AuthRequest, res: Response) => {
+  try {
+    const { windows, ios, android } = req.body;
+
+    const currentSetting = await SystemSettings.findOne({ key: 'site_config' });
+    const currentConfig: SiteConfig = currentSetting?.value || DEFAULT_CONFIG;
+
+    // Garantir que appDownload existe
+    if (!currentConfig.appDownload) {
+      currentConfig.appDownload = DEFAULT_CONFIG.appDownload;
+    }
+
+    // Atualizar cada plataforma se fornecida
+    if (windows !== undefined) {
+      currentConfig.appDownload.windows = {
+        enabled: windows.enabled !== undefined ? windows.enabled : currentConfig.appDownload.windows.enabled,
+        url: windows.url !== undefined ? windows.url : currentConfig.appDownload.windows.url,
+        comingSoon: windows.comingSoon !== undefined ? windows.comingSoon : currentConfig.appDownload.windows.comingSoon
+      };
+    }
+
+    if (ios !== undefined) {
+      currentConfig.appDownload.ios = {
+        enabled: ios.enabled !== undefined ? ios.enabled : currentConfig.appDownload.ios.enabled,
+        url: ios.url !== undefined ? ios.url : currentConfig.appDownload.ios.url,
+        comingSoon: ios.comingSoon !== undefined ? ios.comingSoon : currentConfig.appDownload.ios.comingSoon
+      };
+    }
+
+    if (android !== undefined) {
+      currentConfig.appDownload.android = {
+        enabled: android.enabled !== undefined ? android.enabled : currentConfig.appDownload.android.enabled,
+        url: android.url !== undefined ? android.url : currentConfig.appDownload.android.url,
+        comingSoon: android.comingSoon !== undefined ? android.comingSoon : currentConfig.appDownload.android.comingSoon
+      };
+    }
+
+    await SystemSettings.findOneAndUpdate(
+      { key: 'site_config' },
+      { value: currentConfig, updatedBy: req.user?._id },
+      { upsert: true, new: true }
+    );
+
+    res.json({ message: 'Configurações de download do App atualizadas', appDownload: currentConfig.appDownload });
+  } catch (error) {
+    console.error('Erro ao atualizar App Download:', error);
+    res.status(500).json({ message: 'Erro ao atualizar configurações de download do App' });
   }
 };

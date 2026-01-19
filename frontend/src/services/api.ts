@@ -372,7 +372,13 @@ export const siteConfigService = {
     api.put('/site-config/watermark', data),
 
   updateZoomNative: (data: { enabled?: boolean }) =>
-    api.put('/site-config/zoom-native', data)
+    api.put('/site-config/zoom-native', data),
+
+  updateAppDownload: (data: {
+    windows?: { enabled?: boolean; url?: string; comingSoon?: boolean };
+    ios?: { enabled?: boolean; url?: string; comingSoon?: boolean };
+    android?: { enabled?: boolean; url?: string; comingSoon?: boolean };
+  }) => api.put('/site-config/app-download', data)
 };
 
 // Zoom
