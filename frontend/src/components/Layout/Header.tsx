@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Menu, X, User, LogOut, ChevronDown, Shield } from 'lucide-react';
+import { Menu, X, User, LogOut, ChevronDown, Shield, Smartphone } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useUserProfile } from '../../contexts/UserProfileContext';
 import { ThemeSwitch, GlassBadge } from '../ui';
 
 // Logos ECO RJ
@@ -12,7 +13,12 @@ const LOGO_LIGHT = 'https://i.imgur.com/B1SnAtD.png';
 const Header: React.FC = () => {
   const { user, isAuthenticated, isAdmin, logout } = useAuth();
   const { isDark } = useTheme();
+  const { profileType } = useUserProfile();
   const navigate = useNavigate();
+
+  // Verificar se pode acessar App (apenas médicos, não pacientes)
+  const isPatientMode = profileType === 'patient';
+  const canAccessApp = isAuthenticated && user?.cargo && ['Aluno', 'Instrutor', 'Administrador'].includes(user.cargo) && !isPatientMode;
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -94,6 +100,14 @@ const Header: React.FC = () => {
                 >
                   Fórum
                 </Link>
+                {canAccessApp && (
+                  <Link
+                    to="/app"
+                    className="nav-link-glass !py-2"
+                  >
+                    App
+                  </Link>
+                )}
               </>
             )}
           </nav>
@@ -222,6 +236,16 @@ const Header: React.FC = () => {
                   >
                     Fórum
                   </Link>
+                  {canAccessApp && (
+                    <Link
+                      to="/app"
+                      onClick={() => setIsMenuOpen(false)}
+                      className="nav-link-glass"
+                    >
+                      <Smartphone className="w-5 h-5" />
+                      App
+                    </Link>
+                  )}
                   <Link
                     to="/perfil"
                     onClick={() => setIsMenuOpen(false)}
