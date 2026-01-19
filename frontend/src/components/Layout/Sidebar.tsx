@@ -183,21 +183,15 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isVisible = true }) 
                 <MessageSquare className="w-5 h-5 flex-shrink-0" />
                 <span>Fórum</span>
               </NavLink>
-            </div>
 
-            {/* App Section - Only for students in doctor mode */}
-            {canAccessApp && (
-              <div className="mb-4">
-                <p className="px-4 mb-2 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">
-                  Aplicativo
-                </p>
-
+              {/* App - Only for students in doctor mode (not patient mode) */}
+              {canAccessApp && (
                 <NavLink to="/app" className={navLinkClass} onClick={onClose}>
                   <Smartphone className="w-5 h-5 flex-shrink-0" />
-                  <span>Baixar App</span>
+                  <span>App</span>
                 </NavLink>
-              </div>
-            )}
+              )}
+            </div>
 
             {/* Account Section */}
             <div className="mb-4">
