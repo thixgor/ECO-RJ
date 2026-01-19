@@ -211,7 +211,8 @@ const DownloadButton: React.FC<DownloadButtonProps> = ({
   isAppStore,
   isPlayStore
 }) => {
-  const isComingSoon = config?.comingSoon || !config?.enabled;
+  // Mostrar "Em breve" apenas se comingSoon estiver true ou se não tiver URL quando não for coming soon
+  const isComingSoon = config?.comingSoon !== false;
   const url = config?.url;
 
   if (isComingSoon) {

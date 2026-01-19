@@ -323,14 +323,22 @@ const AdminSiteConfig: React.FC = () => {
   // === APP DOWNLOAD ===
   const handleAppDownloadChange = (platform: 'windows' | 'ios' | 'android', field: string, value: any) => {
     if (!config) return;
+
+    const newPlatformConfig = {
+      ...config.appDownload[platform],
+      [field]: value
+    };
+
+    // Quando comingSoon mudar, ajustar enabled automaticamente
+    if (field === 'comingSoon') {
+      newPlatformConfig.enabled = !value; // enabled = true quando comingSoon = false
+    }
+
     setConfig({
       ...config,
       appDownload: {
         ...config.appDownload,
-        [platform]: {
-          ...config.appDownload[platform],
-          [field]: value
-        }
+        [platform]: newPlatformConfig
       }
     });
   };
