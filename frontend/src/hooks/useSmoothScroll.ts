@@ -23,9 +23,9 @@ export const useSmoothScroll = (enabled: boolean = true) => {
     let currentScroll = window.scrollY;
     let animationFrameId: number | null = null;
 
-    // Configurações do smooth scroll - rola mais, mas lento e smooth
-    const smoothness = 0.025; // Bem baixo = lento e suave
-    const scrollMultiplier = 0.8; // Rola mais por movimento
+    // Configurações do smooth scroll - equilibrado
+    const smoothness = 0.08; // Velocidade boa
+    const scrollMultiplier = 1.0; // Distância normal
 
     const smoothScroll = () => {
       if (!isScrolling) return;
