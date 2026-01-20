@@ -10,6 +10,7 @@ import { AnimatedBackground } from './components/ui';
 import { LoadingMinimal } from './components/common/Loading';
 import WelcomeModal from './components/common/WelcomeModal';
 import LandingPageWrapper from './components/common/LandingPageWrapper';
+import { useSmoothScroll } from './hooks/useSmoothScroll';
 
 // Lazy load pages for better performance
 // Public Pages
@@ -44,6 +45,9 @@ const AdminCertificateRequests = lazy(() => import('./pages/admin/AdminCertifica
 const ValidateCertificate = lazy(() => import('./pages/ValidateCertificate'));
 
 const App: React.FC = () => {
+  // Enable smooth scroll for mouse wheel
+  useSmoothScroll(true);
+
   // Remove splash screen when App mounts
   React.useEffect(() => {
     const splash = document.getElementById('splash');
