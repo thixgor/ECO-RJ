@@ -81,7 +81,7 @@ const App: React.FC = () => {
           <AnimatedBackground intensity="subtle" />
 
           {/* Liquid Glass Cursor Effect */}
-          <LiquidGlassCursor size={28} />
+          <LiquidGlassCursor size={32} />
 
           {/* Welcome Modal for First-Time Visitors */}
           <WelcomeModal />
