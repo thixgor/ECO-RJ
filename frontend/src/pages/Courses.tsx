@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, Calendar, User, Search, Mail, Key, Lock, ChevronDown, Star, Sparkles, Clock, Monitor, MapPin, Award, CheckCircle } from 'lucide-react';
+import { BookOpen, Calendar, User, Search, Mail, Key, Lock, ChevronDown, Star, Sparkles, Clock, Monitor, MapPin, Award, CheckCircle, ExternalLink, Copy, Share2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { courseService, siteConfigService } from '../services/api';
 import { Course, User as UserType } from '../types';
 import { CoursesGridSkeleton } from '../components/common/Loading';
 import { formatDuration } from '../utils/formatDuration';
-import { GlassTabs } from '../components/ui';
+import { GlassTabs, ContextMenu, ContextMenuItem } from '../components/ui';
+import toast from 'react-hot-toast';
 
 const Courses: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
@@ -159,9 +160,47 @@ const Courses: React.FC = () => {
               typeof c === 'string' ? c === course._id : c._id === course._id
             );
 
+            const courseUrl = `/cursos/${course._id}`;
+            const contextMenuItems: ContextMenuItem[] = [
+              {
+                label: 'Abrir em nova aba',
+                icon: <ExternalLink className="w-4 h-4" />,
+                onClick: () => window.open(courseUrl, '_blank'),
+              },
+              {
+                label: 'Copiar link',
+                icon: <Copy className="w-4 h-4" />,
+                onClick: () => {
+                  navigator.clipboard.writeText(window.location.origin + courseUrl);
+                  toast.success('Link copiado!');
+                },
+              },
+              {
+                label: 'Compartilhar',
+                icon: <Share2 className="w-4 h-4" />,
+                divider: true,
+                onClick: async () => {
+                  if (navigator.share) {
+                    try {
+                      await navigator.share({
+                        title: course.titulo,
+                        text: course.descricao,
+                        url: window.location.origin + courseUrl,
+                      });
+                    } catch (err) {
+                      // User cancelled
+                    }
+                  } else {
+                    navigator.clipboard.writeText(window.location.origin + courseUrl);
+                    toast.success('Link copiado!');
+                  }
+                },
+              },
+            ];
+
             return (
+              <ContextMenu key={course._id} items={contextMenuItems}>
               <Link
-                key={course._id}
                 to={`/cursos/${course._id}`}
                 className={`card overflow-hidden hover:-translate-y-1 transition-all duration-300 relative ${isFeatured
                   ? 'ring-2 ring-amber-500/50 shadow-lg shadow-amber-500/20'
@@ -244,6 +283,7 @@ const Courses: React.FC = () => {
                   </div>
                 </div>
               </Link>
+              </ContextMenu>
             );
           })}
         </div>

@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { BookOpen, Calendar, User, PlayCircle, Clock, Lock, CheckCircle, ArrowLeft, FolderOpen, ChevronDown, FileText, Video, Layers, Award, Loader2 } from 'lucide-react';
+import { BookOpen, Calendar, User, PlayCircle, Clock, Lock, CheckCircle, ArrowLeft, FolderOpen, ChevronDown, FileText, Video, Layers, Award, Loader2, ExternalLink, Copy, Share2 } from 'lucide-react';
 import { courseService, lessonService, courseTopicService, courseSubtopicService, certificateRequestService } from '../services/api';
 import { Course, Lesson, User as UserType, CourseTopic, CourseSubtopic } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { CourseDetailSkeleton } from '../components/common/Loading';
 import { formatDuration } from '../utils/formatDuration';
+import { ContextMenu, ContextMenuItem } from '../components/ui';
 import toast from 'react-hot-toast';
 
 const CourseDetail: React.FC = () => {
@@ -267,9 +268,47 @@ const CourseDetail: React.FC = () => {
     // Administrador tem acesso irrestrito (não precisa estar inscrito)
     const canAccess = isAdmin || (canViewLessons && isEnrolled);
 
+    const lessonUrl = `/aulas/${lesson._id}`;
+    const lessonContextMenuItems: ContextMenuItem[] = [
+      {
+        label: 'Abrir em nova aba',
+        icon: <ExternalLink className="w-4 h-4" />,
+        onClick: () => window.open(lessonUrl, '_blank'),
+      },
+      {
+        label: 'Copiar link',
+        icon: <Copy className="w-4 h-4" />,
+        onClick: () => {
+          navigator.clipboard.writeText(window.location.origin + lessonUrl);
+          toast.success('Link copiado!');
+        },
+      },
+      {
+        label: 'Compartilhar',
+        icon: <Share2 className="w-4 h-4" />,
+        divider: true,
+        onClick: async () => {
+          if (navigator.share) {
+            try {
+              await navigator.share({
+                title: lesson.titulo,
+                url: window.location.origin + lessonUrl,
+              });
+            } catch (err) {
+              // User cancelled
+            }
+          } else {
+            navigator.clipboard.writeText(window.location.origin + lessonUrl);
+            toast.success('Link copiado!');
+          }
+        },
+      },
+    ];
+
     return (
       <div key={lesson._id} className="group w-full">
         {canAccess ? (
+          <ContextMenu items={lessonContextMenuItems}>
           <Link
             to={`/aulas/${lesson._id}`}
             className="w-full p-4 flex items-center gap-4 transition-colors hover:bg-gray-50 dark:hover:bg-white/5"
@@ -319,6 +358,7 @@ const CourseDetail: React.FC = () => {
               </div>
             </div>
           </Link>
+          </ContextMenu>
         ) : (
           <div className="w-full p-4 flex items-center gap-4 bg-gray-50/30 dark:bg-white/5 opacity-75">
             <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0">

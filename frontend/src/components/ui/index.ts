@@ -11,3 +11,5 @@ export { GlassTabs } from './GlassTabs';
 export { ThemeSwitch } from './ThemeSwitch';
 export { AnimatedBackground } from './AnimatedBackground';
 export { Skeleton, SkeletonCard, SkeletonCourseItem } from './Skeleton';
+export { ContextMenu, createOpenInNewTabItem, createCopyLinkItem, createShareItem, ContextMenuIcons } from './ContextMenu';
+export type { ContextMenuItem } from './ContextMenu';
