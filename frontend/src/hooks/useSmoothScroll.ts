@@ -8,9 +8,15 @@ export const useSmoothScroll = (enabled: boolean = true) => {
   useEffect(() => {
     if (!enabled) return;
 
-    // Detectar se é mobile/touch device - não aplicar smooth scroll
-    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-    if (isTouchDevice) return;
+    // Detectar se é APENAS mobile (tela pequena + touch) - não aplicar smooth scroll
+    // Laptops com touchscreen ainda devem ter smooth scroll
+    const isMobileDevice = window.matchMedia('(max-width: 768px)').matches &&
+                           ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+    if (isMobileDevice) {
+      console.log('[SmoothScroll] Desativado - dispositivo mobile detectado');
+      return;
+    }
+    console.log('[SmoothScroll] Ativado!');
 
     let isScrolling = false;
     let targetScroll = window.scrollY;
