@@ -6,7 +6,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { UserProfileProvider } from './contexts/UserProfileContext';
 import { PublicLayout, AuthenticatedLayout, AdminLayout, PublicPageWrapper } from './components/Layout';
 import ProtectedRoute from './components/common/ProtectedRoute';
-import { AnimatedBackground } from './components/ui';
+import { AnimatedBackground, LiquidGlassCursor } from './components/ui';
 import { LoadingMinimal } from './components/common/Loading';
 import WelcomeModal from './components/common/WelcomeModal';
 import LandingPageWrapper from './components/common/LandingPageWrapper';
@@ -79,6 +79,9 @@ const App: React.FC = () => {
           <BrowserRouter>
           {/* Animated Background */}
           <AnimatedBackground intensity="subtle" />
+
+          {/* Liquid Glass Cursor Effect */}
+          <LiquidGlassCursor size={70} />
 
           {/* Welcome Modal for First-Time Visitors */}
           <WelcomeModal />

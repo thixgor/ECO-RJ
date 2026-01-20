@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Menu, X, User, LogOut, ChevronDown, Shield, Smartphone } from 'lucide-react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Menu, X, User, LogOut, ChevronDown, Shield, Smartphone, BookOpen, LayoutDashboard, MessageSquare } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useUserProfile } from '../../contexts/UserProfileContext';
@@ -15,6 +15,7 @@ const Header: React.FC = () => {
   const { isDark } = useTheme();
   const { profileType } = useUserProfile();
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Verificar se pode acessar App (apenas médicos, não pacientes)
   const isPatientMode = profileType === 'patient';
@@ -62,9 +63,9 @@ const Header: React.FC = () => {
       `}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          {/* Logo */}
-          <Link to="/" className="flex items-center gap-3 group">
+        <div className="flex items-center h-16 relative">
+          {/* Logo - Left */}
+          <Link to="/" className="flex items-center gap-3 group z-10">
             <img
               src={isDark ? LOGO_DARK : LOGO_LIGHT}
               alt="ECO RJ"
@@ -78,42 +79,46 @@ const Header: React.FC = () => {
             <span className="font-heading font-bold text-xl text-gradient">ECO RJ</span>
           </Link>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-1">
-            <Link
+          {/* Desktop Navigation - Centered */}
+          <nav className="hidden md:flex items-center gap-1.5 absolute left-1/2 -translate-x-1/2">
+            <NavLink
               to="/cursos"
-              className="nav-link-glass !py-2"
+              icon={<BookOpen className="w-4 h-4" />}
+              isActive={location.pathname === '/cursos' || location.pathname.startsWith('/cursos/')}
             >
               Cursos
-            </Link>
+            </NavLink>
             {isAuthenticated && (
               <>
-                <Link
+                <NavLink
                   to="/dashboard"
-                  className="nav-link-glass !py-2"
+                  icon={<LayoutDashboard className="w-4 h-4" />}
+                  isActive={location.pathname === '/dashboard'}
                 >
                   Dashboard
-                </Link>
-                <Link
+                </NavLink>
+                <NavLink
                   to="/forum"
-                  className="nav-link-glass !py-2"
+                  icon={<MessageSquare className="w-4 h-4" />}
+                  isActive={location.pathname === '/forum' || location.pathname.startsWith('/forum/')}
                 >
                   Fórum
-                </Link>
+                </NavLink>
                 {canAccessApp && (
-                  <Link
+                  <NavLink
                     to="/app"
-                    className="nav-link-glass !py-2"
+                    icon={<Smartphone className="w-4 h-4" />}
+                    isActive={location.pathname === '/app'}
                   >
                     App
-                  </Link>
+                  </NavLink>
                 )}
               </>
             )}
           </nav>
 
-          {/* Desktop Auth */}
-          <div className="hidden md:flex items-center gap-4">
+          {/* Desktop Auth - Right */}
+          <div className="hidden md:flex items-center gap-4 ml-auto z-10">
             <ThemeSwitch />
 
             {isAuthenticated ? (
@@ -309,6 +314,48 @@ const Header: React.FC = () => {
         )}
       </div>
     </header>
+  );
+};
+
+// NavLink component for desktop navigation with improved design
+interface NavLinkProps {
+  to: string;
+  children: React.ReactNode;
+  icon?: React.ReactNode;
+  isActive?: boolean;
+}
+
+const NavLink: React.FC<NavLinkProps> = ({ to, children, icon, isActive }) => {
+  return (
+    <Link
+      to={to}
+      className={`
+        relative flex items-center gap-2 px-4 py-2 rounded-xl
+        font-medium text-sm
+        transition-all duration-300 ease-apple
+        group
+        ${isActive
+          ? 'bg-primary-500/15 text-primary-600 dark:text-primary-400 shadow-sm'
+          : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--glass-bg)]'
+        }
+      `}
+    >
+      {icon && (
+        <span className={`
+          transition-all duration-300
+          ${isActive
+            ? 'text-primary-500'
+            : 'text-[var(--color-text-muted)] group-hover:text-primary-500'
+          }
+        `}>
+          {icon}
+        </span>
+      )}
+      <span>{children}</span>
+      {isActive && (
+        <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1/2 h-0.5 bg-primary-500 rounded-full" />
+      )}
+    </Link>
   );
 };
 

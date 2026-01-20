@@ -13,3 +13,4 @@ export { AnimatedBackground } from './AnimatedBackground';
 export { Skeleton, SkeletonCard, SkeletonCourseItem } from './Skeleton';
 export { ContextMenu, createOpenInNewTabItem, createCopyLinkItem, createShareItem, ContextMenuIcons } from './ContextMenu';
 export type { ContextMenuItem } from './ContextMenu';
+export { LiquidGlassCursor } from './LiquidGlassCursor';
