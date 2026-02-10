@@ -426,30 +426,30 @@ NÃO COMPARTILHE ESTE TOKEN COM NINGUÉM!
 
       {/* Modal de Token de Recuperação */}
       {showTokenModal && recoveryData && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-lg w-full shadow-2xl animate-slide-up overflow-hidden">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-lg w-full shadow-2xl animate-slide-up overflow-hidden max-h-[90vh] flex flex-col">
             {/* Header */}
-            <div className="bg-gradient-to-r from-amber-500 to-orange-500 p-6 text-white">
+            <div className="bg-gradient-to-r from-amber-500 to-orange-500 p-4 sm:p-6 text-white flex-shrink-0">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
-                  <Key className="w-6 h-6" />
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+                  <Key className="w-5 h-5 sm:w-6 sm:h-6" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold">Token de Recuperação</h2>
-                  <p className="text-white/80 text-sm">Guarde este token em local seguro</p>
+                  <h2 className="text-lg sm:text-xl font-bold">Token de Recuperação</h2>
+                  <p className="text-white/80 text-xs sm:text-sm">Guarde este token em local seguro</p>
                 </div>
               </div>
             </div>
 
-            {/* Content */}
-            <div className="p-6 space-y-4">
+            {/* Content - scrollable */}
+            <div className="p-4 sm:p-6 space-y-3 sm:space-y-4 overflow-y-auto flex-1">
               {/* Warning */}
-              <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-xl p-4">
-                <div className="flex items-start gap-3">
-                  <AlertTriangle className="w-6 h-6 text-red-500 flex-shrink-0 mt-0.5" />
+              <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-xl p-3 sm:p-4">
+                <div className="flex items-start gap-2 sm:gap-3">
+                  <AlertTriangle className="w-5 h-5 sm:w-6 sm:h-6 text-red-500 flex-shrink-0 mt-0.5" />
                   <div>
-                    <p className="font-bold text-red-700 dark:text-red-400 mb-1">⚠️ ATENÇÃO:</p>
-                    <p className="text-red-600 dark:text-red-400 text-sm leading-relaxed">
+                    <p className="font-bold text-red-700 dark:text-red-400 mb-1 text-sm sm:text-base">⚠️ ATENÇÃO:</p>
+                    <p className="text-red-600 dark:text-red-400 text-xs sm:text-sm leading-relaxed">
                       Este token é a <strong>ÚNICA</strong> forma de recuperar sua conta caso você perca sua senha.
                       <br /><br />
                       <strong>Após fechar este modal, ele nunca mais será exibido novamente.</strong>
@@ -461,22 +461,22 @@ NÃO COMPARTILHE ESTE TOKEN COM NINGUÉM!
               </div>
 
               {/* Account Info */}
-              <div className="bg-gray-50 dark:bg-white/5 rounded-xl p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500 dark:text-gray-400">ID da Conta:</span>
-                  <code className="text-sm font-mono bg-gray-200 dark:bg-white/10 px-2 py-1 rounded">
+              <div className="bg-gray-50 dark:bg-white/5 rounded-xl p-3 sm:p-4 space-y-2 sm:space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 flex-shrink-0">ID da Conta:</span>
+                  <code className="text-xs sm:text-sm font-mono bg-gray-200 dark:bg-white/10 px-2 py-1 rounded truncate">
                     {recoveryData.id}
                   </code>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500 dark:text-gray-400">E-mail:</span>
-                  <span className="text-sm font-medium text-[var(--color-text-primary)]">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 flex-shrink-0">E-mail:</span>
+                  <span className="text-xs sm:text-sm font-medium text-[var(--color-text-primary)] truncate">
                     {recoveryData.email}
                   </span>
                 </div>
-                <div className="border-t border-gray-200 dark:border-white/10 pt-3">
-                  <span className="text-sm text-gray-500 dark:text-gray-400 block mb-2">Token de Recuperação:</span>
-                  <code className="block w-full text-center text-lg font-mono bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 px-3 py-3 rounded-lg break-all font-bold tracking-wider">
+                <div className="border-t border-gray-200 dark:border-white/10 pt-2 sm:pt-3">
+                  <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 block mb-2">Token de Recuperação:</span>
+                  <code className="block w-full text-center text-base sm:text-lg font-mono bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 px-2 sm:px-3 py-2 sm:py-3 rounded-lg break-all font-bold tracking-wider">
                     {recoveryData.tokenRecuperacao}
                   </code>
                 </div>
@@ -485,9 +485,9 @@ NÃO COMPARTILHE ESTE TOKEN COM NINGUÉM!
               {/* Download Button */}
               <button
                 onClick={handleDownloadToken}
-                className="btn btn-primary w-full py-3 flex items-center justify-center gap-2"
+                className="btn btn-primary w-full py-2.5 sm:py-3 flex items-center justify-center gap-2 text-sm sm:text-base"
               >
-                <Download className="w-5 h-5" />
+                <Download className="w-4 h-4 sm:w-5 sm:h-5" />
                 Baixar Token (.txt)
               </button>
 
@@ -495,25 +495,25 @@ NÃO COMPARTILHE ESTE TOKEN COM NINGUÉM!
               {!confirmClose ? (
                 <button
                   onClick={handleCloseModal}
-                  className="btn btn-outline w-full py-3"
+                  className="btn btn-outline w-full py-2.5 sm:py-3 text-sm sm:text-base"
                 >
                   Já salvei meu token, continuar
                 </button>
               ) : (
-                <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-xl p-4">
-                  <p className="text-amber-700 dark:text-amber-400 text-sm mb-3 text-center font-medium">
+                <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-xl p-3 sm:p-4">
+                  <p className="text-amber-700 dark:text-amber-400 text-xs sm:text-sm mb-3 text-center font-medium">
                     Tem certeza? Este token <strong>NUNCA</strong> mais será exibido!
                   </p>
                   <div className="flex gap-2">
                     <button
                       onClick={() => setConfirmClose(false)}
-                      className="btn btn-outline flex-1"
+                      className="btn btn-outline flex-1 text-sm"
                     >
                       Voltar
                     </button>
                     <button
                       onClick={handleCloseModal}
-                      className="btn btn-primary flex-1"
+                      className="btn btn-primary flex-1 text-sm"
                     >
                       Confirmar e Continuar
                     </button>

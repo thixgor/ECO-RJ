@@ -24,6 +24,7 @@ const Profile: React.FC = () => {
   // Serial key state
   const [serialKey, setSerialKey] = useState('');
   const [isApplying, setIsApplying] = useState(false);
+  const [showSerialKeyModal, setShowSerialKeyModal] = useState(false);
 
   // Password state
   const [passwordData, setPasswordData] = useState({
@@ -215,6 +216,7 @@ const Profile: React.FC = () => {
       const response = await userService.applySerialKey(serialKey);
       await refreshUser();
       setSerialKey('');
+      setShowSerialKeyModal(false);
       toast.success(response.data.message);
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Erro ao aplicar serial key');
@@ -302,31 +304,40 @@ const Profile: React.FC = () => {
             </h1>
             <p className="text-[var(--color-text-secondary)]">{user?.email}</p>
             <span className={`inline-block mt-2 px-3 py-1 rounded-full text-sm font-medium ${user?.cargo === 'Administrador'
-                ? 'bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300'
-                : user?.cargo === 'Aluno'
-                  ? 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-300'
-                  : user?.cargo === 'Instrutor'
-                    ? 'bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300'
-                    : 'bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300'
+              ? 'bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300'
+              : user?.cargo === 'Aluno'
+                ? 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-300'
+                : user?.cargo === 'Instrutor'
+                  ? 'bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300'
+                  : 'bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300'
               }`}>
               {user?.cargo}
             </span>
           </div>
           {!isEditing && (
-            <button
-              onClick={() => {
-                setEditData({
-                  nomeCompleto: user?.nomeCompleto || '',
-                  especialidade: user?.especialidade || '',
-                  bio: user?.bio || ''
-                });
-                setIsEditing(true);
-              }}
-              className="btn btn-outline"
-            >
-              <Edit className="w-4 h-4" />
-              Editar
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => setShowSerialKeyModal(true)}
+                className="btn btn-primary flex items-center gap-2"
+              >
+                <Key className="w-4 h-4" />
+                Usar Serial Key
+              </button>
+              <button
+                onClick={() => {
+                  setEditData({
+                    nomeCompleto: user?.nomeCompleto || '',
+                    especialidade: user?.especialidade || '',
+                    bio: user?.bio || ''
+                  });
+                  setIsEditing(true);
+                }}
+                className="btn btn-outline"
+              >
+                <Edit className="w-4 h-4" />
+                Editar
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -351,8 +362,8 @@ const Profile: React.FC = () => {
             <button
               onClick={() => setActiveTab('info')}
               className={`px-6 py-4 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${activeTab === 'info'
-                  ? 'border-primary-500 text-primary-500'
-                  : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
+                ? 'border-primary-500 text-primary-500'
+                : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
                 }`}
             >
               Informações
@@ -360,8 +371,8 @@ const Profile: React.FC = () => {
             <button
               onClick={() => setActiveTab('certificados')}
               className={`px-6 py-4 font-medium text-sm border-b-2 transition-colors whitespace-nowrap flex items-center gap-2 ${activeTab === 'certificados'
-                  ? 'border-primary-500 text-primary-500'
-                  : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
+                ? 'border-primary-500 text-primary-500'
+                : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
                 }`}
             >
               <Award className="w-4 h-4" />
@@ -370,8 +381,8 @@ const Profile: React.FC = () => {
             <button
               onClick={() => setActiveTab('serial')}
               className={`px-6 py-4 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${activeTab === 'serial'
-                  ? 'border-primary-500 text-primary-500'
-                  : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
+                ? 'border-primary-500 text-primary-500'
+                : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
                 }`}
             >
               Serial Key
@@ -379,8 +390,8 @@ const Profile: React.FC = () => {
             <button
               onClick={() => setActiveTab('notas')}
               className={`px-6 py-4 font-medium text-sm border-b-2 transition-colors whitespace-nowrap flex items-center gap-2 ${activeTab === 'notas'
-                  ? 'border-primary-500 text-primary-500'
-                  : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
+                ? 'border-primary-500 text-primary-500'
+                : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
                 }`}
             >
               <StickyNote className="w-4 h-4" />
@@ -389,8 +400,8 @@ const Profile: React.FC = () => {
             <button
               onClick={() => setActiveTab('password')}
               className={`px-6 py-4 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${activeTab === 'password'
-                  ? 'border-primary-500 text-primary-500'
-                  : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
+                ? 'border-primary-500 text-primary-500'
+                : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
                 }`}
             >
               Alterar Senha
@@ -795,6 +806,76 @@ const Profile: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Serial Key Quick Modal */}
+      {showSerialKeyModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full shadow-2xl animate-slide-up overflow-hidden">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-primary-500 to-primary-600 p-5 text-white">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+                  <Key className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold">Usar Serial Key</h2>
+                  <p className="text-white/80 text-sm">Insira sua chave para ativar o acesso</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="p-5 space-y-4">
+              <div className="bg-primary-50 dark:bg-primary-500/10 p-3 rounded-lg">
+                <p className="text-primary-700 dark:text-primary-300/80 text-sm">
+                  Insira sua serial key para atualizar seu cargo e ter acesso completo às aulas e exercícios.
+                </p>
+              </div>
+
+              <form
+                onSubmit={(e) => {
+                  handleApplySerialKey(e);
+                }}
+                className="space-y-4"
+              >
+                <div>
+                  <label className="label">Serial Key</label>
+                  <div className="relative">
+                    <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="text"
+                      value={serialKey}
+                      onChange={(e) => setSerialKey(e.target.value.toUpperCase())}
+                      className="input pl-10 font-mono"
+                      placeholder="ECO-2025-XXXX"
+                      autoFocus
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowSerialKeyModal(false);
+                      setSerialKey('');
+                    }}
+                    className="btn btn-outline flex-1"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isApplying || !serialKey.trim()}
+                    className="btn btn-primary flex-1"
+                  >
+                    {isApplying ? 'Validando...' : 'Validar Chave'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

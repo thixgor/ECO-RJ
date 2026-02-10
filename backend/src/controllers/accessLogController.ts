@@ -1,9 +1,17 @@
 import { Request, Response } from 'express';
 import AccessLog from '../models/AccessLog';
+import SystemSettings from '../models/SystemSettings';
 import { AuthRequest } from '../middleware/auth';
 
-// Estado global para pausar/resumir logs
-let logsEnabled = true;
+// Helper para verificar se logs estão habilitados (busca do banco)
+const isLogsEnabled = async (): Promise<boolean> => {
+  try {
+    const setting = await SystemSettings.findOne({ key: 'logsEnabled' });
+    return setting ? setting.value : true; // Default: true (habilitado)
+  } catch {
+    return true;
+  }
+};
 
 // Helper para obter IP do request
 export const getClientIp = (req: Request): string => {
@@ -27,7 +35,8 @@ export const registrarAcesso = async (
   }
 ) => {
   // Se logs estiverem pausados, não registra
-  if (!logsEnabled) return;
+  const enabled = await isLogsEnabled();
+  if (!enabled) return;
 
   try {
     await AccessLog.create({
@@ -274,9 +283,12 @@ export const getMyAccessLogs = async (req: AuthRequest, res: Response) => {
 // @access  Private/Admin
 export const getLogsStatus = async (req: Request, res: Response) => {
   try {
-    const totalLogs = await AccessLog.countDocuments();
+    const [enabled, totalLogs] = await Promise.all([
+      isLogsEnabled(),
+      AccessLog.countDocuments()
+    ]);
     res.json({
-      enabled: logsEnabled,
+      enabled,
       totalLogs
     });
   } catch (error) {
@@ -288,12 +300,18 @@ export const getLogsStatus = async (req: Request, res: Response) => {
 // @desc    Pausar/Resumir logs
 // @route   POST /api/access-logs/toggle
 // @access  Private/Admin
-export const toggleLogs = async (req: Request, res: Response) => {
+export const toggleLogs = async (req: AuthRequest, res: Response) => {
   try {
-    logsEnabled = !logsEnabled;
+    const currentEnabled = await isLogsEnabled();
+    const newEnabled = !currentEnabled;
+    await SystemSettings.findOneAndUpdate(
+      { key: 'logsEnabled' },
+      { value: newEnabled, updatedBy: req.user?._id },
+      { upsert: true, new: true }
+    );
     res.json({
-      enabled: logsEnabled,
-      message: logsEnabled ? 'Logs ativados' : 'Logs pausados'
+      enabled: newEnabled,
+      message: newEnabled ? 'Logs ativados' : 'Logs pausados'
     });
   } catch (error) {
     console.error('Erro ao alternar logs:', error);
