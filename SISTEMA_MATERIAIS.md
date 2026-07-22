@@ -67,7 +67,7 @@ Salvaguardas em camadas (o acesso **nunca** depende do e‑mail):
 - `pages/MaterialCheckout.tsx` — `/materiais/comprar/:id`.
 - `pages/MaterialPaymentStatus.tsx` — `/materiais/compra/status`.
 - `pages/MaterialAccess.tsx` — `/materiais/acesso?token=...` (acesso do convidado).
-- `pages/admin/AdminMaterials.tsx` — `/admin/materiais` (CRUD + vendas + reprocessar).
+- `pages/admin/AdminMaterials.tsx` — `/admin/materiais` (catálogo de produtos: CRUD + conceder acesso). **As vendas e a receita ficam unificadas em `/admin/pagamentos`.**
 - `components/materials/MaterialContentViewer.tsx` — player/downloads do conteúdo.
 - `Profile.tsx` — aba **Meus Materiais**.
 - Links no `Header`, `Sidebar` e rotas em `App.tsx`. `materialService` em `services/api.ts`.
@@ -114,6 +114,9 @@ Nenhuma outra parte do código precisa mudar.
 | GET | `/:id/content` | Usuário logado (com acesso) |
 | GET/POST/DELETE | `/:id/reviews` | Público / logado com compra |
 | `/admin/*` | — | Admin (CRUD, vendas, stats, refulfill, grant) |
+
+> **Financeiro unificado** (cursos + materiais) em `/api/payments/admin/stats-unified`
+> e `/api/payments/admin/orders-unified` — consumidos pela página `/admin/pagamentos`.
 
 ---
 

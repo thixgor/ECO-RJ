@@ -1,16 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import {
   ShoppingBag, Tag, Layers, Settings as SettingsIcon, DollarSign,
-  Search, RefreshCw, Loader2, Trash2, Plus, Eye, CheckCircle2
+  Search, RefreshCw, Loader2, Trash2, Plus, Eye, CheckCircle2,
+  BookOpen, Package, AlertTriangle, TrendingUp
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
   GlassCard, GlassButton, GlassInput, GlassSelect, GlassTabs, GlassBadge, GlassModal, GlassTextarea
 } from '../../components/ui';
 import {
-  paymentService, couponService, priceLotService, courseService
+  paymentService, materialService, couponService, priceLotService, courseService
 } from '../../services/api';
-import type { Order, Coupon, PriceLot, Course, PaymentConfig } from '../../types';
+import type { Coupon, PriceLot, Course, PaymentConfig } from '../../types';
 
 const brl = (v: number) => `R$ ${Number(v || 0).toFixed(2).replace('.', ',')}`;
 
@@ -23,21 +24,32 @@ const statusBadge: Record<string, { variant: any; label: string }> = {
   reembolsado: { variant: 'default', label: 'Reembolsado' }
 };
 
-/* ========================= ABA: PEDIDOS ========================= */
+/* ========================= ABA: PEDIDOS (UNIFICADO cursos + materiais) ========================= */
+const origemBadge = (origem: string) =>
+  origem === 'material'
+    ? <GlassBadge variant="primary"><span className="inline-flex items-center gap-1"><Package className="w-3 h-3" /> Material</span></GlassBadge>
+    : <GlassBadge variant="default"><span className="inline-flex items-center gap-1"><BookOpen className="w-3 h-3" /> Curso</span></GlassBadge>;
+
 const OrdersTab: React.FC = () => {
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
+  const [origem, setOrigem] = useState<'' | 'curso' | 'material'>('');
   const [detail, setDetail] = useState<any>(null);
+  const [reprocessing, setReprocessing] = useState(false);
 
   const load = async () => {
     setLoading(true);
     try {
       const [ordersRes, statsRes] = await Promise.all([
-        paymentService.admin.getOrders({ search: search || undefined, status: status || undefined }),
-        paymentService.admin.getStats()
+        paymentService.admin.getUnifiedOrders({
+          search: search || undefined,
+          status: status || undefined,
+          origem: origem || undefined
+        }),
+        paymentService.admin.getUnifiedStats()
       ]);
       setOrders(ordersRes.data.orders);
       setStats(statsRes.data);
@@ -48,37 +60,80 @@ const OrdersTab: React.FC = () => {
     }
   };
 
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [status]);
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [status, origem]);
 
-  const openDetail = async (id: string) => {
+  const openDetail = async (o: any) => {
     try {
-      const res = await paymentService.admin.getOrderById(id);
-      setDetail(res.data);
+      const res = o.origem === 'material'
+        ? await materialService.admin.getOrderById(o._id)
+        : await paymentService.admin.getOrderById(o._id);
+      setDetail({ ...res.data, origem: o.origem });
     } catch {
       toast.error('Erro ao carregar pedido');
     }
   };
 
-  const refulfill = async (id: string) => {
+  const refulfill = async () => {
+    if (!detail) return;
+    setReprocessing(true);
     try {
-      await paymentService.admin.refulfill(id);
-      toast.success('Pedido reprocessado');
-      if (detail?._id === id) openDetail(id);
+      if (detail.origem === 'material') await materialService.admin.refulfill(detail._id);
+      else await paymentService.admin.refulfill(detail._id);
+      toast.success('Pedido reprocessado / e-mail reenviado');
+      await openDetail({ _id: detail._id, origem: detail.origem });
+      await load();
     } catch (e: any) {
       toast.error(e.response?.data?.message || 'Erro ao reprocessar');
+    } finally {
+      setReprocessing(false);
     }
   };
 
+  const produtoTitulo = detail ? (detail.produtoTitulo || detail.cursoTitulo || detail.materialTitulo || '-') : '';
+
   return (
     <div className="space-y-4">
+      {/* Receita total consolidada (cursos + materiais) */}
       {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          <GlassCard className="p-4"><p className="text-xs text-[var(--color-text-muted)]">Receita total</p><p className="text-xl font-bold text-emerald-500">{brl(stats.receitaTotal)}</p></GlassCard>
-          <GlassCard className="p-4"><p className="text-xs text-[var(--color-text-muted)]">Pedidos</p><p className="text-xl font-bold">{stats.totalPedidos}</p></GlassCard>
-          <GlassCard className="p-4"><p className="text-xs text-[var(--color-text-muted)]">Aprovados</p><p className="text-xl font-bold text-emerald-500">{stats.aprovados}</p></GlassCard>
-          <GlassCard className="p-4"><p className="text-xs text-[var(--color-text-muted)]">Pendentes</p><p className="text-xl font-bold text-amber-500">{stats.pendentes}</p></GlassCard>
-          <GlassCard className="p-4"><p className="text-xs text-[var(--color-text-muted)]">Rejeitados</p><p className="text-xl font-bold text-red-500">{stats.rejeitados}</p></GlassCard>
-        </div>
+        <>
+          <GlassCard className="p-5">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <p className="text-xs text-[var(--color-text-muted)] flex items-center gap-1"><TrendingUp className="w-3.5 h-3.5" /> Receita total (cursos + materiais)</p>
+                <p className="text-3xl font-bold text-emerald-500">{brl(stats.receitaTotal)}</p>
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">
+                  Ticket médio {brl(stats.ticketMedio)} · Taxa operacional arrecadada {brl(stats.taxaArrecadadaTotal)}
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <div className="px-4 py-3 rounded-xl bg-[var(--glass-bg)] border border-[var(--glass-border)] text-center min-w-[120px]">
+                  <p className="text-xs text-[var(--color-text-muted)] flex items-center justify-center gap-1"><BookOpen className="w-3.5 h-3.5" /> Cursos</p>
+                  <p className="text-lg font-bold">{brl(stats.receitaCursos)}</p>
+                  <p className="text-[11px] text-[var(--color-text-muted)]">{stats.cursos?.aprovados || 0} vendas</p>
+                </div>
+                <div className="px-4 py-3 rounded-xl bg-[var(--glass-bg)] border border-[var(--glass-border)] text-center min-w-[120px]">
+                  <p className="text-xs text-[var(--color-text-muted)] flex items-center justify-center gap-1"><Package className="w-3.5 h-3.5" /> Materiais</p>
+                  <p className="text-lg font-bold">{brl(stats.receitaMateriais)}</p>
+                  <p className="text-[11px] text-[var(--color-text-muted)]">{stats.materiais?.aprovados || 0} vendas</p>
+                </div>
+              </div>
+            </div>
+          </GlassCard>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <GlassCard className="p-4"><p className="text-xs text-[var(--color-text-muted)]">Pedidos</p><p className="text-xl font-bold">{stats.totalPedidos}</p></GlassCard>
+            <GlassCard className="p-4"><p className="text-xs text-[var(--color-text-muted)]">Aprovados</p><p className="text-xl font-bold text-emerald-500">{stats.aprovados}</p></GlassCard>
+            <GlassCard className="p-4"><p className="text-xs text-[var(--color-text-muted)]">Pendentes</p><p className="text-xl font-bold text-amber-500">{stats.pendentes}</p></GlassCard>
+            <GlassCard className="p-4"><p className="text-xs text-[var(--color-text-muted)]">Rejeitados</p><p className="text-xl font-bold text-red-500">{stats.rejeitados}</p></GlassCard>
+          </div>
+
+          {stats.emailsFalhos > 0 && (
+            <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 flex items-center gap-2 text-sm text-amber-800 dark:text-amber-300">
+              <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+              <span><strong>{stats.emailsFalhos}</strong> compra(s) de material entregues com e-mail não enviado. O acesso do comprador está garantido; use "Reprocessar" no pedido para reenviar.</span>
+            </div>
+          )}
+        </>
       )}
 
       <GlassCard className="p-4">
@@ -88,11 +143,20 @@ const OrdersTab: React.FC = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && load()}
-              placeholder="Buscar por pedido, nome, e-mail ou CPF"
+              placeholder="Buscar por pedido, nome ou e-mail"
               leftIcon={<Search className="w-4 h-4" />}
             />
             <GlassButton variant="secondary" onClick={load}>Buscar</GlassButton>
           </div>
+          <GlassSelect
+            value={origem}
+            onChange={(e) => setOrigem(e.target.value as any)}
+            options={[
+              { value: '', label: 'Todas as origens' },
+              { value: 'curso', label: 'Cursos' },
+              { value: 'material', label: 'Materiais' }
+            ]}
+          />
           <GlassSelect
             value={status}
             onChange={(e) => setStatus(e.target.value)}
@@ -118,8 +182,9 @@ const OrdersTab: React.FC = () => {
               <thead>
                 <tr className="text-left text-[var(--color-text-muted)] border-b border-[var(--glass-border)]">
                   <th className="py-2 px-2">Pedido</th>
+                  <th className="py-2 px-2">Origem</th>
                   <th className="py-2 px-2">Comprador</th>
-                  <th className="py-2 px-2">Curso</th>
+                  <th className="py-2 px-2">Produto</th>
                   <th className="py-2 px-2">Total</th>
                   <th className="py-2 px-2">Status</th>
                   <th className="py-2 px-2">Data</th>
@@ -130,16 +195,17 @@ const OrdersTab: React.FC = () => {
                 {orders.map((o) => (
                   <tr key={o._id} className="border-b border-[var(--glass-border)]/50 hover:bg-[var(--glass-bg)]">
                     <td className="py-2 px-2 font-mono text-xs">{o.numeroPedido}</td>
+                    <td className="py-2 px-2">{origemBadge(o.origem)}</td>
                     <td className="py-2 px-2">
                       <div>{o.compradorDados.nome}</div>
                       <div className="text-xs text-[var(--color-text-muted)]">{o.compradorDados.email}</div>
                     </td>
-                    <td className="py-2 px-2">{o.cursoTitulo}</td>
+                    <td className="py-2 px-2">{o.produtoTitulo}</td>
                     <td className="py-2 px-2 font-semibold">{brl(o.valores.total)}</td>
                     <td className="py-2 px-2"><GlassBadge variant={statusBadge[o.status]?.variant}>{statusBadge[o.status]?.label || o.status}</GlassBadge></td>
                     <td className="py-2 px-2 text-xs">{new Date(o.createdAt).toLocaleDateString('pt-BR')}</td>
                     <td className="py-2 px-2">
-                      <GlassButton size="sm" variant="secondary" onClick={() => openDetail(o._id)} leftIcon={<Eye className="w-4 h-4" />}>Ver</GlassButton>
+                      <GlassButton size="sm" variant="secondary" onClick={() => openDetail(o)} leftIcon={<Eye className="w-4 h-4" />}>Ver</GlassButton>
                     </td>
                   </tr>
                 ))}
@@ -152,17 +218,20 @@ const OrdersTab: React.FC = () => {
       <GlassModal isOpen={!!detail} onClose={() => setDetail(null)} title={`Pedido ${detail?.numeroPedido || ''}`} size="lg">
         {detail && (
           <div className="space-y-4 text-sm">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              {origemBadge(detail.origem)}
               <GlassBadge variant={statusBadge[detail.status]?.variant}>{statusBadge[detail.status]?.label || detail.status}</GlassBadge>
               {detail.entregue && <GlassBadge variant="success">Entregue</GlassBadge>}
-              {detail.emailEnviado && <GlassBadge variant="default">E-mail enviado</GlassBadge>}
+              {detail.emailEnviado
+                ? <GlassBadge variant="default">E-mail enviado</GlassBadge>
+                : <GlassBadge variant="warning">E-mail não enviado</GlassBadge>}
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div><p className="text-[var(--color-text-muted)]">Comprador</p><p>{detail.compradorDados.nome}</p></div>
               <div><p className="text-[var(--color-text-muted)]">E-mail</p><p>{detail.compradorDados.email}</p></div>
               <div><p className="text-[var(--color-text-muted)]">Telefone</p><p>{detail.compradorDados.telefone}</p></div>
               <div><p className="text-[var(--color-text-muted)]">CPF</p><p>{detail.compradorDados.cpf}</p></div>
-              <div><p className="text-[var(--color-text-muted)]">Curso</p><p>{detail.cursoTitulo}</p></div>
+              <div><p className="text-[var(--color-text-muted)]">{detail.origem === 'material' ? 'Material' : 'Curso'}</p><p>{produtoTitulo}</p></div>
               <div><p className="text-[var(--color-text-muted)]">Método</p><p>{detail.metodoPagamento || '-'}</p></div>
               <div><p className="text-[var(--color-text-muted)]">Serial Key</p><p className="font-mono">{detail.serialKeyCodigo || '-'}</p></div>
               <div><p className="text-[var(--color-text-muted)]">Payment ID (MP)</p><p className="font-mono text-xs">{detail.mercadoPago?.paymentId || '-'}</p></div>
@@ -182,7 +251,7 @@ const OrdersTab: React.FC = () => {
               </p>
             )}
             {detail.status === 'aprovado' && (
-              <GlassButton variant="secondary" onClick={() => refulfill(detail._id)} leftIcon={<RefreshCw className="w-4 h-4" />}>
+              <GlassButton variant="secondary" onClick={refulfill} isLoading={reprocessing} disabled={reprocessing} leftIcon={<RefreshCw className="w-4 h-4" />}>
                 Reprocessar entrega / reenviar e-mail
               </GlassButton>
             )}
@@ -582,8 +651,8 @@ const AdminPayments: React.FC = () => {
   const [tab, setTab] = useState('pedidos');
 
   const tabs = [
-    { id: 'pedidos', label: 'Pedidos', icon: <ShoppingBag className="w-4 h-4" /> },
-    { id: 'precos', label: 'Preços', icon: <DollarSign className="w-4 h-4" /> },
+    { id: 'pedidos', label: 'Vendas', icon: <ShoppingBag className="w-4 h-4" /> },
+    { id: 'precos', label: 'Preços (cursos)', icon: <DollarSign className="w-4 h-4" /> },
     { id: 'cupons', label: 'Cupons', icon: <Tag className="w-4 h-4" /> },
     { id: 'lotes', label: 'Lotes', icon: <Layers className="w-4 h-4" /> },
     { id: 'config', label: 'Configurações', icon: <SettingsIcon className="w-4 h-4" /> }
@@ -593,7 +662,7 @@ const AdminPayments: React.FC = () => {
     <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
       <div>
         <h1 className="text-2xl font-heading font-bold">Pagamentos</h1>
-        <p className="text-[var(--color-text-muted)] text-sm">Gerencie vendas, cupons, lotes e configurações de pagamento.</p>
+        <p className="text-[var(--color-text-muted)] text-sm">Centro financeiro: todas as vendas (cursos + materiais), receita total, cupons, lotes e configurações.</p>
       </div>
 
       <GlassTabs tabs={tabs} activeTab={tab} onChange={setTab} className="overflow-x-auto" />

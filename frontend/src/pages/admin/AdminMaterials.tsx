@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
-  Package, Plus, Pencil, Trash2, Loader2, ShoppingBag, DollarSign, Star, AlertTriangle,
-  RefreshCw, X, Eye, Video, FileText, File, Search, Info, Gift, Copy
+  Package, Plus, Pencil, Trash2, Loader2, Star, X, Video, FileText, File, Info, Gift, TrendingUp
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { GlassCard, GlassButton, GlassInput, GlassTextarea, GlassSelect, GlassModal } from '../../components/ui';
 import { materialService } from '../../services/api';
-import type { MaterialAdmin, MaterialConteudo, MaterialOrder, ConteudoTipo, MaterialTipo } from '../../types';
+import type { MaterialAdmin, MaterialConteudo, ConteudoTipo, MaterialTipo } from '../../types';
 
 const brl = (v: number) => `R$ ${Number(v || 0).toFixed(2).replace('.', ',')}`;
 
@@ -18,52 +18,24 @@ const emptyForm = (): Partial<MaterialAdmin> => ({
   preco: 0, descontoAtivado: { ativo: false, tipo: 'percentual', valor: 0 }, validadeAcessoDias: 0
 });
 
-const statusBadge = (status: string) => {
-  const map: Record<string, string> = {
-    aprovado: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
-    pendente: 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
-    em_processo: 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
-    rejeitado: 'bg-red-500/15 text-red-600 dark:text-red-400',
-    cancelado: 'bg-gray-500/15 text-gray-500',
-    reembolsado: 'bg-purple-500/15 text-purple-500'
-  };
-  return map[status] || 'bg-gray-500/15 text-gray-500';
-};
-
 const AdminMaterials: React.FC = () => {
-  const [tab, setTab] = useState<'materiais' | 'vendas'>('materiais');
-
-  // Materiais
   const [materials, setMaterials] = useState<MaterialAdmin[]>([]);
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState<any>(null);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<MaterialAdmin | null>(null);
   const [form, setForm] = useState<Partial<MaterialAdmin>>(emptyForm());
   const [saving, setSaving] = useState(false);
 
-  // Conceder acesso
+  // Conceder acesso (cortesia / suporte)
   const [grantFor, setGrantFor] = useState<MaterialAdmin | null>(null);
   const [grantEmail, setGrantEmail] = useState('');
   const [granting, setGranting] = useState(false);
 
-  // Vendas
-  const [orders, setOrders] = useState<MaterialOrder[]>([]);
-  const [ordersLoading, setOrdersLoading] = useState(false);
-  const [orderSearch, setOrderSearch] = useState('');
-  const [orderStatus, setOrderStatus] = useState('');
-  const [orderDetail, setOrderDetail] = useState<any>(null);
-  const [reprocessing, setReprocessing] = useState(false);
-
   const loadMaterials = async () => {
     setLoading(true);
     try {
-      const [mRes, sRes] = await Promise.all([
-        materialService.admin.list(),
-        materialService.admin.getStats().catch(() => null)
-      ]);
-      setMaterials(mRes.data.materials || []);
-      if (sRes) setStats(sRes.data);
+      const res = await materialService.admin.list();
+      setMaterials(res.data.materials || []);
     } catch {
       toast.error('Erro ao carregar materiais');
     } finally {
@@ -71,24 +43,7 @@ const AdminMaterials: React.FC = () => {
     }
   };
 
-  const loadOrders = async () => {
-    setOrdersLoading(true);
-    try {
-      const res = await materialService.admin.getOrders({
-        search: orderSearch || undefined,
-        status: orderStatus || undefined,
-        limit: 50
-      });
-      setOrders(res.data.orders || []);
-    } catch {
-      toast.error('Erro ao carregar vendas');
-    } finally {
-      setOrdersLoading(false);
-    }
-  };
-
   useEffect(() => { loadMaterials(); }, []);
-  useEffect(() => { if (tab === 'vendas') loadOrders(); /* eslint-disable-next-line */ }, [tab]);
 
   const openCreate = () => { setEditing(null); setForm(emptyForm()); setShowForm(true); };
   const openEdit = (m: MaterialAdmin) => {
@@ -160,29 +115,6 @@ const AdminMaterials: React.FC = () => {
     }
   };
 
-  const openDetail = async (id: string) => {
-    try {
-      const res = await materialService.admin.getOrderById(id);
-      setOrderDetail(res.data);
-    } catch {
-      toast.error('Erro ao carregar pedido');
-    }
-  };
-
-  const handleReprocess = async (id: string) => {
-    setReprocessing(true);
-    try {
-      await materialService.admin.refulfill(id);
-      toast.success('Pedido reprocessado e e-mail reenviado');
-      await openDetail(id);
-      await loadOrders();
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Erro ao reprocessar');
-    } finally {
-      setReprocessing(false);
-    }
-  };
-
   const handleGrant = async () => {
     if (!grantFor) return;
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(grantEmail)) return toast.error('E-mail inválido');
@@ -205,11 +137,16 @@ const AdminMaterials: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="mb-6">
-        <h1 className="font-heading text-3xl font-bold text-[var(--color-text-primary)] mb-1 flex items-center gap-3">
-          <Package className="w-8 h-8 text-primary-500" /> Materiais
-        </h1>
-        <p className="text-[var(--color-text-secondary)]">Gerencie os produtos da loja de materiais e acompanhe as vendas.</p>
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+        <div>
+          <h1 className="font-heading text-3xl font-bold text-[var(--color-text-primary)] mb-1 flex items-center gap-3">
+            <Package className="w-8 h-8 text-primary-500" /> Materiais
+          </h1>
+          <p className="text-[var(--color-text-secondary)]">Catálogo de produtos da loja de materiais. As vendas e a receita ficam em <strong>Pagamentos</strong>.</p>
+        </div>
+        <Link to="/admin/pagamentos" className="inline-flex items-center gap-2 text-sm text-primary-500 hover:underline self-start sm:self-auto">
+          <TrendingUp className="w-4 h-4" /> Ver vendas e receita em Pagamentos
+        </Link>
       </div>
 
       {/* Aviso Vercel Blob */}
@@ -221,131 +158,48 @@ const AdminMaterials: React.FC = () => {
         </span>
       </div>
 
-      {/* Stats */}
-      {stats && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <GlassCard className="p-4">
-            <div className="flex items-center gap-2 text-[var(--color-text-muted)] text-xs mb-1"><ShoppingBag className="w-4 h-4" /> Vendas aprovadas</div>
-            <p className="text-2xl font-bold">{stats.aprovados}</p>
-          </GlassCard>
-          <GlassCard className="p-4">
-            <div className="flex items-center gap-2 text-[var(--color-text-muted)] text-xs mb-1"><DollarSign className="w-4 h-4" /> Receita total</div>
-            <p className="text-2xl font-bold">{brl(stats.receitaTotal)}</p>
-          </GlassCard>
-          <GlassCard className="p-4">
-            <div className="flex items-center gap-2 text-[var(--color-text-muted)] text-xs mb-1"><Package className="w-4 h-4" /> Materiais ativos</div>
-            <p className="text-2xl font-bold">{stats.totalMateriais}</p>
-          </GlassCard>
-          <GlassCard className={`p-4 ${stats.emailsFalhos > 0 ? 'ring-2 ring-amber-500/50' : ''}`}>
-            <div className="flex items-center gap-2 text-[var(--color-text-muted)] text-xs mb-1"><AlertTriangle className="w-4 h-4" /> E-mails não enviados</div>
-            <p className={`text-2xl font-bold ${stats.emailsFalhos > 0 ? 'text-amber-500' : ''}`}>{stats.emailsFalhos}</p>
-          </GlassCard>
-        </div>
-      )}
-
-      {/* Tabs */}
-      <div className="flex gap-2 mb-6 border-b border-[var(--glass-border)]">
-        <button onClick={() => setTab('materiais')} className={`px-5 py-3 font-medium text-sm border-b-2 transition-colors ${tab === 'materiais' ? 'border-primary-500 text-primary-500' : 'border-transparent text-[var(--color-text-muted)]'}`}>Materiais</button>
-        <button onClick={() => setTab('vendas')} className={`px-5 py-3 font-medium text-sm border-b-2 transition-colors ${tab === 'vendas' ? 'border-primary-500 text-primary-500' : 'border-transparent text-[var(--color-text-muted)]'}`}>Vendas</button>
+      <div className="flex justify-end mb-4">
+        <GlassButton variant="primary" onClick={openCreate} leftIcon={<Plus className="w-4 h-4" />}>Novo material</GlassButton>
       </div>
 
-      {tab === 'materiais' && (
-        <>
-          <div className="flex justify-end mb-4">
-            <GlassButton variant="primary" onClick={openCreate} leftIcon={<Plus className="w-4 h-4" />}>Novo material</GlassButton>
-          </div>
-
-          {loading ? (
-            <div className="flex justify-center py-16"><Loader2 className="w-8 h-8 animate-spin text-primary-500" /></div>
-          ) : materials.length === 0 ? (
-            <GlassCard className="p-12 text-center text-[var(--color-text-muted)]">Nenhum material cadastrado ainda.</GlassCard>
-          ) : (
-            <div className="space-y-3">
-              {materials.map((m) => (
-                <GlassCard key={m._id} className="p-4">
-                  <div className="flex items-center gap-4 flex-wrap">
-                    <div className="w-14 h-14 rounded-lg bg-primary-500/10 flex items-center justify-center overflow-hidden flex-shrink-0">
-                      {m.capa ? <img src={m.capa} alt="" className="w-14 h-14 object-cover" /> : <Package className="w-6 h-6 text-primary-500" />}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-semibold text-[var(--color-text-primary)] truncate">{m.titulo}</h3>
-                        {!m.ativo && <span className="text-xs px-2 py-0.5 rounded-full bg-gray-500/15 text-gray-500">Inativo</span>}
-                        {m.destaque && <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-500 flex items-center gap-1"><Star className="w-3 h-3 fill-amber-500" /> Destaque</span>}
-                      </div>
-                      <div className="flex items-center gap-3 text-xs text-[var(--color-text-muted)] mt-1 flex-wrap">
-                        <span className="capitalize">{m.tipo}</span>
-                        <span>{brl(m.preco)}</span>
-                        <span>{m.conteudos?.length || 0} conteúdos</span>
-                        <span className="flex items-center gap-1"><Star className="w-3 h-3 text-amber-400 fill-amber-400" /> {m.avaliacaoMedia?.toFixed(1) || '0.0'} ({m.avaliacaoTotal || 0})</span>
-                        <span>{m.vendasTotais || 0} vendas</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <button onClick={() => toggleField(m, 'disponivel')} className={`text-xs px-3 py-1.5 rounded-lg font-medium ${m.disponivel ? 'bg-emerald-500/15 text-emerald-600' : 'bg-gray-500/15 text-gray-500'}`}>
-                        {m.disponivel ? 'À venda' : 'Fora da loja'}
-                      </button>
-                      <button onClick={() => { setGrantFor(m); setGrantEmail(''); }} className="p-2 rounded-lg hover:bg-[var(--glass-bg)] text-emerald-500" title="Conceder acesso"><Gift className="w-4 h-4" /></button>
-                      <button onClick={() => openEdit(m)} className="p-2 rounded-lg hover:bg-[var(--glass-bg)] text-primary-500" title="Editar"><Pencil className="w-4 h-4" /></button>
-                      <button onClick={() => handleDelete(m)} className="p-2 rounded-lg hover:bg-red-500/10 text-red-500" title="Excluir"><Trash2 className="w-4 h-4" /></button>
-                    </div>
+      {loading ? (
+        <div className="flex justify-center py-16"><Loader2 className="w-8 h-8 animate-spin text-primary-500" /></div>
+      ) : materials.length === 0 ? (
+        <GlassCard className="p-12 text-center text-[var(--color-text-muted)]">Nenhum material cadastrado ainda.</GlassCard>
+      ) : (
+        <div className="space-y-3">
+          {materials.map((m) => (
+            <GlassCard key={m._id} className="p-4">
+              <div className="flex items-center gap-4 flex-wrap">
+                <div className="w-14 h-14 rounded-lg bg-primary-500/10 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  {m.capa ? <img src={m.capa} alt="" className="w-14 h-14 object-cover" /> : <Package className="w-6 h-6 text-primary-500" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="font-semibold text-[var(--color-text-primary)] truncate">{m.titulo}</h3>
+                    {!m.ativo && <span className="text-xs px-2 py-0.5 rounded-full bg-gray-500/15 text-gray-500">Inativo</span>}
+                    {m.destaque && <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-500 flex items-center gap-1"><Star className="w-3 h-3 fill-amber-500" /> Destaque</span>}
                   </div>
-                </GlassCard>
-              ))}
-            </div>
-          )}
-        </>
-      )}
-
-      {tab === 'vendas' && (
-        <>
-          <div className="flex gap-2 mb-4 flex-wrap">
-            <div className="relative flex-1 min-w-[200px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-text-muted)]" />
-              <input className="input pl-9 w-full" placeholder="Buscar pedido, nome, e-mail, código..." value={orderSearch} onChange={(e) => setOrderSearch(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && loadOrders()} />
-            </div>
-            <select className="input max-w-[180px]" value={orderStatus} onChange={(e) => setOrderStatus(e.target.value)}>
-              <option value="">Todos os status</option>
-              <option value="aprovado">Aprovado</option>
-              <option value="pendente">Pendente</option>
-              <option value="em_processo">Em processo</option>
-              <option value="rejeitado">Rejeitado</option>
-              <option value="cancelado">Cancelado</option>
-            </select>
-            <GlassButton variant="secondary" onClick={loadOrders} leftIcon={<RefreshCw className="w-4 h-4" />}>Filtrar</GlassButton>
-          </div>
-
-          {ordersLoading ? (
-            <div className="flex justify-center py-16"><Loader2 className="w-8 h-8 animate-spin text-primary-500" /></div>
-          ) : orders.length === 0 ? (
-            <GlassCard className="p-12 text-center text-[var(--color-text-muted)]">Nenhuma venda encontrada.</GlassCard>
-          ) : (
-            <div className="space-y-2">
-              {orders.map((o) => (
-                <GlassCard key={o._id} className="p-4">
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-mono text-xs text-[var(--color-text-muted)]">{o.numeroPedido}</span>
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusBadge(o.status)}`}>{o.status}</span>
-                        {o.status === 'aprovado' && !o.emailEnviado && (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> e-mail não enviado</span>
-                        )}
-                      </div>
-                      <p className="text-sm font-medium text-[var(--color-text-primary)] truncate mt-0.5">{o.materialTitulo}</p>
-                      <p className="text-xs text-[var(--color-text-muted)]">{o.compradorDados?.nome} · {o.compradorDados?.email}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold text-primary-500">{brl(o.valores?.total || 0)}</p>
-                      <p className="text-xs text-[var(--color-text-muted)]">{new Date(o.createdAt).toLocaleDateString('pt-BR')}</p>
-                    </div>
-                    <button onClick={() => openDetail(o._id)} className="p-2 rounded-lg hover:bg-[var(--glass-bg)] text-primary-500" title="Detalhes"><Eye className="w-4 h-4" /></button>
+                  <div className="flex items-center gap-3 text-xs text-[var(--color-text-muted)] mt-1 flex-wrap">
+                    <span className="capitalize">{m.tipo}</span>
+                    <span>{brl(m.preco)}</span>
+                    <span>{m.conteudos?.length || 0} conteúdos</span>
+                    <span className="flex items-center gap-1"><Star className="w-3 h-3 text-amber-400 fill-amber-400" /> {m.avaliacaoMedia?.toFixed(1) || '0.0'} ({m.avaliacaoTotal || 0})</span>
+                    <span>{m.vendasTotais || 0} vendas</span>
                   </div>
-                </GlassCard>
-              ))}
-            </div>
-          )}
-        </>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button onClick={() => toggleField(m, 'disponivel')} className={`text-xs px-3 py-1.5 rounded-lg font-medium ${m.disponivel ? 'bg-emerald-500/15 text-emerald-600' : 'bg-gray-500/15 text-gray-500'}`}>
+                    {m.disponivel ? 'À venda' : 'Fora da loja'}
+                  </button>
+                  <button onClick={() => { setGrantFor(m); setGrantEmail(''); }} className="p-2 rounded-lg hover:bg-[var(--glass-bg)] text-emerald-500" title="Conceder acesso"><Gift className="w-4 h-4" /></button>
+                  <button onClick={() => openEdit(m)} className="p-2 rounded-lg hover:bg-[var(--glass-bg)] text-primary-500" title="Editar"><Pencil className="w-4 h-4" /></button>
+                  <button onClick={() => handleDelete(m)} className="p-2 rounded-lg hover:bg-red-500/10 text-red-500" title="Excluir"><Trash2 className="w-4 h-4" /></button>
+                </div>
+              </div>
+            </GlassCard>
+          ))}
+        </div>
       )}
 
       {/* Modal formulário material */}
@@ -462,53 +316,8 @@ const AdminMaterials: React.FC = () => {
           <GlassButton variant="primary" onClick={handleGrant} isLoading={granting} disabled={granting} leftIcon={<Gift className="w-4 h-4" />}>Conceder</GlassButton>
         </div>
       </GlassModal>
-
-      {/* Modal detalhe pedido */}
-      <GlassModal isOpen={!!orderDetail} onClose={() => setOrderDetail(null)} title="Detalhe da venda" size="lg">
-        {orderDetail && (
-          <div className="space-y-3 text-sm max-h-[70vh] overflow-y-auto">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-mono text-xs">{orderDetail.numeroPedido}</span>
-              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusBadge(orderDetail.status)}`}>{orderDetail.status}</span>
-              {orderDetail.status === 'aprovado' && !orderDetail.emailEnviado && (
-                <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> e-mail não enviado</span>
-              )}
-            </div>
-            <Row k="Material" v={orderDetail.materialTitulo} />
-            <Row k="Comprador" v={orderDetail.compradorDados?.nome} />
-            <Row k="E-mail" v={orderDetail.compradorDados?.email} />
-            <Row k="Telefone" v={orderDetail.compradorDados?.telefone} />
-            <Row k="Total" v={brl(orderDetail.valores?.total || 0)} />
-            <Row k="Método" v={orderDetail.metodoPagamento || '—'} />
-            <Row k="Entregue" v={orderDetail.entregue ? 'Sim' : 'Não'} />
-            <Row k="E-mail enviado" v={orderDetail.emailEnviado ? 'Sim' : `Não${orderDetail.emailTentativas ? ` (${orderDetail.emailTentativas} tentativas)` : ''}`} />
-            {orderDetail.ultimoEmailErro && <Row k="Último erro de e-mail" v={orderDetail.ultimoEmailErro} />}
-            {orderDetail.serialKeyCodigo && (
-              <div className="flex items-center gap-2">
-                <span className="text-[var(--color-text-muted)] w-40">Código de acesso</span>
-                <code className="font-mono text-primary-500">{orderDetail.serialKeyCodigo}</code>
-                <button onClick={() => { navigator.clipboard.writeText(orderDetail.serialKeyCodigo); toast.success('Copiado'); }} className="text-primary-500"><Copy className="w-3.5 h-3.5" /></button>
-              </div>
-            )}
-            {orderDetail.status === 'aprovado' && (
-              <div className="pt-3 border-t border-[var(--glass-border)]">
-                <GlassButton variant="primary" onClick={() => handleReprocess(orderDetail._id)} isLoading={reprocessing} disabled={reprocessing} leftIcon={<RefreshCw className="w-4 h-4" />}>
-                  Reprocessar entrega e reenviar e-mail
-                </GlassButton>
-              </div>
-            )}
-          </div>
-        )}
-      </GlassModal>
     </div>
   );
 };
-
-const Row: React.FC<{ k: string; v?: string }> = ({ k, v }) => (
-  <div className="flex gap-2">
-    <span className="text-[var(--color-text-muted)] w-40 flex-shrink-0">{k}</span>
-    <span className="text-[var(--color-text-primary)] break-all">{v}</span>
-  </div>
-);
 
 export default AdminMaterials;

@@ -527,6 +527,12 @@ export const paymentService = {
 
     getStats: () => api.get('/payments/admin/stats'),
 
+    // Visão unificada (cursos + materiais) — receita total e pedidos combinados
+    getUnifiedStats: () => api.get('/payments/admin/stats-unified'),
+
+    getUnifiedOrders: (params?: { status?: string; search?: string; origem?: 'curso' | 'material'; page?: number; limit?: number }) =>
+      api.get('/payments/admin/orders-unified', { params }),
+
     refulfill: (id: string) => api.post(`/payments/admin/orders/${id}/refulfill`),
 
     getConfig: () => api.get('/payments/admin/config'),

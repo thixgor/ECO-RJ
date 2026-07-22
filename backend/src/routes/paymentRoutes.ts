@@ -12,6 +12,8 @@ import {
   getAllOrders,
   getOrderById,
   getPaymentStats,
+  getUnifiedStats,
+  getUnifiedOrders,
   refulfillOrder,
   getAdminPaymentConfig,
   updateAdminPaymentConfig,
@@ -36,7 +38,9 @@ router.get('/my-orders', protect, getMyOrders);
 
 // ---- Admin ----
 router.get('/admin/orders', protect, adminOnly, getAllOrders);
+router.get('/admin/orders-unified', protect, adminOnly, getUnifiedOrders);
 router.get('/admin/stats', protect, adminOnly, getPaymentStats);
+router.get('/admin/stats-unified', protect, adminOnly, getUnifiedStats);
 router.get('/admin/config', protect, adminOnly, getAdminPaymentConfig);
 router.put('/admin/config', protect, adminOnly, updateAdminPaymentConfig);
 router.post('/admin/config/reset-terms', protect, adminOnly, resetTerms);

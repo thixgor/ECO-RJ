@@ -1,5 +1,7 @@
 import { Response } from 'express';
+import mongoose from 'mongoose';
 import Order from '../models/Order';
+import MaterialOrder from '../models/MaterialOrder';
 import Course from '../models/Course';
 import { AuthRequest } from '../middleware/auth';
 import { getPaymentConfig, setPaymentConfig, PaymentConfig, DEFAULT_PAYMENT_CONFIG } from '../config/paymentConfig';
@@ -222,6 +224,143 @@ export const updateCoursePricing = async (req: AuthRequest, res: Response) => {
   } catch (error) {
     console.error('Erro ao atualizar preços do curso:', error);
     res.status(500).json({ message: 'Erro ao atualizar preços do curso' });
+  }
+};
+
+// @desc    Estatísticas UNIFICADAS de vendas (cursos + materiais) (Admin)
+// @route   GET /api/payments/admin/stats-unified
+// @access  Private/Admin
+// Consolida o financeiro das duas fontes de receita (Order = cursos,
+// MaterialOrder = materiais) para dar a visão TOTAL do que foi arrecadado.
+export const getUnifiedStats = async (_req: AuthRequest, res: Response) => {
+  try {
+    const buildStats = async (Model: mongoose.Model<any>) => {
+      const [total, aprovados, pendentes, rejeitados, receitaAgg] = await Promise.all([
+        Model.countDocuments(),
+        Model.countDocuments({ status: 'aprovado' }),
+        Model.countDocuments({ status: { $in: ['pendente', 'em_processo'] } }),
+        Model.countDocuments({ status: 'rejeitado' }),
+        Model.aggregate([
+          { $match: { status: 'aprovado' } },
+          {
+            $group: {
+              _id: null,
+              total: { $sum: '$valores.total' },
+              subtotal: { $sum: '$valores.subtotal' },
+              taxa: { $sum: '$valores.taxaOperacional' }
+            }
+          }
+        ])
+      ]);
+      return {
+        total,
+        aprovados,
+        pendentes,
+        rejeitados,
+        receita: receitaAgg[0]?.total || 0,
+        receitaLiquida: receitaAgg[0]?.subtotal || 0,
+        taxa: receitaAgg[0]?.taxa || 0
+      };
+    };
+
+    const [cursos, materiais, emailsFalhos] = await Promise.all([
+      buildStats(Order),
+      buildStats(MaterialOrder),
+      // Alerta operacional: entregas aprovadas cujo e-mail NÃO foi enviado
+      MaterialOrder.countDocuments({ status: 'aprovado', entregue: true, emailEnviado: false })
+    ]);
+
+    const receitaTotal = cursos.receita + materiais.receita;
+    const aprovadosTotal = cursos.aprovados + materiais.aprovados;
+
+    res.json({
+      // Visão consolidada
+      receitaTotal,
+      receitaCursos: cursos.receita,
+      receitaMateriais: materiais.receita,
+      receitaLiquidaTotal: cursos.receitaLiquida + materiais.receitaLiquida,
+      taxaArrecadadaTotal: cursos.taxa + materiais.taxa,
+      totalPedidos: cursos.total + materiais.total,
+      aprovados: aprovadosTotal,
+      pendentes: cursos.pendentes + materiais.pendentes,
+      rejeitados: cursos.rejeitados + materiais.rejeitados,
+      ticketMedio: aprovadosTotal > 0 ? receitaTotal / aprovadosTotal : 0,
+      emailsFalhos,
+      // Detalhamento por origem
+      cursos,
+      materiais
+    });
+  } catch (error) {
+    console.error('Erro ao obter estatísticas unificadas:', error);
+    res.status(500).json({ message: 'Erro ao obter estatísticas' });
+  }
+};
+
+// @desc    Listar pedidos UNIFICADOS (cursos + materiais) (Admin)
+// @route   GET /api/payments/admin/orders-unified
+// @access  Private/Admin
+export const getUnifiedOrders = async (req: AuthRequest, res: Response) => {
+  try {
+    const { status, search, origem, page = 1, limit = 30 } = req.query;
+    const materialColl = MaterialOrder.collection.collectionName;
+
+    const postMatch: any = {};
+    if (status) postMatch.status = status;
+    if (origem === 'curso' || origem === 'material') postMatch.origem = origem;
+    if (search) {
+      const s = String(search).trim();
+      postMatch.$or = [
+        { numeroPedido: { $regex: s, $options: 'i' } },
+        { 'compradorDados.nome': { $regex: s, $options: 'i' } },
+        { 'compradorDados.email': { $regex: s, $options: 'i' } }
+      ];
+    }
+
+    const skip = (Number(page) - 1) * Number(limit);
+    const projection = {
+      numeroPedido: 1,
+      origem: 1,
+      produtoTitulo: 1,
+      compradorDados: 1,
+      'valores.total': 1,
+      status: 1,
+      metodoPagamento: 1,
+      createdAt: 1,
+      entregue: 1,
+      emailEnviado: 1
+    };
+
+    const pipeline: any[] = [
+      // Cursos → normaliza para o formato comum
+      { $addFields: { origem: 'curso', produtoTitulo: '$cursoTitulo' } },
+      // Une com materiais → normaliza também
+      {
+        $unionWith: {
+          coll: materialColl,
+          pipeline: [{ $addFields: { origem: 'material', produtoTitulo: '$materialTitulo' } }]
+        }
+      },
+      { $match: postMatch },
+      { $sort: { createdAt: -1 } },
+      {
+        $facet: {
+          data: [{ $skip: skip }, { $limit: Number(limit) }, { $project: projection }],
+          totalArr: [{ $count: 'count' }]
+        }
+      }
+    ];
+
+    const result = await Order.aggregate(pipeline);
+    const data = result[0]?.data || [];
+    const total = result[0]?.totalArr?.[0]?.count || 0;
+
+    res.json({
+      orders: data,
+      pagination: { total, page: Number(page), pages: Math.ceil(total / Number(limit)) }
+    });
+  } catch (error) {
+    console.error('Erro ao listar pedidos unificados:', error);
+    res.status(500).json({ message: 'Erro ao listar pedidos' });
   }
 };
 
