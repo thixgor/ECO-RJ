@@ -1,9 +1,10 @@
 import { Request, Response } from 'express';
-import Course from '../models/Course';
+import Course, { isCourseExpired } from '../models/Course';
 import Lesson from '../models/Lesson';
 import User from '../models/User';
 import { AuthRequest } from '../middleware/auth';
 import { registrarAcesso } from './accessLogController';
+import { sendCourseEndedEmail } from '../services/emailService';
 
 // @desc    Listar todos os cursos
 // @route   GET /api/courses
@@ -84,6 +85,17 @@ export const getCourseById = async (req: AuthRequest, res: Response) => {
       registrarAcesso(userId.toString(), 'curso', req, { cursoId: course._id.toString() });
     }
 
+    // Curso encerrado? (data de término atingida)
+    const expirado = isCourseExpired(course);
+
+    // Envio oportunista do e-mail de término (uma única vez, em background).
+    // Garante que os alunos sejam notificados mesmo sem um cron configurado.
+    if (expirado && !course.terminoNotificado) {
+      notifyCourseCompletion(course._id.toString()).catch((err) =>
+        console.error('Erro ao notificar término do curso:', err)
+      );
+    }
+
     // Verificar se usuário tem acesso ao conteúdo (para informar no frontend)
     let temAcessoConteudo = false;
     // Administrador tem acesso total a todos os cursos
@@ -91,6 +103,9 @@ export const getCourseById = async (req: AuthRequest, res: Response) => {
       temAcessoConteudo = true;
     } else if (userCargo === 'Instrutor') {
       temAcessoConteudo = true;
+    } else if (expirado) {
+      // Curso encerrado: acesso dos alunos é interrompido a partir da data de término
+      temAcessoConteudo = false;
     } else if (course.acessoRestrito) {
       // Curso restrito: precisa estar na lista de autorizados
       temAcessoConteudo = userId ? course.alunosAutorizados.some((id) => id.toString() === userId.toString()) : false;
@@ -117,6 +132,7 @@ export const getCourseById = async (req: AuthRequest, res: Response) => {
     // Retornar curso com info de acesso e contagens
     const courseObj = course.toObject();
     (courseObj as any).temAcessoConteudo = temAcessoConteudo;
+    (courseObj as any).expirado = expirado;
     (courseObj as any).totalAulas = totalAulas;
     (courseObj as any).totalMateriais = totalMateriais;
     (courseObj as any).totalAulasRegulares = totalAulasRegulares;
@@ -138,6 +154,7 @@ export const createCourse = async (req: AuthRequest, res: Response) => {
       titulo,
       descricao,
       dataInicio,
+      dataTermino,
       imagemCapa,
       dataLimiteInscricao,
       acessoRestrito,
@@ -154,6 +171,7 @@ export const createCourse = async (req: AuthRequest, res: Response) => {
       descricao,
       instrutor: req.user?._id,
       dataInicio: new Date(dataInicio),
+      dataTermino: dataTermino ? new Date(dataTermino) : undefined,
       imagemCapa,
       dataLimiteInscricao: dataLimiteInscricao ? new Date(dataLimiteInscricao) : undefined,
       acessoRestrito: acessoRestrito || false,
@@ -177,6 +195,7 @@ export const updateCourse = async (req: Request, res: Response) => {
       titulo,
       descricao,
       dataInicio,
+      dataTermino,
       imagemCapa,
       ativo,
       dataLimiteInscricao,
@@ -196,6 +215,17 @@ export const updateCourse = async (req: Request, res: Response) => {
     if (titulo) course.titulo = titulo;
     if (descricao) course.descricao = descricao;
     if (dataInicio) course.dataInicio = new Date(dataInicio);
+    if (dataTermino !== undefined) {
+      const novaData = dataTermino ? new Date(dataTermino) : undefined;
+      // Se a data de término mudou (ou foi removida/adiada para o futuro),
+      // reabilita o disparo do e-mail de término.
+      const antiga = course.dataTermino ? new Date(course.dataTermino).getTime() : undefined;
+      const nova = novaData ? novaData.getTime() : undefined;
+      if (antiga !== nova) {
+        course.terminoNotificado = false;
+      }
+      course.dataTermino = novaData;
+    }
     if (imagemCapa !== undefined) course.imagemCapa = imagemCapa;
     if (ativo !== undefined) course.ativo = ativo;
     if (dataLimiteInscricao !== undefined) {
@@ -461,5 +491,87 @@ export const reorderCourses = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Erro ao reordenar cursos:', error);
     res.status(500).json({ message: 'Erro ao reordenar cursos' });
+  }
+};
+
+/**
+ * Notifica (uma única vez) os alunos de um curso encerrado, enviando o e-mail
+ * de término. Usa reivindicação atômica (terminoNotificado) para evitar envios
+ * duplicados mesmo com concorrência em ambiente serverless.
+ *
+ * @returns quantidade de e-mails enviados (0 se o curso não era elegível ou já
+ *          foi notificado).
+ */
+export async function notifyCourseCompletion(courseId: string): Promise<number> {
+  // Reivindicação atômica: só prossegue se o curso estiver vencido e ainda não notificado
+  const curso = await Course.findOneAndUpdate(
+    {
+      _id: courseId,
+      terminoNotificado: { $ne: true },
+      dataTermino: { $exists: true, $ne: null, $lte: new Date() }
+    },
+    { $set: { terminoNotificado: true } },
+    { new: true }
+  ).select('titulo dataInicio dataTermino alunosAutorizados _id');
+
+  if (!curso) return 0; // não elegível ou já notificado por outra execução
+
+  // Alunos com acesso: inscritos no curso OU autorizados (curso restrito)
+  const alunos = await User.find({
+    ativo: true,
+    $or: [
+      { cursosInscritos: curso._id },
+      ...(curso.alunosAutorizados?.length ? [{ _id: { $in: curso.alunosAutorizados } }] : [])
+    ]
+  }).select('nomeCompleto email');
+
+  let enviados = 0;
+  for (const aluno of alunos) {
+    try {
+      const ok = await sendCourseEndedEmail({
+        to: aluno.email,
+        nome: aluno.nomeCompleto,
+        cursoTitulo: curso.titulo,
+        dataInicio: curso.dataInicio,
+        dataTermino: curso.dataTermino
+      });
+      if (ok) enviados++;
+    } catch (err) {
+      console.error(`Erro ao enviar e-mail de término para ${aluno.email}:`, err);
+    }
+  }
+  return enviados;
+}
+
+// @desc    Processar cursos com data de término atingida: enviar e-mail de
+//          encerramento aos alunos (o acesso já é interrompido automaticamente
+//          pela verificação de data em getCourseById/getLessonById).
+// @route   POST /api/courses/process-completions
+// @access  Private/Admin (ou job agendado)
+// @nota    Como a hospedagem é serverless (sem cron nativo), este endpoint pode
+//          ser chamado por um agendador (ex: Vercel Cron). Além dele, o envio
+//          também ocorre de forma oportunista quando um curso encerrado é
+//          acessado. É idempotente: cada curso é notificado uma única vez.
+export const processCourseCompletions = async (_req: AuthRequest, res: Response) => {
+  try {
+    // Cursos vencidos que ainda não notificaram os alunos
+    const cursos = await Course.find({
+      dataTermino: { $exists: true, $ne: null, $lte: new Date() },
+      terminoNotificado: { $ne: true }
+    }).select('_id');
+
+    let emailsEnviados = 0;
+    for (const curso of cursos) {
+      emailsEnviados += await notifyCourseCompletion((curso._id as any).toString());
+    }
+
+    res.json({
+      message: `Processamento concluído: ${cursos.length} curso(s) verificado(s), ${emailsEnviados} e-mail(s) enviado(s).`,
+      cursosVerificados: cursos.length,
+      emailsEnviados
+    });
+  } catch (error) {
+    console.error('Erro ao processar términos de curso:', error);
+    res.status(500).json({ message: 'Erro ao processar términos de curso' });
   }
 };

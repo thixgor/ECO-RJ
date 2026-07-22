@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, BookOpen, Lock, Users, Calendar, ChevronUp, ChevronDown, GripVertical, FolderOpen, Layers, Monitor, MapPin } from 'lucide-react';
+import { Plus, Edit, Trash2, BookOpen, Lock, Users, Calendar, Clock, ChevronUp, ChevronDown, GripVertical, FolderOpen, Layers, Monitor, MapPin } from 'lucide-react';
 import { courseService, userService, courseTopicService, courseSubtopicService } from '../../services/api';
 import { Course, User, CourseTopic, CourseSubtopic } from '../../types';
 import Loading from '../../components/common/Loading';
@@ -16,6 +16,7 @@ const AdminCourses: React.FC = () => {
     titulo: '',
     descricao: '',
     dataInicio: '',
+    dataTermino: '',
     imagemCapa: '',
     dataLimiteInscricao: '',
     acessoRestrito: true, // Padrão: curso restrito
@@ -67,6 +68,7 @@ const AdminCourses: React.FC = () => {
         titulo: course.titulo,
         descricao: course.descricao,
         dataInicio: course.dataInicio.split('T')[0],
+        dataTermino: course.dataTermino ? course.dataTermino.split('T')[0] : '',
         imagemCapa: course.imagemCapa || '',
         dataLimiteInscricao: course.dataLimiteInscricao ? course.dataLimiteInscricao.split('T')[0] : '',
         acessoRestrito: course.acessoRestrito || false,
@@ -77,7 +79,7 @@ const AdminCourses: React.FC = () => {
       });
     } else {
       setEditingCourse(null);
-      setFormData({ titulo: '', descricao: '', dataInicio: '', imagemCapa: '', dataLimiteInscricao: '', acessoRestrito: true, exibirDuracao: true, certificadoDisponivel: true, emissaoCertificadoImediata: false, tipo: 'online' });
+      setFormData({ titulo: '', descricao: '', dataInicio: '', dataTermino: '', imagemCapa: '', dataLimiteInscricao: '', acessoRestrito: true, exibirDuracao: true, certificadoDisponivel: true, emissaoCertificadoImediata: false, tipo: 'online' });
     }
     setShowModal(true);
   };
@@ -404,6 +406,16 @@ const AdminCourses: React.FC = () => {
                     <p className="text-sm text-[var(--color-text-muted)] line-clamp-1">{course.descricao}</p>
                     <div className="flex items-center flex-wrap gap-2 mt-2 text-xs text-gray-400">
                       <span>Início: {formatDate(course.dataInicio)}</span>
+                      {course.dataTermino && (
+                        <span className={`px-2 py-0.5 rounded flex items-center gap-1 ${
+                          new Date(course.dataTermino) < new Date()
+                            ? 'bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400'
+                            : 'bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400'
+                        }`}>
+                          <Clock className="w-3 h-3" />
+                          {new Date(course.dataTermino) < new Date() ? 'Encerrado' : 'Término'}: {formatDate(course.dataTermino)}
+                        </span>
+                      )}
                       <span>{(course.aulas as any[])?.length || 0} aulas</span>
                       <span className={`px-2 py-0.5 rounded ${course.ativo ? 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400' : 'bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400'
                         }`}>
@@ -546,15 +558,30 @@ const AdminCourses: React.FC = () => {
                   placeholder="https://..."
                 />
               </div>
-              <div>
-                <label className="label">Data Limite de Inscrição</label>
-                <input
-                  type="date"
-                  value={formData.dataLimiteInscricao}
-                  onChange={(e) => setFormData({ ...formData, dataLimiteInscricao: e.target.value })}
-                  className="input"
-                />
-                <p className="text-xs text-[var(--color-text-muted)] mt-1">Deixe em branco para inscrições sem prazo</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="label">Data Limite de Inscrição</label>
+                  <input
+                    type="date"
+                    value={formData.dataLimiteInscricao}
+                    onChange={(e) => setFormData({ ...formData, dataLimiteInscricao: e.target.value })}
+                    className="input"
+                  />
+                  <p className="text-xs text-[var(--color-text-muted)] mt-1">Em branco = inscrições sem prazo</p>
+                </div>
+                <div>
+                  <label className="label">Data de Término</label>
+                  <input
+                    type="date"
+                    value={formData.dataTermino}
+                    onChange={(e) => setFormData({ ...formData, dataTermino: e.target.value })}
+                    className="input"
+                    min={formData.dataInicio || undefined}
+                  />
+                  <p className="text-xs text-[var(--color-text-muted)] mt-1">
+                    Ao chegar esta data, o acesso dos alunos é encerrado e um e-mail é enviado. Em branco = sem término.
+                  </p>
+                </div>
               </div>
               <div className="flex items-center gap-3 p-4 bg-yellow-50 dark:bg-amber-500/10 rounded-lg">
                 <input

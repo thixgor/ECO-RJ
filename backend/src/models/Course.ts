@@ -5,6 +5,7 @@ export interface ICourse extends Document {
   descricao: string;
   instrutor: mongoose.Types.ObjectId;
   dataInicio: Date;
+  dataTermino?: Date; // Data de término do curso. Ao ser atingida, o acesso dos alunos é interrompido e um e-mail é enviado.
   dataLimiteInscricao?: Date;
   imagemCapa?: string;
   aulas: mongoose.Types.ObjectId[];
@@ -28,6 +29,7 @@ export interface ICourse extends Document {
     };
     validadeAcessoDias: number; // validade (em dias) da serial key gerada na compra (0 = sem expiração)
   };
+  terminoNotificado?: boolean; // controle interno: e-mail de término já foi enviado aos alunos
   createdAt: Date;
   updatedAt: Date;
 }
@@ -52,6 +54,9 @@ const CourseSchema = new Schema<ICourse>(
     dataInicio: {
       type: Date,
       required: [true, 'Data de início é obrigatória']
+    },
+    dataTermino: {
+      type: Date
     },
     dataLimiteInscricao: {
       type: Date
@@ -105,6 +110,10 @@ const CourseSchema = new Schema<ICourse>(
         valor: { type: Number, default: 0, min: 0 }
       },
       validadeAcessoDias: { type: Number, default: 365, min: 0 }
+    },
+    terminoNotificado: {
+      type: Boolean,
+      default: false
     }
   },
   {
@@ -114,5 +123,18 @@ const CourseSchema = new Schema<ICourse>(
 
 // Index para busca de cursos por aluno autorizado
 CourseSchema.index({ alunosAutorizados: 1 });
+// Index para o job de término (buscar cursos vencidos ainda não notificados)
+CourseSchema.index({ dataTermino: 1, terminoNotificado: 1 });
+
+/**
+ * Retorna true se o curso já atingiu sua data de término.
+ * A partir desse momento o acesso dos alunos ao conteúdo é interrompido.
+ */
+export function isCourseExpired(course: { dataTermino?: Date | string | null } | null | undefined): boolean {
+  if (!course || !course.dataTermino) return false;
+  const termino = new Date(course.dataTermino);
+  if (isNaN(termino.getTime())) return false;
+  return Date.now() > termino.getTime();
+}
 
 export default mongoose.model<ICourse>('Course', CourseSchema);

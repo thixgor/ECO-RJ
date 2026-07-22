@@ -265,8 +265,9 @@ const CourseDetail: React.FC = () => {
   // Render a single lesson item
   const renderLessonItem = (lesson: Lesson, index: number, showNumber = true) => {
     const isWatched = user?.aulasAssistidas?.includes(lesson._id);
-    // Administrador tem acesso irrestrito (não precisa estar inscrito)
-    const canAccess = isAdmin || (canViewLessons && isEnrolled);
+    // Administrador tem acesso irrestrito (não precisa estar inscrito).
+    // Curso encerrado (data de término atingida) interrompe o acesso dos alunos.
+    const canAccess = isAdmin || (canViewLessons && isEnrolled && !course.expirado);
 
     const lessonUrl = `/aulas/${lesson._id}`;
     const lessonContextMenuItems: ContextMenuItem[] = [
@@ -402,6 +403,33 @@ const CourseDetail: React.FC = () => {
         Voltar para cursos
       </Link>
 
+      {/* Aviso de curso encerrado / janela de acesso */}
+      {course.expirado ? (
+        <div className="mb-6 rounded-xl border border-red-300 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 p-4 flex items-start gap-3">
+          <Clock className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+          <div className="text-sm">
+            <p className="font-semibold text-red-700 dark:text-red-300">Curso encerrado</p>
+            <p className="text-red-600 dark:text-red-400/80">
+              Este curso atingiu a data de término
+              {course.dataTermino ? ` (${new Date(course.dataTermino).toLocaleDateString('pt-BR')})` : ''}.
+              O acesso ao conteúdo <strong>não está mais disponível</strong>.
+            </p>
+          </div>
+        </div>
+      ) : course.dataTermino ? (
+        <div className="mb-6 rounded-xl border border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-4 flex items-start gap-3">
+          <Clock className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+          <div className="text-sm">
+            <p className="font-semibold text-amber-800 dark:text-amber-300">Acesso por tempo limitado</p>
+            <p className="text-amber-700 dark:text-amber-400/80">
+              O acesso a este curso encerra em{' '}
+              <strong>{new Date(course.dataTermino).toLocaleDateString('pt-BR')}</strong>.
+              Após essa data, o conteúdo deixará de ficar disponível e você receberá um e-mail de encerramento.
+            </p>
+          </div>
+        </div>
+      ) : null}
+
       {/* Header */}
       <div className="grid lg:grid-cols-3 gap-8 mb-8">
         <div className="lg:col-span-2">
@@ -420,6 +448,15 @@ const CourseDetail: React.FC = () => {
               <Calendar className="w-5 h-5 text-primary-500" />
               <span>Início: {new Date(course.dataInicio).toLocaleDateString('pt-BR')}</span>
             </div>
+            {course.dataTermino && (
+              <div className="flex items-center gap-2">
+                <Calendar className={`w-5 h-5 ${course.expirado ? 'text-red-500' : 'text-amber-500'}`} />
+                <span>
+                  {course.expirado ? 'Encerrado em: ' : 'Término: '}
+                  {new Date(course.dataTermino).toLocaleDateString('pt-BR')}
+                </span>
+              </div>
+            )}
             {(course as any).totalAulasRegulares > 0 && (
               <div className="flex items-center gap-2">
                 <PlayCircle className="w-5 h-5 text-primary-500" />
@@ -459,7 +496,18 @@ const CourseDetail: React.FC = () => {
             )}
           </div>
 
-          {isEnrolled ? (
+          {course.expirado && !isAdmin ? (
+            <div className="text-center py-4">
+              <div className="w-14 h-14 mx-auto mb-3 rounded-full bg-red-100 dark:bg-red-500/20 flex items-center justify-center">
+                <Clock className="w-7 h-7 text-red-500" />
+              </div>
+              <p className="font-semibold text-[var(--color-text-primary)]">Curso encerrado</p>
+              <p className="text-sm text-[var(--color-text-muted)] mt-1">
+                O acesso ao conteúdo foi finalizado
+                {course.dataTermino ? ` em ${new Date(course.dataTermino).toLocaleDateString('pt-BR')}` : ''}.
+              </p>
+            </div>
+          ) : isEnrolled ? (
             <div>
               <div className="mb-4">
                 <div className="flex items-center justify-between text-sm mb-2">

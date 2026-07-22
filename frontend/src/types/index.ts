@@ -36,6 +36,7 @@ export interface Course {
   descricao: string;
   instrutor: string | User;
   dataInicio: string;
+  dataTermino?: string; // Data de término. Ao ser atingida, o acesso ao conteúdo é encerrado.
   imagemCapa?: string;
   aulas: string[] | Lesson[];
   ativo: boolean;
@@ -47,6 +48,7 @@ export interface Course {
   emissaoCertificadoImediata?: boolean; // default: false - emissão imediata de certificado ao 100%
   tipo: 'online' | 'presencial'; // Tipo do curso
   venda?: CourseVenda; // Configuração de venda (Sistema de Pagamentos)
+  expirado?: boolean; // true se a data de término já foi atingida (retornado por getCourseById)
   createdAt: string;
 }
 

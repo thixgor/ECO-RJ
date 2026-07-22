@@ -95,6 +95,7 @@ export const courseService = {
     titulo: string;
     descricao: string;
     dataInicio: string;
+    dataTermino?: string;
     imagemCapa?: string;
     tipo?: 'online' | 'presencial';
   }) => api.post('/courses', data),
@@ -103,6 +104,7 @@ export const courseService = {
     titulo?: string;
     descricao?: string;
     dataInicio?: string;
+    dataTermino?: string;
     imagemCapa?: string;
     ativo?: boolean;
     tipo?: 'online' | 'presencial';
@@ -118,7 +120,11 @@ export const courseService = {
   getProgress: (id: string) => api.get(`/courses/${id}/progress`),
 
   reorder: (orders: { id: string; ordem: number }[]) =>
-    api.put('/courses/reorder', { orders })
+    api.put('/courses/reorder', { orders }),
+
+  // Processa cursos com data de término atingida (envia e-mail de encerramento).
+  // Ideal para ser chamado por um agendador (Vercel Cron) uma vez por dia.
+  processCompletions: () => api.post('/courses/process-completions')
 };
 
 // Course Topics

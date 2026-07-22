@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import Lesson from '../models/Lesson';
-import Course from '../models/Course';
+import Course, { isCourseExpired } from '../models/Course';
 import User from '../models/User';
 import { AuthRequest } from '../middleware/auth';
 import { registrarAcesso } from './accessLogController';
@@ -31,7 +31,7 @@ export const getLessonsByCourse = async (req: AuthRequest, res: Response) => {
 export const getLessonById = async (req: AuthRequest, res: Response) => {
   try {
     const lesson = await Lesson.findById(req.params.id)
-      .populate('cursoId', 'titulo acessoRestrito alunosAutorizados')
+      .populate('cursoId', 'titulo acessoRestrito alunosAutorizados dataTermino')
       .populate('exerciciosAnexados', 'titulo tipo')
       .populate('provasAnexadas', 'titulo');
 
@@ -49,8 +49,18 @@ export const getLessonById = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Verificar acesso restrito do curso
     const curso = lesson.cursoId as any;
+
+    // Curso encerrado: acesso interrompido a partir da data de término
+    // (Administrador e Instrutor mantêm acesso para gestão do conteúdo)
+    if (isCourseExpired(curso) && userCargo !== 'Administrador' && userCargo !== 'Instrutor') {
+      return res.status(403).json({
+        message: 'Este curso foi encerrado e o acesso ao conteúdo não está mais disponível.',
+        cursoEncerrado: true
+      });
+    }
+
+    // Verificar acesso restrito do curso
     if (curso?.acessoRestrito && userCargo !== 'Administrador') {
       const autorizado = curso.alunosAutorizados?.some(
         (id: any) => id.toString() === userId?.toString()

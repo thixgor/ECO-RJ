@@ -11,7 +11,8 @@ import {
   addAuthorizedStudent,
   removeAuthorizedStudent,
   getAuthorizedStudents,
-  reorderCourses
+  reorderCourses,
+  processCourseCompletions
 } from '../controllers/courseController';
 import { protect, adminOnly, optionalAuth } from '../middleware/auth';
 
@@ -28,6 +29,7 @@ router.get('/:id/progress', protect, getCourseProgress);
 
 // Rotas administrativas
 router.put('/reorder', protect, adminOnly, reorderCourses);
+router.post('/process-completions', protect, adminOnly, processCourseCompletions);
 router.post('/', protect, adminOnly, createCourse);
 router.put('/:id', protect, adminOnly, updateCourse);
 router.delete('/:id', protect, adminOnly, deleteCourse);

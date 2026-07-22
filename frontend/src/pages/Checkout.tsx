@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
-  ShoppingCart, Tag, ShieldCheck, Loader2, ArrowLeft, CheckCircle2, Lock
+  ShoppingCart, Tag, ShieldCheck, Loader2, ArrowLeft, CheckCircle2, Lock, Calendar, Clock
 } from 'lucide-react';
 import { GlassCard, GlassButton, GlassInput, GlassModal } from '../components/ui';
 import { courseService, paymentService } from '../services/api';
@@ -283,7 +283,34 @@ const Checkout: React.FC = () => {
             {course.imagemCapa && (
               <img src={course.imagemCapa} alt={course.titulo} className="w-full h-32 object-cover rounded-xl mb-4" />
             )}
-            <h3 className="font-semibold mb-4">{course.titulo}</h3>
+            <h3 className="font-semibold mb-3">{course.titulo}</h3>
+
+            {/* Janela de acesso do curso */}
+            <div className="mb-4 space-y-1.5 text-xs">
+              <div className="flex items-center gap-2 text-[var(--color-text-muted)]">
+                <Calendar className="w-3.5 h-3.5 text-primary-500" />
+                <span>Início em {new Date(course.dataInicio).toLocaleDateString('pt-BR')}</span>
+              </div>
+              {course.dataTermino && (
+                course.expirado ? (
+                  <div className="flex items-start gap-2 rounded-lg bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 p-2.5 text-red-700 dark:text-red-400">
+                    <Clock className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                    <span>
+                      <strong>Curso encerrado em {new Date(course.dataTermino).toLocaleDateString('pt-BR')}.</strong>{' '}
+                      Este curso atingiu a data de término e o acesso ao conteúdo não está mais disponível.
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex items-start gap-2 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 p-2.5 text-amber-700 dark:text-amber-400">
+                    <Clock className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                    <span>
+                      <strong>Acesso disponível até {new Date(course.dataTermino).toLocaleDateString('pt-BR')}.</strong>{' '}
+                      Após a data de término, o conteúdo do curso é encerrado e o acesso é interrompido.
+                    </span>
+                  </div>
+                )
+              )}
+            </div>
 
             {valores && (
               <div className="space-y-2 text-sm">
