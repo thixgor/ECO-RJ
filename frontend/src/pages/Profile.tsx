@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { User, Mail, CreditCard, Calendar, Stethoscope, Key, Lock, Edit, Check, X, AlertCircle, Award, Download, Clock, BookOpen, StickyNote, Play, Trash2, ShoppingBag, Receipt, MapPin, Building2, GraduationCap, BadgeCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { authService, userService, certificateService, notesService, paymentService } from '../services/api';
+import { authService, userService, certificateService, notesService, paymentService, materialService } from '../services/api';
+import { useSearchParams } from 'react-router-dom';
 import { Certificate, User as UserType, Course, UserNote, GroupedNotesByCourse, NoteDisplay } from '../types';
 import { generateCertificatePDF } from '../utils/certificatePdfGenerator';
 import Loading from '../components/common/Loading';
@@ -11,11 +12,18 @@ import toast from 'react-hot-toast';
 
 const Profile: React.FC = () => {
   const { user, refreshUser } = useAuth();
-  const [activeTab, setActiveTab] = useState<'info' | 'serial' | 'password' | 'certificados' | 'notas' | 'compras'>('info');
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState<'info' | 'serial' | 'password' | 'certificados' | 'notas' | 'compras' | 'materiais'>(
+    searchParams.get('tab') === 'materiais' ? 'materiais' : 'info'
+  );
 
   // Compras (pedidos)
   const [orders, setOrders] = useState<any[]>([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState(false);
+
+  // Meus materiais (entitlements)
+  const [materiais, setMateriais] = useState<any[]>([]);
+  const [isLoadingMateriais, setIsLoadingMateriais] = useState(false);
 
   // Edit profile state
   const [isEditing, setIsEditing] = useState(false);
@@ -60,7 +68,23 @@ const Profile: React.FC = () => {
     if (activeTab === 'compras') {
       loadOrders();
     }
+    if (activeTab === 'materiais') {
+      loadMateriais();
+    }
   }, [activeTab]);
+
+  const loadMateriais = async () => {
+    setIsLoadingMateriais(true);
+    try {
+      const response = await materialService.getMy();
+      setMateriais(response.data.materiais || []);
+    } catch (error) {
+      console.error('Erro ao carregar materiais:', error);
+      toast.error('Erro ao carregar materiais');
+    } finally {
+      setIsLoadingMateriais(false);
+    }
+  };
 
   const loadOrders = async () => {
     setIsLoadingOrders(true);
@@ -475,6 +499,16 @@ const Profile: React.FC = () => {
               Minhas Compras
             </button>
             <button
+              onClick={() => setActiveTab('materiais')}
+              className={`px-6 py-4 font-medium text-sm border-b-2 transition-colors whitespace-nowrap flex items-center gap-2 ${activeTab === 'materiais'
+                ? 'border-primary-500 text-primary-500'
+                : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
+                }`}
+            >
+              <Download className="w-4 h-4" />
+              Meus Materiais
+            </button>
+            <button
               onClick={() => setActiveTab('notas')}
               className={`px-6 py-4 font-medium text-sm border-b-2 transition-colors whitespace-nowrap flex items-center gap-2 ${activeTab === 'notas'
                 ? 'border-primary-500 text-primary-500'
@@ -816,6 +850,64 @@ const Profile: React.FC = () => {
                             )}
                           </div>
                         )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Meus Materiais Tab */}
+          {activeTab === 'materiais' && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Download className="w-5 h-5 text-primary-500" />
+                <h3 className="font-heading font-semibold text-lg text-[var(--color-text-primary)]">Meus Materiais</h3>
+              </div>
+
+              {isLoadingMateriais ? (
+                <div className="py-12 text-center text-[var(--color-text-muted)]">Carregando materiais...</div>
+              ) : materiais.length === 0 ? (
+                <div className="py-12 text-center">
+                  <ShoppingBag className="w-12 h-12 text-[var(--color-text-muted)] mx-auto mb-3 opacity-50" />
+                  <p className="text-[var(--color-text-muted)]">Você ainda não possui materiais adquiridos.</p>
+                  <Link to="/materiais" className="btn btn-primary mt-4 inline-flex">Ver materiais disponíveis</Link>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {materiais.map((m) => {
+                    const material = typeof m.material === 'object' ? m.material : null;
+                    const titulo = material?.titulo || 'Material';
+                    const materialId = material?._id || m.material;
+                    return (
+                      <div key={m._id} className="p-4 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-bg)]">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-12 h-12 rounded-lg bg-primary-500/10 flex items-center justify-center overflow-hidden flex-shrink-0">
+                              {material?.capa ? <img src={material.capa} alt="" className="w-12 h-12 object-cover" /> : <ShoppingBag className="w-5 h-5 text-primary-500" />}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-semibold text-[var(--color-text-primary)] truncate">{titulo}</p>
+                              <p className="text-xs text-[var(--color-text-muted)] font-mono">{m.serialKey}</p>
+                              {m.validade && (
+                                <p className="text-xs text-[var(--color-text-muted)]">
+                                  {m.valido ? `Válido até ${new Date(m.validade).toLocaleDateString('pt-BR')}` : 'Acesso expirado'}
+                                </p>
+                              )}
+                              {!m.validade && <p className="text-xs text-emerald-500">Acesso vitalício</p>}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {m.valido ? (
+                              <Link to={`/materiais/${materialId}`} className="btn btn-primary btn-sm flex items-center gap-2 text-sm">
+                                <Download className="w-4 h-4" /> Acessar
+                              </Link>
+                            ) : (
+                              <span className="text-xs px-3 py-1.5 rounded-lg bg-red-500/10 text-red-500">Expirado</span>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     );
                   })}

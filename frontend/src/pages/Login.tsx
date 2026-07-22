@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, AlertCircle, GraduationCap, ArrowRight, Key, ArrowLeft, CheckCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { GlassCard, GlassInput, GlassButton } from '../components/ui';
-import { authService } from '../services/api';
+import { authService, materialService } from '../services/api';
 import toast from 'react-hot-toast';
 
 type RecoveryStep = 'email' | 'token' | 'password';
@@ -39,6 +39,19 @@ const Login: React.FC = () => {
     try {
       await login(email, password);
       toast.success('Login realizado com sucesso!');
+
+      // Vincula um material comprado como convidado (se houver token pendente)
+      const pendingMaterial = sessionStorage.getItem('pendingMaterialToken');
+      if (pendingMaterial) {
+        sessionStorage.removeItem('pendingMaterialToken');
+        try {
+          await materialService.claim(pendingMaterial);
+          toast.success('Material vinculado à sua conta!');
+        } catch { /* segue o fluxo normal mesmo se falhar */ }
+        navigate('/perfil?tab=materiais', { replace: true });
+        return;
+      }
+
       const pendingKey = sessionStorage.getItem('pendingSerialKey');
       if (pendingKey) {
         sessionStorage.removeItem('pendingSerialKey');

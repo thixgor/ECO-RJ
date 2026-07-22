@@ -43,6 +43,10 @@ export interface CreatePreferenceParams {
   parcelasMaximas: number;
   baseUrl: string;
   notificationUrl: string;
+  // Opcionais (usados pela loja de materiais). Se omitidos, mantém o
+  // comportamento padrão de cursos (não altera o fluxo existente).
+  itemDescription?: string;   // descrição do item na preferência
+  statusUrl?: string;         // URL de retorno (back_urls). Default: /compra/status
 }
 
 export interface PreferenceResult {
@@ -59,13 +63,16 @@ export async function createPreference(params: CreatePreferenceParams): Promise<
   const firstName = nameParts.shift() || params.comprador.nome;
   const lastName = nameParts.join(' ') || '.';
 
+  const statusUrl = params.statusUrl
+    || `${params.baseUrl}/compra/status?pedido=${params.numeroPedido}`;
+
   const response = await preferenceClient.create({
     body: {
       items: [
         {
           id: params.orderId,
           title: params.cursoTitulo.substring(0, 250),
-          description: `Curso ECO RJ - Pedido ${params.numeroPedido}`,
+          description: (params.itemDescription || `Curso ECO RJ - Pedido ${params.numeroPedido}`).substring(0, 250),
           category_id: 'learnings',
           quantity: 1,
           currency_id: 'BRL',
@@ -89,9 +96,9 @@ export async function createPreference(params: CreatePreferenceParams): Promise<
       statement_descriptor: 'ECORJ CURSOS',
       notification_url: params.notificationUrl,
       back_urls: {
-        success: `${params.baseUrl}/compra/status?pedido=${params.numeroPedido}`,
-        pending: `${params.baseUrl}/compra/status?pedido=${params.numeroPedido}`,
-        failure: `${params.baseUrl}/compra/status?pedido=${params.numeroPedido}`
+        success: statusUrl,
+        pending: statusUrl,
+        failure: statusUrl
       },
       auto_return: 'approved',
       binary_mode: false,

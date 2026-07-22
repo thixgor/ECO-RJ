@@ -155,6 +155,134 @@ export interface PaymentConfig {
   vendasAtivas: boolean;
 }
 
+// ==========================================================================
+//  LOJA DE MATERIAIS
+// ==========================================================================
+
+export type MaterialTipo = 'aula' | 'pdf' | 'arquivo' | 'conjunto';
+export type ConteudoTipo = 'aula' | 'pdf' | 'arquivo';
+
+export interface MaterialConteudo {
+  _id?: string;
+  index?: number;
+  tipo: ConteudoTipo;
+  titulo: string;
+  descricao?: string;
+  embedVideo?: string;
+  duracao?: number;
+  arquivoUrl?: string;
+  blobKey?: string;
+  nomeArquivo?: string;
+  mimeType?: string;
+  tamanhoBytes?: number;
+  downloadUrl?: string; // presente quando o usuário tem acesso
+}
+
+export interface MaterialDescontoAtivado {
+  ativo: boolean;
+  tipo: 'percentual' | 'fixo';
+  valor: number;
+}
+
+// Item da listagem pública (/materiais)
+export interface MaterialListItem {
+  _id: string;
+  titulo: string;
+  descricaoCurta?: string;
+  tipo: MaterialTipo;
+  capa?: string;
+  preco: number;
+  precoOriginal?: number;
+  temDesconto: boolean;
+  destaque: boolean;
+  totalConteudos: number;
+  avaliacaoMedia: number;
+  avaliacaoTotal: number;
+  vendasTotais: number;
+  adquirido: boolean;
+}
+
+// Detalhe público / com acesso (/materiais/:id)
+export interface MaterialDetalhe {
+  _id: string;
+  titulo: string;
+  descricao: string;
+  descricaoCurta?: string;
+  tipo: MaterialTipo;
+  capa?: string;
+  disponivel: boolean;
+  preco: number;
+  precoOriginal?: number;
+  temDesconto: boolean;
+  validadeAcessoDias: number;
+  totalConteudos: number;
+  avaliacaoMedia: number;
+  avaliacaoTotal: number;
+  vendasTotais: number;
+  conteudos: MaterialConteudo[];
+}
+
+// Material completo (admin)
+export interface MaterialAdmin {
+  _id: string;
+  titulo: string;
+  descricao: string;
+  descricaoCurta?: string;
+  tipo: MaterialTipo;
+  capa?: string;
+  conteudos: MaterialConteudo[];
+  disponivel: boolean;
+  ativo: boolean;
+  destaque: boolean;
+  ordem: number;
+  preco: number;
+  descontoAtivado: MaterialDescontoAtivado;
+  validadeAcessoDias: number;
+  avaliacaoMedia: number;
+  avaliacaoTotal: number;
+  vendasTotais: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MaterialReview {
+  _id: string;
+  nota: number;
+  comentario?: string;
+  autorNome: string;
+  createdAt: string;
+}
+
+export interface MaterialEntitlement {
+  _id: string;
+  material: MaterialListItem | string;
+  serialKey: string;
+  accessToken: string;
+  validade?: string;
+  valido: boolean;
+  podeAvaliar: boolean;
+  createdAt: string;
+}
+
+export interface MaterialOrder {
+  _id: string;
+  numeroPedido: string;
+  material: string | MaterialAdmin;
+  materialTitulo: string;
+  materialTipo: string;
+  comprador?: string | User;
+  compradorDados: { nome: string; email: string; telefone: string; cpf: string };
+  valores: OrderValores;
+  status: 'pendente' | 'em_processo' | 'aprovado' | 'rejeitado' | 'cancelado' | 'reembolsado';
+  metodoPagamento?: string;
+  serialKeyCodigo?: string;
+  accessToken?: string;
+  entregue: boolean;
+  emailEnviado: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface CustomButton {
   nome: string;
   icone: string;

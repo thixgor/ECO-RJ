@@ -21,6 +21,7 @@ import notesRoutes from './notesRoutes';
 import paymentRoutes from './paymentRoutes';
 import couponRoutes from './couponRoutes';
 import priceLotRoutes from './priceLotRoutes';
+import materialRoutes from './materialRoutes';
 
 const router = Router();
 
@@ -46,6 +47,7 @@ router.use('/notes', notesRoutes);
 router.use('/payments', paymentRoutes);
 router.use('/coupons', couponRoutes);
 router.use('/price-lots', priceLotRoutes);
+router.use('/materials', materialRoutes);
 
 export default router;
 

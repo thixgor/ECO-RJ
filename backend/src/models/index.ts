@@ -12,3 +12,7 @@ export { default as Announcement } from './Announcement';
 export { default as Coupon } from './Coupon';
 export { default as PriceLot } from './PriceLot';
 export { default as Order } from './Order';
+export { default as Material } from './Material';
+export { default as MaterialOrder } from './MaterialOrder';
+export { default as MaterialEntitlement } from './MaterialEntitlement';
+export { default as MaterialReview } from './MaterialReview';

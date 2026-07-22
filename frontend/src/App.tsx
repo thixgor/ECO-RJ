@@ -22,6 +22,11 @@ const Privacy = lazy(() => import('./pages/Privacy'));
 const Checkout = lazy(() => import('./pages/Checkout'));
 const PaymentStatus = lazy(() => import('./pages/PaymentStatus'));
 const Ativar = lazy(() => import('./pages/Ativar'));
+const Materiais = lazy(() => import('./pages/Materiais'));
+const MaterialDetail = lazy(() => import('./pages/MaterialDetail'));
+const MaterialCheckout = lazy(() => import('./pages/MaterialCheckout'));
+const MaterialPaymentStatus = lazy(() => import('./pages/MaterialPaymentStatus'));
+const MaterialAccess = lazy(() => import('./pages/MaterialAccess'));
 
 // Authenticated Pages
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -39,6 +44,7 @@ const AdminCourses = lazy(() => import('./pages/admin/AdminCourses'));
 const AdminLessons = lazy(() => import('./pages/admin/AdminLessons'));
 const AdminSerialKeys = lazy(() => import('./pages/admin/AdminSerialKeys'));
 const AdminPayments = lazy(() => import('./pages/admin/AdminPayments'));
+const AdminMaterials = lazy(() => import('./pages/admin/AdminMaterials'));
 const AdminAccessLogs = lazy(() => import('./pages/admin/AdminAccessLogs'));
 const AdminExercises = lazy(() => import('./pages/admin/AdminExercises'));
 const AdminSiteConfig = lazy(() => import('./pages/admin/AdminSiteConfig'));
@@ -125,6 +131,11 @@ const App: React.FC = () => {
                 <Route path="/comprar/:cursoId" element={<Checkout />} />
                 <Route path="/compra/status" element={<PaymentStatus />} />
                 <Route path="/ativar" element={<Ativar />} />
+                <Route path="/materiais" element={<Materiais />} />
+                <Route path="/materiais/comprar/:id" element={<MaterialCheckout />} />
+                <Route path="/materiais/compra/status" element={<MaterialPaymentStatus />} />
+                <Route path="/materiais/acesso" element={<MaterialAccess />} />
+                <Route path="/materiais/:id" element={<MaterialDetail />} />
               </Route>
 
               {/* Public Auth Routes (Always no sidebar) */}
@@ -191,6 +202,7 @@ const App: React.FC = () => {
                 <Route path="/admin/exercicios" element={<AdminExercises />} />
                 <Route path="/admin/serial-keys" element={<AdminSerialKeys />} />
                 <Route path="/admin/pagamentos" element={<AdminPayments />} />
+                <Route path="/admin/materiais" element={<AdminMaterials />} />
                 <Route path="/admin/avisos" element={<AdminAnnouncements />} />
                 <Route path="/admin/logs" element={<AdminAccessLogs />} />
                 <Route path="/admin/configuracoes" element={<AdminSiteConfig />} />

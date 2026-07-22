@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Menu, X, User, LogOut, ChevronDown, Shield, Smartphone, BookOpen, LayoutDashboard, MessageSquare } from 'lucide-react';
+import { Menu, X, User, LogOut, ChevronDown, Shield, Smartphone, BookOpen, LayoutDashboard, MessageSquare, ShoppingBag } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useUserProfile } from '../../contexts/UserProfileContext';
@@ -87,6 +87,13 @@ const Header: React.FC = () => {
               isActive={location.pathname === '/cursos' || location.pathname.startsWith('/cursos/')}
             >
               Cursos
+            </NavLink>
+            <NavLink
+              to="/materiais"
+              icon={<ShoppingBag className="w-4 h-4" />}
+              isActive={location.pathname === '/materiais' || location.pathname.startsWith('/materiais/')}
+            >
+              Materiais
             </NavLink>
             {isAuthenticated && (
               <>
@@ -224,6 +231,13 @@ const Header: React.FC = () => {
                 className="nav-link-glass"
               >
                 Cursos
+              </Link>
+              <Link
+                to="/materiais"
+                onClick={() => setIsMenuOpen(false)}
+                className="nav-link-glass"
+              >
+                Materiais
               </Link>
               {isAuthenticated ? (
                 <>

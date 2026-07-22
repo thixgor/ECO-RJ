@@ -1,0 +1,93 @@
+import React from 'react';
+import { Video, FileText, File, Download, PlayCircle } from 'lucide-react';
+import { extractYouTubeId, extractVimeoId } from '../../utils/videoUtils';
+import type { MaterialConteudo } from '../../types';
+
+/** Converte um embed/URL em uma src de iframe utilizável (YouTube/Vimeo/URL direta). */
+function buildEmbedSrc(embed?: string): string | null {
+  if (!embed) return null;
+  const yt = extractYouTubeId(embed);
+  if (yt) return `https://www.youtube-nocookie.com/embed/${yt}`;
+  const vm = extractVimeoId(embed);
+  if (vm) return `https://player.vimeo.com/video/${vm}`;
+  // Se já for uma URL http(s), usa direto
+  if (/^https?:\/\//i.test(embed.trim())) return embed.trim();
+  return null;
+}
+
+const iconFor = (tipo: string) => {
+  if (tipo === 'aula') return <Video className="w-4 h-4" />;
+  if (tipo === 'pdf') return <FileText className="w-4 h-4" />;
+  return <File className="w-4 h-4" />;
+};
+
+interface Props {
+  conteudos: MaterialConteudo[];
+}
+
+const MaterialContentViewer: React.FC<Props> = ({ conteudos }) => {
+  if (!conteudos || conteudos.length === 0) {
+    return (
+      <p className="text-sm text-[var(--color-text-muted)]">Nenhum conteúdo disponível neste material.</p>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      {conteudos.map((c, i) => {
+        const embedSrc = c.tipo === 'aula' ? buildEmbedSrc(c.embedVideo) : null;
+        return (
+          <div key={c._id || i} className="rounded-xl border border-[var(--glass-border)] bg-[var(--glass-bg)] overflow-hidden">
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-[var(--glass-border)]">
+              <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full bg-primary-500/10 text-primary-600 dark:text-primary-400">
+                {iconFor(c.tipo)}
+                {c.tipo === 'aula' ? 'Aula' : c.tipo === 'pdf' ? 'PDF' : 'Arquivo'}
+              </span>
+              <h4 className="font-semibold text-[var(--color-text-primary)] text-sm flex-1 truncate">{c.titulo}</h4>
+              {typeof c.duracao === 'number' && c.duracao > 0 && (
+                <span className="text-xs text-[var(--color-text-muted)]">{c.duracao} min</span>
+              )}
+            </div>
+
+            <div className="p-4">
+              {c.descricao && (
+                <p className="text-sm text-[var(--color-text-secondary)] mb-3">{c.descricao}</p>
+              )}
+
+              {c.tipo === 'aula' ? (
+                embedSrc ? (
+                  <div className="relative w-full rounded-lg overflow-hidden bg-black" style={{ paddingTop: '56.25%' }}>
+                    <iframe
+                      src={embedSrc}
+                      title={c.titulo}
+                      className="absolute inset-0 w-full h-full"
+                      frameBorder={0}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 text-sm text-[var(--color-text-muted)]">
+                    <PlayCircle className="w-4 h-4" /> Vídeo indisponível no momento.
+                  </div>
+                )
+              ) : (
+                <a
+                  href={c.downloadUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`glass-btn-primary inline-flex items-center gap-2 !py-2.5 ${!c.downloadUrl ? 'pointer-events-none opacity-50' : ''}`}
+                >
+                  <Download className="w-4 h-4" />
+                  Baixar {c.nomeArquivo || c.titulo}
+                </a>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+export default MaterialContentViewer;

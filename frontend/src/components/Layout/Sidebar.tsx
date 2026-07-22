@@ -19,7 +19,9 @@ import {
   Award,
   FileCheck,
   Smartphone,
-  CreditCard
+  CreditCard,
+  ShoppingBag,
+  Package
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useUserProfile } from '../../contexts/UserProfileContext';
@@ -173,6 +175,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isVisible = true }) 
                 </NavLink>
               )}
 
+              {!isPatientMode && (
+                <NavLink to="/materiais" className={navLinkClass} onClick={onClose}>
+                  <ShoppingBag className="w-5 h-5 flex-shrink-0" />
+                  <span>Materiais</span>
+                </NavLink>
+              )}
+
               {canAccessExercises && (
                 <NavLink to="/exercicios" className={navLinkClass} onClick={onClose}>
                   <ClipboardList className="w-5 h-5 flex-shrink-0" />
@@ -249,6 +258,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isVisible = true }) 
                 <NavLink to="/admin/pagamentos" className={navLinkClass} onClick={onClose}>
                   <CreditCard className="w-5 h-5 flex-shrink-0" />
                   <span>Pagamentos</span>
+                </NavLink>
+
+                <NavLink to="/admin/materiais" className={navLinkClass} onClick={onClose}>
+                  <Package className="w-5 h-5 flex-shrink-0" />
+                  <span>Materiais</span>
                 </NavLink>
 
                 <NavLink to="/admin/avisos" className={navLinkClass} onClick={onClose}>

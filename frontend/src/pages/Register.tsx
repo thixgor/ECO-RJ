@@ -17,6 +17,7 @@ import {
   UF_LIST
 } from '../data/cadastroData';
 import toast from 'react-hot-toast';
+import { materialService } from '../services/api';
 
 // Logos ECO RJ
 const LOGO_DARK = 'https://i.imgur.com/qBXnSUD.png';
@@ -246,12 +247,25 @@ NÃO COMPARTILHE ESTE TOKEN COM NINGUÉM!
     toast.success('Token baixado com sucesso!');
   };
 
-  const handleCloseModal = () => {
+  const handleCloseModal = async () => {
     if (!confirmClose) {
       setConfirmClose(true);
       return;
     }
     setShowTokenModal(false);
+
+    // Vincula um material comprado como convidado (se houver token pendente)
+    const pendingMaterial = sessionStorage.getItem('pendingMaterialToken');
+    if (pendingMaterial) {
+      sessionStorage.removeItem('pendingMaterialToken');
+      try {
+        await materialService.claim(pendingMaterial);
+        toast.success('Material vinculado à sua conta!');
+      } catch { /* segue o fluxo normal mesmo se falhar */ }
+      navigate('/perfil?tab=materiais');
+      return;
+    }
+
     const pendingKey = sessionStorage.getItem('pendingSerialKey');
     if (pendingKey) {
       sessionStorage.removeItem('pendingSerialKey');

@@ -562,6 +562,64 @@ export const priceLotService = {
   delete: (id: string) => api.delete(`/price-lots/${id}`)
 };
 
+// Materials (Loja de Materiais - Mercado Pago)
+export const materialService = {
+  // Público
+  list: () => api.get('/materials'),
+  getById: (id: string) => api.get(`/materials/${id}`),
+
+  quote: (data: { materialId: string; cupom?: string; email?: string }) =>
+    api.post('/materials/quote', data),
+
+  checkout: (data: {
+    materialId: string;
+    cupom?: string;
+    comprador: { nome: string; email: string; telefone: string; cpf: string };
+    aceiteTermos: { aceito: boolean };
+  }) => api.post('/materials/checkout', data),
+
+  getOrderStatus: (numeroPedido: string) =>
+    api.get(`/materials/order/${numeroPedido}`),
+
+  syncOrder: (numeroPedido: string) =>
+    api.post(`/materials/order/${numeroPedido}/sync`),
+
+  recover: (email: string) => api.post('/materials/recover', { email }),
+
+  // Acesso por token (convidado)
+  getAccess: (token: string) => api.get(`/materials/access/${token}`),
+  downloadUrl: (token: string, index: number) => `/api/materials/access/${token}/download/${index}`,
+
+  // Usuário logado
+  getMy: () => api.get('/materials/my'),
+  getContent: (id: string) => api.get(`/materials/${id}/content`),
+  claim: (codigo: string) => api.post('/materials/claim', { codigo }),
+
+  // Avaliações
+  getReviews: (id: string) => api.get(`/materials/${id}/reviews`),
+  review: (id: string, data: { nota: number; comentario?: string }) =>
+    api.post(`/materials/${id}/reviews`, data),
+  deleteMyReview: (id: string) => api.delete(`/materials/${id}/reviews`),
+
+  // Admin
+  admin: {
+    list: () => api.get('/materials/admin/all'),
+    getById: (id: string) => api.get(`/materials/admin/${id}`),
+    create: (data: any) => api.post('/materials/admin', data),
+    update: (id: string, data: any) => api.put(`/materials/admin/${id}`, data),
+    delete: (id: string) => api.delete(`/materials/admin/${id}`),
+    getOrders: (params?: { status?: string; search?: string; materialId?: string; page?: number; limit?: number }) =>
+      api.get('/materials/admin/orders', { params }),
+    getOrderById: (id: string) => api.get(`/materials/admin/orders/${id}`),
+    getStats: () => api.get('/materials/admin/stats'),
+    refulfill: (id: string) => api.post(`/materials/admin/orders/${id}/refulfill`),
+    grant: (id: string, email: string) => api.post(`/materials/admin/${id}/grant`, { email }),
+    deleteReview: (reviewId: string) => api.delete(`/materials/admin/reviews/${reviewId}`),
+    updateEntitlement: (id: string, data: { revogado?: boolean; ativo?: boolean }) =>
+      api.put(`/materials/admin/entitlements/${id}`, data)
+  }
+};
+
 // Notes (Anotações do usuário)
 export const notesService = {
   create: (data: { lessonId: string; conteudo: string; timestamp: number }) =>

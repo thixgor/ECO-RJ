@@ -1,5 +1,6 @@
 import nodemailer, { Transporter } from 'nodemailer';
 import { IOrder } from '../models/Order';
+import { IMaterialOrder } from '../models/MaterialOrder';
 
 /**
  * Serviço de e-mail transacional.
@@ -37,14 +38,33 @@ function getFrom(): string {
   return process.env.SMTP_FROM || 'ECO RJ <contato@cursodeecocardiografia.com>';
 }
 
-export async function sendMail(to: string, subject: string, html: string): Promise<boolean> {
+export interface MailAttachment {
+  filename: string;
+  path?: string;    // caminho local ou URL (nodemailer busca automaticamente)
+  href?: string;    // URL explícita
+  content?: Buffer | string;
+  contentType?: string;
+}
+
+export async function sendMail(
+  to: string,
+  subject: string,
+  html: string,
+  attachments?: MailAttachment[]
+): Promise<boolean> {
   const t = getTransporter();
   if (!t) {
-    console.log(`[EMAIL:SIMULADO] Para: ${to} | Assunto: ${subject}`);
+    console.log(`[EMAIL:SIMULADO] Para: ${to} | Assunto: ${subject}${attachments?.length ? ` | Anexos: ${attachments.length}` : ''}`);
     return false;
   }
   try {
-    await t.sendMail({ from: getFrom(), to, subject, html });
+    await t.sendMail({
+      from: getFrom(),
+      to,
+      subject,
+      html,
+      attachments: attachments && attachments.length ? attachments : undefined
+    });
     return true;
   } catch (err) {
     console.error('Erro ao enviar e-mail:', err);
@@ -210,4 +230,106 @@ export async function sendCourseEndedEmail(opts: {
   const html = buildCourseEndedHtml({ ...opts, linkPlataforma });
   const subject = `ECO RJ · O curso ${opts.cursoTitulo} foi encerrado`;
   return sendMail(opts.to, subject, html);
+}
+
+/* ======================================================================== */
+/*  LOJA DE MATERIAIS                                                         */
+/* ======================================================================== */
+
+export interface MaterialEmailOpts {
+  isGuest: boolean;
+  serialKeyCodigo?: string;
+  accessLink?: string;   // link de acesso do convidado (/materiais/acesso?token=...)
+  materialLink?: string; // link direto ao material (/materiais/:id)
+}
+
+/** Gera o HTML do comprovante/entrega de um material comprado. */
+export function buildMaterialReceiptHtml(order: IMaterialOrder, opts: MaterialEmailOpts): string {
+  const v = order.valores;
+  const linhasDesconto: string[] = [];
+  if (v.descontoAtivado > 0) linhasDesconto.push(`<tr><td style="padding:4px 0;color:#059669;">Desconto promocional</td><td align="right" style="color:#059669;">- ${brl(v.descontoAtivado)}</td></tr>`);
+  if (v.descontoCupom > 0) linhasDesconto.push(`<tr><td style="padding:4px 0;color:#059669;">Cupom ${order.cupomAplicado?.codigo || ''}</td><td align="right" style="color:#059669;">- ${brl(v.descontoCupom)}</td></tr>`);
+
+  const acessoBloco = opts.isGuest
+    ? `
+      <div style="margin:24px 0;padding:20px;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:12px;">
+        <p style="margin:0 0 8px;font-weight:bold;color:#1E3A8A;">🔑 Seu código de acesso</p>
+        <p style="margin:0 0 12px;font-size:20px;font-weight:bold;letter-spacing:1px;color:#1D4ED8;font-family:monospace;">${opts.serialKeyCodigo || ''}</p>
+        <p style="margin:0 0 12px;color:#334155;font-size:14px;">
+          Você comprou sem uma conta. Acesse seu material imediatamente pelo botão abaixo
+          (guarde este e-mail). Se preferir, crie uma conta com este mesmo e-mail para ter o
+          material salvo permanentemente em <strong>"Meus Materiais"</strong>.
+        </p>
+        <a href="${opts.accessLink}" style="display:inline-block;padding:12px 24px;background:#1D4ED8;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold;">Acessar / Baixar meu material</a>
+      </div>`
+    : `
+      <div style="margin:24px 0;padding:20px;background:#ECFDF5;border:1px solid #A7F3D0;border-radius:12px;">
+        <p style="margin:0 0 8px;font-weight:bold;color:#065F46;">✅ Material liberado na sua conta</p>
+        <p style="margin:0 0 12px;color:#334155;font-size:14px;">
+          O material já está disponível em <strong>"Meus Materiais"</strong> e na página do produto.
+        </p>
+        <a href="${opts.materialLink}" style="display:inline-block;padding:12px 24px;background:#059669;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold;">Acessar meu material</a>
+      </div>`;
+
+  return `
+  <div style="max-width:640px;margin:0 auto;font-family:Arial,Helvetica,sans-serif;color:#1e293b;">
+    <div style="text-align:center;padding:24px 0;border-bottom:2px solid #E0F2FE;">
+      <h1 style="margin:0;color:#1D4ED8;font-size:24px;">ECO RJ</h1>
+      <p style="margin:4px 0 0;color:#64748b;font-size:13px;">Centro de Treinamento em Ecocardiografia</p>
+    </div>
+
+    <div style="padding:24px 0;">
+      <h2 style="font-size:20px;margin:0 0 4px;">Compra de Material Confirmada</h2>
+      <p style="color:#64748b;margin:0 0 16px;">Pedido <strong>${order.numeroPedido}</strong></p>
+
+      <p style="display:inline-block;padding:6px 14px;background:#DCFCE7;color:#166534;border-radius:999px;font-weight:bold;font-size:13px;">✔ Pagamento aprovado</p>
+
+      ${acessoBloco}
+
+      <h3 style="font-size:16px;margin:24px 0 8px;">Detalhes</h3>
+      <table style="width:100%;border-collapse:collapse;font-size:14px;">
+        <tr><td style="padding:4px 0;color:#64748b;">Material</td><td align="right"><strong>${order.materialTitulo}</strong></td></tr>
+        <tr><td style="padding:4px 0;color:#64748b;">Comprador</td><td align="right">${order.compradorDados.nome}</td></tr>
+        <tr><td style="padding:4px 0;color:#64748b;">E-mail</td><td align="right">${order.compradorDados.email}</td></tr>
+        <tr><td style="padding:4px 0;color:#64748b;">CPF</td><td align="right">${maskCpf(order.compradorDados.cpf)}</td></tr>
+        <tr><td style="padding:4px 0;color:#64748b;">Data</td><td align="right">${new Date(order.createdAt).toLocaleString('pt-BR')}</td></tr>
+        ${order.metodoPagamento ? `<tr><td style="padding:4px 0;color:#64748b;">Método</td><td align="right">${order.metodoPagamento}</td></tr>` : ''}
+      </table>
+
+      <h3 style="font-size:16px;margin:24px 0 8px;">Valores</h3>
+      <table style="width:100%;border-collapse:collapse;font-size:14px;">
+        <tr><td style="padding:4px 0;color:#64748b;">Preço do material</td><td align="right">${brl(v.precoBase)}</td></tr>
+        ${linhasDesconto.join('')}
+        <tr><td style="padding:4px 0;color:#64748b;">Subtotal</td><td align="right">${brl(v.subtotal)}</td></tr>
+        <tr><td style="padding:4px 0;color:#64748b;">Taxa operacional (${v.taxaOperacionalPercentual}%)</td><td align="right">${brl(v.taxaOperacional)}</td></tr>
+        <tr><td style="padding:12px 0 0;font-weight:bold;font-size:16px;border-top:1px solid #e2e8f0;">Total</td><td align="right" style="padding:12px 0 0;font-weight:bold;font-size:16px;border-top:1px solid #e2e8f0;color:#1D4ED8;">${brl(v.total)}</td></tr>
+      </table>
+
+      <p style="margin:24px 0 0;font-size:12px;color:#94a3b8;line-height:1.6;">
+        Este material é de uso pessoal e intransferível, protegido por direitos autorais (Lei nº 9.610/98).
+        A reprodução, compartilhamento ou revenda não autorizados sujeitam o infrator às penalidades legais
+        e ao bloqueio imediato do acesso, sem reembolso.
+      </p>
+    </div>
+
+    <div style="padding:20px 0;border-top:1px solid #e2e8f0;text-align:center;color:#94a3b8;font-size:12px;">
+      <p style="margin:0 0 4px;">ECO RJ · Centro de Treinamento em Ecocardiografia · CNPJ: 21.847.609/0001-70</p>
+      <p style="margin:0 0 4px;">Av. das Américas 19.019 - Recreio Shopping - Sala 336 - Recreio dos Bandeirantes - RJ</p>
+      <p style="margin:0;">contato@cursodeecocardiografia.com</p>
+    </div>
+  </div>`;
+}
+
+/**
+ * Envia o e-mail de entrega de um material.
+ * Para convidados, anexa os PDFs do material (quando houver URL/arquivo disponível).
+ */
+export async function sendMaterialPurchaseEmail(
+  order: IMaterialOrder,
+  opts: MaterialEmailOpts,
+  attachments?: MailAttachment[]
+): Promise<boolean> {
+  const html = buildMaterialReceiptHtml(order, opts);
+  const subject = `ECO RJ · Seu material — Pedido ${order.numeroPedido}`;
+  return sendMail(order.compradorDados.email, subject, html, attachments);
 }
