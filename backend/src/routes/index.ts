@@ -18,6 +18,9 @@ import announcementRoutes from './announcementRoutes';
 import certificateRoutes from './certificateRoutes';
 import certificateRequestRoutes from './certificateRequestRoutes';
 import notesRoutes from './notesRoutes';
+import paymentRoutes from './paymentRoutes';
+import couponRoutes from './couponRoutes';
+import priceLotRoutes from './priceLotRoutes';
 
 const router = Router();
 
@@ -40,6 +43,9 @@ router.use('/announcements', announcementRoutes);
 router.use('/certificates', certificateRoutes);
 router.use('/certificate-requests', certificateRequestRoutes);
 router.use('/notes', notesRoutes);
+router.use('/payments', paymentRoutes);
+router.use('/coupons', couponRoutes);
+router.use('/price-lots', priceLotRoutes);
 
 export default router;
 

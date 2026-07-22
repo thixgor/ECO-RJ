@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { BookOpen, Calendar, User, PlayCircle, Clock, Lock, CheckCircle, ArrowLeft, FolderOpen, ChevronDown, FileText, Video, Layers, Award, Loader2, ExternalLink, Copy, Share2 } from 'lucide-react';
+import { BookOpen, Calendar, User, PlayCircle, Clock, Lock, CheckCircle, ArrowLeft, FolderOpen, ChevronDown, FileText, Video, Layers, Award, Loader2, ExternalLink, Copy, Share2, ShoppingCart } from 'lucide-react';
 import { courseService, lessonService, courseTopicService, courseSubtopicService, certificateRequestService } from '../services/api';
 import { Course, Lesson, User as UserType, CourseTopic, CourseSubtopic } from '../types';
 import { useAuth } from '../contexts/AuthContext';
@@ -585,6 +585,24 @@ const CourseDetail: React.FC = () => {
               >
                 Cancelar Inscricao
               </button>
+            </div>
+          ) : (course.venda?.disponivel && (course.venda?.preco || 0) > 0) ? (
+            <div className="space-y-2">
+              <div className="text-center">
+                <span className="text-2xl font-bold text-primary-500">
+                  {`R$ ${Number(course.venda!.preco).toFixed(2).replace('.', ',')}`}
+                </span>
+              </div>
+              <button
+                onClick={() => navigate(`/comprar/${course._id}`)}
+                className="btn btn-primary w-full flex items-center justify-center gap-2 animate-pulse-glow"
+              >
+                <ShoppingCart className="w-5 h-5" />
+                Comprar Curso
+              </button>
+              <p className="text-xs text-center text-[var(--color-text-muted)]">
+                Acesso liberado automaticamente após o pagamento
+              </p>
             </div>
           ) : (
             <button

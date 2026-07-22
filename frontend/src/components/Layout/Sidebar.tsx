@@ -18,7 +18,8 @@ import {
   Bell,
   Award,
   FileCheck,
-  Smartphone
+  Smartphone,
+  CreditCard
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useUserProfile } from '../../contexts/UserProfileContext';
@@ -243,6 +244,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isVisible = true }) 
                 <NavLink to="/admin/serial-keys" className={navLinkClass} onClick={onClose}>
                   <Key className="w-5 h-5 flex-shrink-0" />
                   <span>Serial Keys</span>
+                </NavLink>
+
+                <NavLink to="/admin/pagamentos" className={navLinkClass} onClick={onClose}>
+                  <CreditCard className="w-5 h-5 flex-shrink-0" />
+                  <span>Pagamentos</span>
                 </NavLink>
 
                 <NavLink to="/admin/avisos" className={navLinkClass} onClick={onClose}>

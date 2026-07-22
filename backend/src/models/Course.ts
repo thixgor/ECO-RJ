@@ -17,6 +17,17 @@ export interface ICourse extends Document {
   exibirDuracao: boolean; // se true, exibe "xh e ymin de conteúdo" na página do curso
   certificadoDisponivel: boolean; // se true, certificado disponível para o curso (default: true)
   emissaoCertificadoImediata: boolean; // se true, emite certificado automaticamente ao concluir 100%
+  // Configuração de venda (Sistema de Pagamentos)
+  venda: {
+    disponivel: boolean; // se true, o curso pode ser comprado
+    preco: number; // preço base em BRL (reais, com 2 casas decimais)
+    descontoAtivado: {
+      ativo: boolean;
+      tipo: 'percentual' | 'fixo';
+      valor: number; // percentual (0-100) ou valor fixo em BRL
+    };
+    validadeAcessoDias: number; // validade (em dias) da serial key gerada na compra (0 = sem expiração)
+  };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -84,6 +95,16 @@ const CourseSchema = new Schema<ICourse>(
     emissaoCertificadoImediata: {
       type: Boolean,
       default: false
+    },
+    venda: {
+      disponivel: { type: Boolean, default: false },
+      preco: { type: Number, default: 0, min: 0 },
+      descontoAtivado: {
+        ativo: { type: Boolean, default: false },
+        tipo: { type: String, enum: ['percentual', 'fixo'], default: 'percentual' },
+        valor: { type: Number, default: 0, min: 0 }
+      },
+      validadeAcessoDias: { type: Number, default: 365, min: 0 }
     }
   },
   {

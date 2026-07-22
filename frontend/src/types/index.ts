@@ -46,7 +46,98 @@ export interface Course {
   certificadoDisponivel?: boolean; // default: true - certificado disponível para o curso
   emissaoCertificadoImediata?: boolean; // default: false - emissão imediata de certificado ao 100%
   tipo: 'online' | 'presencial'; // Tipo do curso
+  venda?: CourseVenda; // Configuração de venda (Sistema de Pagamentos)
   createdAt: string;
+}
+
+export interface CourseVenda {
+  disponivel: boolean;
+  preco: number;
+  descontoAtivado: {
+    ativo: boolean;
+    tipo: 'percentual' | 'fixo';
+    valor: number;
+  };
+  validadeAcessoDias: number;
+}
+
+export interface OrderValores {
+  precoBase: number;
+  descontoLote: number;
+  descontoAtivado: number;
+  descontoCupom: number;
+  subtotal: number;
+  taxaOperacionalPercentual: number;
+  taxaOperacional: number;
+  total: number;
+}
+
+export interface Order {
+  _id: string;
+  numeroPedido: string;
+  curso: string | Course;
+  cursoTitulo: string;
+  comprador?: string | User;
+  compradorDados: { nome: string; email: string; telefone: string; cpf: string };
+  valores: OrderValores;
+  cupomAplicado?: { couponId: string; codigo: string };
+  loteAplicado?: string;
+  status: 'pendente' | 'em_processo' | 'aprovado' | 'rejeitado' | 'cancelado' | 'reembolsado';
+  mercadoPago?: {
+    preferenceId?: string;
+    paymentId?: string;
+    status?: string;
+    statusDetail?: string;
+    paymentMethodId?: string;
+    paymentTypeId?: string;
+    lastFourDigits?: string;
+    installments?: number;
+    dateApproved?: string;
+  };
+  metodoPagamento?: string;
+  serialKeyCodigo?: string;
+  entregue: boolean;
+  entregueEm?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Coupon {
+  _id: string;
+  codigo: string;
+  descricao: string;
+  tipo: 'percentual' | 'fixo';
+  valor: number;
+  ativo: boolean;
+  dataInicio?: string;
+  dataValidade?: string;
+  usosMaximos: number;
+  usosAtuais: number;
+  usosPorEmail: number;
+  valorMinimoCompra: number;
+  cursosAplicaveis: (string | Course)[];
+  createdAt: string;
+}
+
+export interface PriceLot {
+  _id: string;
+  curso: string | Course;
+  nome: string;
+  preco: number;
+  quantidadeTotal: number;
+  quantidadeVendida: number;
+  ordem: number;
+  ativo: boolean;
+  createdAt: string;
+}
+
+export interface PaymentConfig {
+  taxaOperacionalPercentual: number;
+  metodos: { pix: boolean; cartaoCredito: boolean; cartaoDebito: boolean; boleto: boolean };
+  parcelasMaximas: number;
+  termosVersao: string;
+  termosCompra: string;
+  vendasAtivas: boolean;
 }
 
 export interface CustomButton {

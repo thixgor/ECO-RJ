@@ -19,6 +19,9 @@ const Courses = lazy(() => import('./pages/Courses'));
 const CourseDetail = lazy(() => import('./pages/CourseDetail'));
 const Terms = lazy(() => import('./pages/Terms'));
 const Privacy = lazy(() => import('./pages/Privacy'));
+const Checkout = lazy(() => import('./pages/Checkout'));
+const PaymentStatus = lazy(() => import('./pages/PaymentStatus'));
+const Ativar = lazy(() => import('./pages/Ativar'));
 
 // Authenticated Pages
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -35,6 +38,7 @@ const AdminUsers = lazy(() => import('./pages/admin/AdminUsers'));
 const AdminCourses = lazy(() => import('./pages/admin/AdminCourses'));
 const AdminLessons = lazy(() => import('./pages/admin/AdminLessons'));
 const AdminSerialKeys = lazy(() => import('./pages/admin/AdminSerialKeys'));
+const AdminPayments = lazy(() => import('./pages/admin/AdminPayments'));
 const AdminAccessLogs = lazy(() => import('./pages/admin/AdminAccessLogs'));
 const AdminExercises = lazy(() => import('./pages/admin/AdminExercises'));
 const AdminSiteConfig = lazy(() => import('./pages/admin/AdminSiteConfig'));
@@ -118,6 +122,9 @@ const App: React.FC = () => {
                 <Route path="/cursos/:id" element={<CourseDetail />} />
                 <Route path="/termos" element={<Terms />} />
                 <Route path="/privacidade" element={<Privacy />} />
+                <Route path="/comprar/:cursoId" element={<Checkout />} />
+                <Route path="/compra/status" element={<PaymentStatus />} />
+                <Route path="/ativar" element={<Ativar />} />
               </Route>
 
               {/* Public Auth Routes (Always no sidebar) */}
@@ -183,6 +190,7 @@ const App: React.FC = () => {
                 <Route path="/admin/aulas" element={<AdminLessons />} />
                 <Route path="/admin/exercicios" element={<AdminExercises />} />
                 <Route path="/admin/serial-keys" element={<AdminSerialKeys />} />
+                <Route path="/admin/pagamentos" element={<AdminPayments />} />
                 <Route path="/admin/avisos" element={<AdminAnnouncements />} />
                 <Route path="/admin/logs" element={<AdminAccessLogs />} />
                 <Route path="/admin/configuracoes" element={<AdminSiteConfig />} />

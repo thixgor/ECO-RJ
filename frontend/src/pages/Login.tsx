@@ -39,7 +39,13 @@ const Login: React.FC = () => {
     try {
       await login(email, password);
       toast.success('Login realizado com sucesso!');
-      navigate(from, { replace: true });
+      const pendingKey = sessionStorage.getItem('pendingSerialKey');
+      if (pendingKey) {
+        sessionStorage.removeItem('pendingSerialKey');
+        navigate(`/ativar?codigo=${pendingKey}`, { replace: true });
+      } else {
+        navigate(from, { replace: true });
+      }
     } catch (err: any) {
       const message = err.response?.data?.message || 'Erro ao fazer login';
       setError(message);

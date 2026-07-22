@@ -475,6 +475,74 @@ export const certificateRequestService = {
   issueImmediate: (courseId: string) => api.post(`/certificate-requests/immediate/${courseId}`)
 };
 
+// Payments (Sistema de Pagamentos - Mercado Pago)
+export const paymentService = {
+  // Público
+  getConfig: () => api.get('/payments/config'),
+
+  quote: (data: { cursoId: string; cupom?: string; email?: string }) =>
+    api.post('/payments/quote', data),
+
+  checkout: (data: {
+    cursoId: string;
+    cupom?: string;
+    comprador: { nome: string; email: string; telefone: string; cpf: string };
+    aceiteTermos: { aceito: boolean };
+  }) => api.post('/payments/checkout', data),
+
+  getOrderStatus: (numeroPedido: string) =>
+    api.get(`/payments/order/${numeroPedido}`),
+
+  syncOrder: (numeroPedido: string) =>
+    api.post(`/payments/order/${numeroPedido}/sync`),
+
+  // Usuário logado
+  getMyOrders: () => api.get('/payments/my-orders'),
+
+  // Admin
+  admin: {
+    getOrders: (params?: { status?: string; search?: string; cursoId?: string; page?: number; limit?: number }) =>
+      api.get('/payments/admin/orders', { params }),
+
+    getOrderById: (id: string) => api.get(`/payments/admin/orders/${id}`),
+
+    getStats: () => api.get('/payments/admin/stats'),
+
+    refulfill: (id: string) => api.post(`/payments/admin/orders/${id}/refulfill`),
+
+    getConfig: () => api.get('/payments/admin/config'),
+
+    updateConfig: (data: any) => api.put('/payments/admin/config', data),
+
+    resetTerms: () => api.post('/payments/admin/config/reset-terms'),
+
+    getCoursesPricing: () => api.get('/payments/admin/courses-pricing'),
+
+    updateCoursePricing: (id: string, data: {
+      disponivel?: boolean;
+      preco?: number;
+      validadeAcessoDias?: number;
+      descontoAtivado?: { ativo?: boolean; tipo?: 'percentual' | 'fixo'; valor?: number };
+    }) => api.put(`/payments/admin/course/${id}/pricing`, data)
+  }
+};
+
+// Coupons (Cupons de desconto - Admin)
+export const couponService = {
+  getAll: () => api.get('/coupons'),
+  create: (data: any) => api.post('/coupons', data),
+  update: (id: string, data: any) => api.put(`/coupons/${id}`, data),
+  delete: (id: string) => api.delete(`/coupons/${id}`)
+};
+
+// Price Lots (Lotes de desconto - Admin)
+export const priceLotService = {
+  getByCourse: (courseId: string) => api.get(`/price-lots/course/${courseId}`),
+  create: (data: any) => api.post('/price-lots', data),
+  update: (id: string, data: any) => api.put(`/price-lots/${id}`, data),
+  delete: (id: string) => api.delete(`/price-lots/${id}`)
+};
+
 // Notes (Anotações do usuário)
 export const notesService = {
   create: (data: { lessonId: string; conteudo: string; timestamp: number }) =>

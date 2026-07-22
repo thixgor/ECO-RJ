@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { User, Mail, CreditCard, Calendar, Stethoscope, Key, Lock, Edit, Check, X, AlertCircle, Award, Download, Clock, BookOpen, StickyNote, Play, Trash2 } from 'lucide-react';
+import { User, Mail, CreditCard, Calendar, Stethoscope, Key, Lock, Edit, Check, X, AlertCircle, Award, Download, Clock, BookOpen, StickyNote, Play, Trash2, ShoppingBag, Receipt } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { authService, userService, certificateService, notesService } from '../services/api';
+import { authService, userService, certificateService, notesService, paymentService } from '../services/api';
 import { Certificate, User as UserType, Course, UserNote, GroupedNotesByCourse, NoteDisplay } from '../types';
 import { generateCertificatePDF } from '../utils/certificatePdfGenerator';
 import Loading from '../components/common/Loading';
@@ -10,7 +10,11 @@ import toast from 'react-hot-toast';
 
 const Profile: React.FC = () => {
   const { user, refreshUser } = useAuth();
-  const [activeTab, setActiveTab] = useState<'info' | 'serial' | 'password' | 'certificados' | 'notas'>('info');
+  const [activeTab, setActiveTab] = useState<'info' | 'serial' | 'password' | 'certificados' | 'notas' | 'compras'>('info');
+
+  // Compras (pedidos)
+  const [orders, setOrders] = useState<any[]>([]);
+  const [isLoadingOrders, setIsLoadingOrders] = useState(false);
 
   // Edit profile state
   const [isEditing, setIsEditing] = useState(false);
@@ -52,7 +56,73 @@ const Profile: React.FC = () => {
     if (activeTab === 'notas') {
       loadUserNotes();
     }
+    if (activeTab === 'compras') {
+      loadOrders();
+    }
   }, [activeTab]);
+
+  const loadOrders = async () => {
+    setIsLoadingOrders(true);
+    try {
+      const response = await paymentService.getMyOrders();
+      setOrders(response.data.orders || []);
+    } catch (error) {
+      console.error('Erro ao carregar compras:', error);
+      toast.error('Erro ao carregar compras');
+    } finally {
+      setIsLoadingOrders(false);
+    }
+  };
+
+  const brlFmt = (v: number) => `R$ ${Number(v || 0).toFixed(2).replace('.', ',')}`;
+
+  const statusLabelMap: Record<string, string> = {
+    aprovado: 'Aprovado', pendente: 'Pendente', em_processo: 'Em processo',
+    rejeitado: 'Rejeitado', cancelado: 'Cancelado', reembolsado: 'Reembolsado'
+  };
+
+  const printReceipt = (order: any) => {
+    const v = order.valores || {};
+    const win = window.open('', '_blank', 'width=720,height=900');
+    if (!win) { toast.error('Permita pop-ups para baixar o comprovante'); return; }
+    const linhas: string[] = [];
+    if (v.descontoLote > 0) linhas.push(`<tr><td>Desconto (lote)</td><td style="text-align:right;color:#059669">- ${brlFmt(v.descontoLote)}</td></tr>`);
+    if (v.descontoAtivado > 0) linhas.push(`<tr><td>Desconto promocional</td><td style="text-align:right;color:#059669">- ${brlFmt(v.descontoAtivado)}</td></tr>`);
+    if (v.descontoCupom > 0) linhas.push(`<tr><td>Cupom ${order.cupomAplicado?.codigo || ''}</td><td style="text-align:right;color:#059669">- ${brlFmt(v.descontoCupom)}</td></tr>`);
+    win.document.write(`
+      <html><head><title>Comprovante ${order.numeroPedido}</title>
+      <style>body{font-family:Arial,sans-serif;color:#1e293b;max-width:640px;margin:24px auto;padding:0 16px}
+      h1{color:#1D4ED8;margin:0}table{width:100%;border-collapse:collapse;font-size:14px;margin-top:8px}
+      td{padding:4px 0}.tot{border-top:1px solid #e2e8f0;font-weight:bold;font-size:16px;padding-top:10px}
+      .muted{color:#64748b}.badge{display:inline-block;padding:4px 12px;border-radius:999px;background:#DCFCE7;color:#166534;font-weight:bold;font-size:12px}</style>
+      </head><body>
+      <div style="text-align:center;border-bottom:2px solid #E0F2FE;padding-bottom:16px">
+        <h1>ECO RJ</h1><p class="muted" style="margin:4px 0 0">Centro de Treinamento em Ecocardiografia</p></div>
+      <h2>Comprovante de Compra</h2>
+      <p class="muted">Pedido <strong>${order.numeroPedido}</strong></p>
+      <p><span class="badge">${statusLabelMap[order.status] || order.status}</span></p>
+      <table>
+        <tr><td class="muted">Curso</td><td style="text-align:right"><strong>${order.cursoTitulo}</strong></td></tr>
+        <tr><td class="muted">Comprador</td><td style="text-align:right">${order.compradorDados?.nome || ''}</td></tr>
+        <tr><td class="muted">E-mail</td><td style="text-align:right">${order.compradorDados?.email || ''}</td></tr>
+        <tr><td class="muted">Data</td><td style="text-align:right">${new Date(order.createdAt).toLocaleString('pt-BR')}</td></tr>
+        ${order.metodoPagamento ? `<tr><td class="muted">Método</td><td style="text-align:right">${order.metodoPagamento}</td></tr>` : ''}
+        ${order.serialKeyCodigo ? `<tr><td class="muted">Serial Key</td><td style="text-align:right;font-family:monospace">${order.serialKeyCodigo}</td></tr>` : ''}
+      </table>
+      <h3>Valores</h3>
+      <table>
+        <tr><td class="muted">Preço do curso</td><td style="text-align:right">${brlFmt(v.precoBase)}</td></tr>
+        ${linhas.join('')}
+        <tr><td class="muted">Subtotal</td><td style="text-align:right">${brlFmt(v.subtotal)}</td></tr>
+        <tr><td class="muted">Taxa operacional (${v.taxaOperacionalPercentual}%)</td><td style="text-align:right">${brlFmt(v.taxaOperacional)}</td></tr>
+        <tr><td class="tot">Total</td><td class="tot" style="text-align:right;color:#1D4ED8">${brlFmt(v.total)}</td></tr>
+      </table>
+      <p class="muted" style="font-size:11px;margin-top:24px;text-align:center">
+        ECO RJ · CNPJ: 21.847.609/0001-70 · contato@cursodeecocardiografia.com</p>
+      <script>window.onload=function(){window.print();}</script>
+      </body></html>`);
+    win.document.close();
+  };
 
   const loadCertificates = async () => {
     setIsLoadingCertificates(true);
@@ -388,6 +458,16 @@ const Profile: React.FC = () => {
               Serial Key
             </button>
             <button
+              onClick={() => setActiveTab('compras')}
+              className={`px-6 py-4 font-medium text-sm border-b-2 transition-colors whitespace-nowrap flex items-center gap-2 ${activeTab === 'compras'
+                ? 'border-primary-500 text-primary-500'
+                : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
+                }`}
+            >
+              <ShoppingBag className="w-4 h-4" />
+              Minhas Compras
+            </button>
+            <button
               onClick={() => setActiveTab('notas')}
               className={`px-6 py-4 font-medium text-sm border-b-2 transition-colors whitespace-nowrap flex items-center gap-2 ${activeTab === 'notas'
                 ? 'border-primary-500 text-primary-500'
@@ -588,6 +668,73 @@ const Profile: React.FC = () => {
                             {isDownloading === cert._id ? 'Gerando...' : 'Baixar PDF'}
                           </button>
                         </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Compras Tab */}
+          {activeTab === 'compras' && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 mb-2">
+                <ShoppingBag className="w-5 h-5 text-primary-500" />
+                <h3 className="font-heading font-semibold text-lg text-[var(--color-text-primary)]">Minhas Compras</h3>
+              </div>
+
+              {isLoadingOrders ? (
+                <div className="py-12 text-center text-[var(--color-text-muted)]">Carregando compras...</div>
+              ) : orders.length === 0 ? (
+                <div className="py-12 text-center">
+                  <ShoppingBag className="w-12 h-12 text-[var(--color-text-muted)] mx-auto mb-3 opacity-50" />
+                  <p className="text-[var(--color-text-muted)]">Você ainda não realizou nenhuma compra.</p>
+                  <Link to="/cursos" className="btn btn-primary mt-4 inline-flex">Ver cursos disponíveis</Link>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {orders.map((order) => {
+                    const statusColor = order.status === 'aprovado'
+                      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400'
+                      : order.status === 'rejeitado' || order.status === 'cancelado'
+                        ? 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400'
+                        : 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400';
+                    return (
+                      <div key={order._id} className="p-4 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-bg)]">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="font-semibold text-[var(--color-text-primary)]">{order.cursoTitulo}</p>
+                            <p className="text-xs text-[var(--color-text-muted)] font-mono mt-0.5">{order.numeroPedido}</p>
+                            <div className="flex items-center gap-2 mt-2 text-sm text-[var(--color-text-muted)]">
+                              <Calendar className="w-4 h-4" />
+                              {new Date(order.createdAt).toLocaleDateString('pt-BR')}
+                              {order.metodoPagamento && <span>· {order.metodoPagamento}</span>}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${statusColor}`}>
+                              {statusLabelMap[order.status] || order.status}
+                            </span>
+                            <p className="font-bold text-primary-500 mt-2">{brlFmt(order.valores?.total || 0)}</p>
+                          </div>
+                        </div>
+                        {order.status === 'aprovado' && (
+                          <div className="flex items-center gap-2 mt-3 pt-3 border-t border-[var(--glass-border)]">
+                            <button
+                              onClick={() => printReceipt(order)}
+                              className="btn btn-outline btn-sm flex items-center gap-2 text-sm"
+                            >
+                              <Receipt className="w-4 h-4" />
+                              Comprovante
+                            </button>
+                            {order.serialKeyCodigo && (
+                              <span className="text-xs text-[var(--color-text-muted)] font-mono">
+                                Chave: {order.serialKeyCodigo}
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
                     );
                   })}

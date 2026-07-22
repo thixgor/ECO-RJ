@@ -195,7 +195,13 @@ NÃO COMPARTILHE ESTE TOKEN COM NINGUÉM!
       return;
     }
     setShowTokenModal(false);
-    navigate('/dashboard');
+    const pendingKey = sessionStorage.getItem('pendingSerialKey');
+    if (pendingKey) {
+      sessionStorage.removeItem('pendingSerialKey');
+      navigate(`/ativar?codigo=${pendingKey}`);
+    } else {
+      navigate('/dashboard');
+    }
   };
 
   return (
