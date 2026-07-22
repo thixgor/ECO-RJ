@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
-  ShoppingCart, Tag, ShieldCheck, Loader2, ArrowLeft, CheckCircle2, Lock, Calendar, Clock
+  ShoppingCart, Tag, ShieldCheck, Loader2, ArrowLeft, CheckCircle2, Lock, Calendar, Clock, PackageX, Mail
 } from 'lucide-react';
 import { GlassCard, GlassButton, GlassInput, GlassModal } from '../components/ui';
 import { courseService, paymentService } from '../services/api';
@@ -43,6 +43,7 @@ const Checkout: React.FC = () => {
   const [aceite, setAceite] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const [loteNome, setLoteNome] = useState<string | null>(null);
+  const [indisponivelMotivo, setIndisponivelMotivo] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -65,14 +66,25 @@ const Checkout: React.FC = () => {
         setCourse(c);
         setConfig(configRes.data);
 
+        // Determina indisponibilidade ANTES de exibir o formulário
         if (!configRes.data.vendasAtivas) {
-          toast.error('As vendas estão temporariamente indisponíveis');
+          setIndisponivelMotivo('As vendas estão temporariamente indisponíveis. Por favor, tente novamente mais tarde.');
+          return;
         }
+        if (!c.venda?.disponivel || !((c.venda?.preco || 0) > 0)) {
+          setIndisponivelMotivo('Este curso não está disponível para compra online no momento.');
+          return;
+        }
+
         await refreshQuote(cursoId, undefined, user?.email);
-      } catch (err) {
+      } catch (err: any) {
         console.error(err);
-        toast.error('Curso não encontrado ou indisponível para compra');
-        navigate('/cursos');
+        if (err.response?.status === 404) {
+          toast.error('Curso não encontrado');
+          navigate('/cursos');
+        } else {
+          setIndisponivelMotivo('Não foi possível carregar este curso para compra no momento.');
+        }
       } finally {
         setLoading(false);
       }
@@ -159,6 +171,45 @@ const Checkout: React.FC = () => {
   }
 
   if (!course) return null;
+
+  // Tela bonita de indisponibilidade (bloqueia o formulário)
+  if (indisponivelMotivo) {
+    return (
+      <div className="max-w-lg mx-auto px-4 py-16">
+        <GlassCard className="p-8 text-center">
+          <div className="w-20 h-20 rounded-full bg-amber-500/15 flex items-center justify-center mx-auto mb-5">
+            <PackageX className="w-10 h-10 text-amber-500" />
+          </div>
+          <h1 className="text-2xl font-heading font-bold mb-2">Compra indisponível</h1>
+          {course?.titulo && (
+            <p className="text-primary-500 font-medium mb-3">{course.titulo}</p>
+          )}
+          <p className="text-[var(--color-text-muted)] mb-6">{indisponivelMotivo}</p>
+
+          <div className="p-4 rounded-xl bg-[var(--glass-bg)] border border-[var(--glass-border)] text-sm text-[var(--color-text-secondary)] mb-6">
+            <p className="flex items-center justify-center gap-2">
+              <Mail className="w-4 h-4 text-primary-500" />
+              Dúvidas? Fale com nossa equipe:
+            </p>
+            <a href="mailto:contato@cursodeecocardiografia.com" className="text-primary-500 font-medium">
+              contato@cursodeecocardiografia.com
+            </a>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Link to={`/cursos/${course._id}`}>
+              <GlassButton variant="secondary" fullWidth leftIcon={<ArrowLeft className="w-4 h-4" />}>
+                Voltar ao curso
+              </GlassButton>
+            </Link>
+            <Link to="/cursos">
+              <GlassButton variant="primary" fullWidth>Ver outros cursos</GlassButton>
+            </Link>
+          </div>
+        </GlassCard>
+      </div>
+    );
+  }
 
   const vendasIndisponiveis = !config?.vendasAtivas;
 

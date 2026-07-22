@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { BookOpen, Calendar, User, PlayCircle, Clock, Lock, CheckCircle, ArrowLeft, FolderOpen, ChevronDown, FileText, Video, Layers, Award, Loader2, ExternalLink, Copy, Share2, ShoppingCart } from 'lucide-react';
-import { courseService, lessonService, courseTopicService, courseSubtopicService, certificateRequestService } from '../services/api';
+import { courseService, lessonService, courseTopicService, courseSubtopicService, certificateRequestService, paymentService } from '../services/api';
 import { Course, Lesson, User as UserType, CourseTopic, CourseSubtopic } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { CourseDetailSkeleton } from '../components/common/Loading';
@@ -43,6 +43,9 @@ const CourseDetail: React.FC = () => {
     };
   } | null>(null);
   const [isRequestingCertificate, setIsRequestingCertificate] = useState(false);
+  // Cotação de venda (preço com desconto aplicado: lote + desconto ativado)
+  const [saleQuote, setSaleQuote] = useState<{ precoBase: number; subtotal: number; loteNome?: string | null } | null>(null);
+  const [vendasAtivas, setVendasAtivas] = useState(true);
 
   const isEnrolled = user?.cursosInscritos?.some(
     (c) => (typeof c === 'string' ? c : c._id) === id
@@ -108,6 +111,23 @@ const CourseDetail: React.FC = () => {
       setCourse(courseResponse.data);
       const lessonsData = lessonsResponse.data || [];
       setLessons(lessonsData);
+
+      // Se o curso está à venda, busca o preço real com descontos (lote + desconto ativado)
+      const vendaCurso = courseResponse.data?.venda;
+      if (vendaCurso?.disponivel && (vendaCurso?.preco || 0) > 0) {
+        paymentService.quote({ cursoId: id! })
+          .then((qRes) => {
+            setSaleQuote({
+              precoBase: qRes.data.valores.precoBase,
+              subtotal: qRes.data.valores.subtotal,
+              loteNome: qRes.data.lote?.nome || null
+            });
+          })
+          .catch(() => setSaleQuote(null));
+        paymentService.getConfig()
+          .then((cfg) => setVendasAtivas(!!cfg.data.vendasAtivas))
+          .catch(() => setVendasAtivas(true));
+      }
       setTopics(topicsResponse.data || []);
       setSubtopics(subtopicsResponse.data || []);
 
@@ -635,23 +655,54 @@ const CourseDetail: React.FC = () => {
               </button>
             </div>
           ) : (course.venda?.disponivel && (course.venda?.preco || 0) > 0) ? (
-            <div className="space-y-2">
-              <div className="text-center">
-                <span className="text-2xl font-bold text-primary-500">
-                  {`R$ ${Number(course.venda!.preco).toFixed(2).replace('.', ',')}`}
-                </span>
-              </div>
-              <button
-                onClick={() => navigate(`/comprar/${course._id}`)}
-                className="btn btn-primary w-full flex items-center justify-center gap-2 animate-pulse-glow"
-              >
-                <ShoppingCart className="w-5 h-5" />
-                Comprar Curso
-              </button>
-              <p className="text-xs text-center text-[var(--color-text-muted)]">
-                Acesso liberado automaticamente após o pagamento
-              </p>
-            </div>
+            (() => {
+              const precoBase = saleQuote ? saleQuote.precoBase : Number(course.venda!.preco);
+              const precoFinal = saleQuote ? saleQuote.subtotal : Number(course.venda!.preco);
+              const economia = Math.max(0, precoBase - precoFinal);
+              const temDesconto = economia > 0.001;
+              const fmt = (v: number) => `R$ ${Number(v).toFixed(2).replace('.', ',')}`;
+              return (
+                <div className="space-y-3">
+                  <div className="text-center">
+                    {temDesconto && (
+                      <div className="flex items-center justify-center gap-2 mb-1">
+                        <span className="text-base text-[var(--color-text-muted)] line-through">
+                          {fmt(precoBase)}
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400">
+                          -{Math.round((economia / precoBase) * 100)}%
+                        </span>
+                      </div>
+                    )}
+                    <div className="text-3xl font-bold text-primary-500">
+                      {fmt(precoFinal)}
+                    </div>
+                    {temDesconto && (
+                      <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 mt-1">
+                        Economize {fmt(economia)}
+                      </p>
+                    )}
+                    {saleQuote?.loteNome && (
+                      <p className="text-xs text-[var(--color-text-muted)] mt-1">
+                        Preço promocional · {saleQuote.loteNome}
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => navigate(`/comprar/${course._id}`)}
+                    className="btn btn-primary w-full flex items-center justify-center gap-2 animate-pulse-glow"
+                  >
+                    <ShoppingCart className="w-5 h-5" />
+                    Comprar Curso
+                  </button>
+                  <p className="text-xs text-center text-[var(--color-text-muted)]">
+                    {vendasAtivas
+                      ? 'Acesso liberado automaticamente após o pagamento'
+                      : 'Vendas temporariamente indisponíveis'}
+                  </p>
+                </div>
+              );
+            })()
           ) : (
             <button
               onClick={handleEnroll}
@@ -815,27 +866,56 @@ const CourseDetail: React.FC = () => {
 
           {/* Tutorial Section */}
           <div className="grid md:grid-cols-2 gap-6">
-            <div className="p-6 rounded-2xl bg-white dark:bg-white/5 border border-[var(--glass-border)] hover:border-primary-500/30 transition-all duration-300">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-primary-500/10 flex items-center justify-center text-primary-500">
-                  <PlayCircle className="w-5 h-5" />
+            {(course.venda?.disponivel && (course.venda?.preco || 0) > 0) ? (
+              /* Curso à venda online */
+              <div className="p-6 rounded-2xl bg-white dark:bg-white/5 border border-[var(--glass-border)] hover:border-primary-500/30 transition-all duration-300">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-xl bg-primary-500/10 flex items-center justify-center text-primary-500">
+                    <ShoppingCart className="w-5 h-5" />
+                  </div>
+                  <h3 className="font-heading font-bold text-[var(--color-text-primary)]">Como adquirir o curso?</h3>
                 </div>
-                <h3 className="font-heading font-bold text-[var(--color-text-primary)]">Como adquirir o curso?</h3>
-              </div>
-              <div className="space-y-4">
-                <p className="text-[var(--color-text-secondary)] text-sm leading-relaxed">
-                  Para se inscrever e receber o acesso, entre em contato com nossa equipe através do e-mail:
-                </p>
-                <div className="p-3 bg-primary-500/5 rounded-lg border border-primary-500/20 text-center">
-                  <a href="mailto:contato@cursodeecocardiografia.com" className="text-sm font-bold text-primary-500 hover:underline">
-                    contato@cursodeecocardiografia.com
-                  </a>
+                <div className="space-y-4">
+                  <p className="text-[var(--color-text-secondary)] text-sm leading-relaxed">
+                    A compra é 100% online e o acesso é liberado automaticamente após a confirmação do pagamento.
+                    {!isAuthenticated && ' Você pode comprar mesmo sem ter uma conta.'}
+                  </p>
+                  <button
+                    onClick={() => navigate(`/comprar/${course._id}`)}
+                    className="btn btn-primary w-full flex items-center justify-center gap-2"
+                  >
+                    <ShoppingCart className="w-5 h-5" />
+                    Comprar Curso
+                  </button>
+                  <p className="text-[var(--color-text-muted)] text-xs leading-relaxed italic">
+                    Pagamento seguro via Mercado Pago (Pix, cartão e mais).
+                  </p>
                 </div>
-                <p className="text-[var(--color-text-muted)] text-xs leading-relaxed italic">
-                  Nossa equipe responderá prontamente com os valores e detalhes do curso.
-                </p>
               </div>
-            </div>
+            ) : (
+              /* Curso não vendido online: contato por e-mail */
+              <div className="p-6 rounded-2xl bg-white dark:bg-white/5 border border-[var(--glass-border)] hover:border-primary-500/30 transition-all duration-300">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-xl bg-primary-500/10 flex items-center justify-center text-primary-500">
+                    <PlayCircle className="w-5 h-5" />
+                  </div>
+                  <h3 className="font-heading font-bold text-[var(--color-text-primary)]">Como adquirir o curso?</h3>
+                </div>
+                <div className="space-y-4">
+                  <p className="text-[var(--color-text-secondary)] text-sm leading-relaxed">
+                    Para se inscrever e receber o acesso, entre em contato com nossa equipe através do e-mail:
+                  </p>
+                  <div className="p-3 bg-primary-500/5 rounded-lg border border-primary-500/20 text-center">
+                    <a href="mailto:contato@cursodeecocardiografia.com" className="text-sm font-bold text-primary-500 hover:underline">
+                      contato@cursodeecocardiografia.com
+                    </a>
+                  </div>
+                  <p className="text-[var(--color-text-muted)] text-xs leading-relaxed italic">
+                    Nossa equipe responderá prontamente com os valores e detalhes do curso.
+                  </p>
+                </div>
+              </div>
+            )}
 
             <div className="p-6 rounded-2xl bg-white dark:bg-white/5 border border-[var(--glass-border)] hover:border-emerald-500/30 transition-all duration-300">
               <div className="flex items-center gap-3 mb-4">
@@ -846,7 +926,9 @@ const CourseDetail: React.FC = () => {
               </div>
               <div className="space-y-4">
                 <p className="text-[var(--color-text-secondary)] text-sm leading-relaxed">
-                  Após a confirmação da inscrição, você receberá uma chave de licença exclusiva:
+                  {(course.venda?.disponivel && (course.venda?.preco || 0) > 0)
+                    ? 'Ao comprar, você recebe uma chave de licença exclusiva (caso a compra seja sem login):'
+                    : 'Após a confirmação da inscrição, você receberá uma chave de licença exclusiva:'}
                 </p>
                 <div className="flex items-center gap-3 p-3 bg-emerald-500/5 rounded-lg border border-emerald-500/20">
                   <Clock className="w-4 h-4 text-emerald-500" />
