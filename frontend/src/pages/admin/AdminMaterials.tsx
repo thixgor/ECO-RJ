@@ -13,7 +13,7 @@ const brl = (v: number) => `R$ ${Number(v || 0).toFixed(2).replace('.', ',')}`;
 const emptyConteudo = (): MaterialConteudo => ({ tipo: 'pdf', titulo: '', descricao: '', arquivoUrl: '', nomeArquivo: '' });
 
 const emptyForm = (): Partial<MaterialAdmin> => ({
-  titulo: '', descricao: '', descricaoCurta: '', tipo: 'pdf', capa: '',
+  titulo: '', descricao: '', descricaoCurta: '', tipo: 'material', capa: '',
   conteudos: [], disponivel: true, ativo: true, destaque: false, ordem: 0,
   preco: 0, descontoAtivado: { ativo: false, tipo: 'percentual', valor: 0 }, validadeAcessoDias: 0
 });
@@ -210,13 +210,12 @@ const AdminMaterials: React.FC = () => {
           <GlassInput label="Descrição curta (card)" value={form.descricaoCurta || ''} onChange={(e) => setF({ descricaoCurta: e.target.value })} />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <GlassSelect
-              label="Tipo"
+              label="Categoria"
               value={form.tipo}
               onChange={(e) => setF({ tipo: e.target.value as MaterialTipo })}
               options={[
                 { value: 'aula', label: 'Aulas' },
-                { value: 'pdf', label: 'Material em PDF' },
-                { value: 'arquivo', label: 'Arquivo' },
+                { value: 'material', label: 'Material (PDF / arquivo)' },
                 { value: 'conjunto', label: 'Conjunto (misto)' }
               ]}
             />

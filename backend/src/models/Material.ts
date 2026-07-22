@@ -3,11 +3,14 @@ import mongoose, { Document, Schema } from 'mongoose';
 /**
  * Material / Produto à venda na loja de materiais (/materiais).
  *
- * Um material pode ser:
- *   - 'aula'     : uma ou mais aulas em vídeo (embed) entregues ao comprador
- *   - 'pdf'      : material em PDF (download)
- *   - 'arquivo'  : arquivo genérico para download (zip, imagem, etc.)
- *   - 'conjunto' : um pacote com vários conteúdos misturados (aulas + PDFs + arquivos)
+ * Categoria do PRODUTO (taxonomia da loja):
+ *   - 'aula'     : produto focado em aulas em vídeo
+ *   - 'material' : material para download (PDFs e/ou arquivos)
+ *   - 'conjunto' : pacote misto (aulas + materiais)
+ *
+ * A distinção PDF vs. arquivo NÃO é de produto — é de CONTEÚDO. Cada item de
+ * `conteudos` tem seu próprio tipo (`aula | pdf | arquivo`), que é onde essa
+ * diferença importa (anexo de PDF no e-mail, ícone, download).
  *
  * Todo material possui uma lista de `conteudos`. O acesso ao material libera
  * TODOS os seus conteúdos ao comprador. Preparado para o Vercel Blob:
@@ -15,8 +18,14 @@ import mongoose, { Document, Schema } from 'mongoose';
  * (chave no Vercel Blob) — o serviço de storage resolve a URL de download.
  */
 
-export type MaterialTipo = 'aula' | 'pdf' | 'arquivo' | 'conjunto';
+export type MaterialTipo = 'aula' | 'material' | 'conjunto';
 export type ConteudoTipo = 'aula' | 'pdf' | 'arquivo';
+
+/** Normaliza categorias legadas de produto (pdf/arquivo) para 'material'. */
+export function normalizeMaterialTipo(tipo: unknown): MaterialTipo {
+  if (tipo === 'aula' || tipo === 'conjunto') return tipo;
+  return 'material'; // 'pdf', 'arquivo' (legado) e qualquer outro → 'material'
+}
 
 export interface IMaterialConteudo {
   _id?: mongoose.Types.ObjectId;
@@ -87,9 +96,11 @@ const MaterialSchema = new Schema<IMaterial>(
     descricaoCurta: { type: String, trim: true },
     tipo: {
       type: String,
-      enum: ['aula', 'pdf', 'arquivo', 'conjunto'],
+      // Aceita valores legados (pdf/arquivo) para não quebrar documentos antigos;
+      // a normalização para 'material' acontece na escrita/leitura.
+      enum: ['aula', 'material', 'conjunto', 'pdf', 'arquivo'],
       required: true,
-      default: 'pdf'
+      default: 'material'
     },
     capa: { type: String, trim: true },
     conteudos: { type: [ConteudoSchema], default: [] },

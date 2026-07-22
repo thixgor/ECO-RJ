@@ -1,12 +1,11 @@
 import { Response } from 'express';
 import crypto from 'crypto';
-import Material, { MaterialTipo, ConteudoTipo } from '../models/Material';
+import Material, { ConteudoTipo, normalizeMaterialTipo } from '../models/Material';
 import MaterialOrder from '../models/MaterialOrder';
 import MaterialEntitlement from '../models/MaterialEntitlement';
 import { AuthRequest } from '../middleware/auth';
 import { fulfillMaterialOrder } from '../services/materialFulfillmentService';
 
-const TIPOS_MATERIAL: MaterialTipo[] = ['aula', 'pdf', 'arquivo', 'conjunto'];
 const TIPOS_CONTEUDO: ConteudoTipo[] = ['aula', 'pdf', 'arquivo'];
 
 /** Sanitiza a lista de conteúdos vinda do admin. */
@@ -46,7 +45,8 @@ function sanitizeDesconto(input: any) {
 // @access  Private/Admin
 export const listMaterialsAdmin = async (_req: AuthRequest, res: Response) => {
   try {
-    const materials = await Material.find().sort({ ordem: 1, createdAt: -1 });
+    const docs = await Material.find().sort({ ordem: 1, createdAt: -1 });
+    const materials = docs.map((m) => ({ ...m.toObject(), tipo: normalizeMaterialTipo(m.tipo) }));
     res.json({ materials });
   } catch (error) {
     console.error('Erro ao listar materiais (admin):', error);
@@ -61,7 +61,7 @@ export const getMaterialAdmin = async (req: AuthRequest, res: Response) => {
   try {
     const material = await Material.findById(req.params.id);
     if (!material) return res.status(404).json({ message: 'Material não encontrado' });
-    res.json({ material });
+    res.json({ material: { ...material.toObject(), tipo: normalizeMaterialTipo(material.tipo) } });
   } catch (error) {
     console.error('Erro ao obter material (admin):', error);
     res.status(500).json({ message: 'Erro ao obter material' });
@@ -76,7 +76,7 @@ export const createMaterial = async (req: AuthRequest, res: Response) => {
     const b = req.body || {};
     if (!String(b.titulo || '').trim()) return res.status(400).json({ message: 'Título é obrigatório' });
     if (!String(b.descricao || '').trim()) return res.status(400).json({ message: 'Descrição é obrigatória' });
-    const tipo: MaterialTipo = TIPOS_MATERIAL.includes(b.tipo) ? b.tipo : 'pdf';
+    const tipo = normalizeMaterialTipo(b.tipo);
 
     const material = await Material.create({
       titulo: String(b.titulo).trim(),
@@ -120,7 +120,7 @@ export const updateMaterial = async (req: AuthRequest, res: Response) => {
       material.descricao = String(b.descricao).trim();
     }
     if (b.descricaoCurta !== undefined) material.descricaoCurta = String(b.descricaoCurta).trim();
-    if (b.tipo !== undefined && TIPOS_MATERIAL.includes(b.tipo)) material.tipo = b.tipo;
+    if (b.tipo !== undefined) material.tipo = normalizeMaterialTipo(b.tipo);
     if (b.capa !== undefined) material.capa = String(b.capa).trim();
     if (b.conteudos !== undefined) {
       material.conteudos = sanitizeConteudos(b.conteudos) as any;

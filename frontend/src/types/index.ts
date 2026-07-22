@@ -159,7 +159,8 @@ export interface PaymentConfig {
 //  LOJA DE MATERIAIS
 // ==========================================================================
 
-export type MaterialTipo = 'aula' | 'pdf' | 'arquivo' | 'conjunto';
+// Categoria do produto na loja (a distinção PDF/arquivo vive no nível do conteúdo)
+export type MaterialTipo = 'aula' | 'material' | 'conjunto';
 export type ConteudoTipo = 'aula' | 'pdf' | 'arquivo';
 
 export interface MaterialConteudo {

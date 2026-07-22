@@ -15,11 +15,13 @@ const brl = (v: number) => `R$ ${Number(v || 0).toFixed(2).replace('.', ',')}`;
 
 const tipoIcon: Record<MaterialTipo, React.ReactNode> = {
   aula: <Video className="w-4 h-4" />,
-  pdf: <FileText className="w-4 h-4" />,
-  arquivo: <File className="w-4 h-4" />,
+  material: <FileText className="w-4 h-4" />,
   conjunto: <Package className="w-4 h-4" />
 };
-const tipoLabel: Record<MaterialTipo, string> = { aula: 'Aulas', pdf: 'PDF', arquivo: 'Arquivo', conjunto: 'Conjunto' };
+const tipoLabel: Record<MaterialTipo, string> = { aula: 'Aulas', material: 'Material', conjunto: 'Conjunto' };
+// Fallback seguro para categorias legadas
+const tipoIconFor = (t: MaterialTipo) => tipoIcon[t] || <File className="w-4 h-4" />;
+const tipoLabelFor = (t: MaterialTipo) => tipoLabel[t] || 'Material';
 
 const StarPicker: React.FC<{ value: number; onChange?: (n: number) => void; size?: number; readOnly?: boolean }> = ({
   value, onChange, size = 20, readOnly
@@ -132,13 +134,13 @@ const MaterialDetail: React.FC = () => {
               {material.capa ? (
                 <img src={material.capa} alt={material.titulo} className="w-full h-full object-cover select-none" onContextMenu={(e) => e.preventDefault()} />
               ) : (
-                <div className="text-white/80 scale-[3]">{tipoIcon[material.tipo]}</div>
+                <div className="text-white/80 scale-[3]">{tipoIconFor(material.tipo)}</div>
               )}
             </div>
             <div className="p-6">
               <div className="flex items-center gap-2 mb-3">
                 <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-primary-500/10 text-primary-600 dark:text-primary-400">
-                  {tipoIcon[material.tipo]} {tipoLabel[material.tipo]}
+                  {tipoIconFor(material.tipo)} {tipoLabelFor(material.tipo)}
                 </span>
                 <StarPicker value={Math.round(resumo.media)} readOnly size={16} />
                 <span className="text-xs text-[var(--color-text-muted)]">

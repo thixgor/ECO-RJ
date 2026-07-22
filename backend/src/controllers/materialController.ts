@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { WebhookSignatureValidator, InvalidWebhookSignatureError } from 'mercadopago';
 import crypto from 'crypto';
-import Material, { IMaterial } from '../models/Material';
+import Material, { IMaterial, normalizeMaterialTipo } from '../models/Material';
 import MaterialOrder, { MaterialOrderStatus } from '../models/MaterialOrder';
 import MaterialEntitlement, { isEntitlementValid } from '../models/MaterialEntitlement';
 import { AuthRequest } from '../middleware/auth';
@@ -145,7 +145,7 @@ export const listMaterials = async (req: AuthRequest, res: Response) => {
         _id: m._id,
         titulo: m.titulo,
         descricaoCurta: m.descricaoCurta || (m.descricao || '').substring(0, 160),
-        tipo: m.tipo,
+        tipo: normalizeMaterialTipo(m.tipo),
         capa: m.capa,
         preco: dp.preco,
         precoOriginal: dp.precoOriginal,
@@ -190,7 +190,7 @@ export const getMaterialById = async (req: AuthRequest, res: Response) => {
         titulo: material.titulo,
         descricao: material.descricao,
         descricaoCurta: material.descricaoCurta,
-        tipo: material.tipo,
+        tipo: normalizeMaterialTipo(material.tipo),
         capa: material.capa,
         disponivel: material.disponivel,
         preco: dp.preco,

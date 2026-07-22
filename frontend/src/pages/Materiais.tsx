@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  FileText, Package, Video, File, Search, Star, ShoppingBag, CheckCircle2, Loader2, HelpCircle
+  FileText, Package, Video, Search, Star, ShoppingBag, CheckCircle2, Loader2, HelpCircle
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { materialService } from '../services/api';
@@ -12,10 +12,11 @@ const brl = (v: number) => `R$ ${Number(v || 0).toFixed(2).replace('.', ',')}`;
 
 const tipoMeta: Record<MaterialTipo, { label: string; icon: React.ReactNode }> = {
   aula: { label: 'Aulas', icon: <Video className="w-4 h-4" /> },
-  pdf: { label: 'PDF', icon: <FileText className="w-4 h-4" /> },
-  arquivo: { label: 'Arquivo', icon: <File className="w-4 h-4" /> },
+  material: { label: 'Material', icon: <FileText className="w-4 h-4" /> },
   conjunto: { label: 'Conjunto', icon: <Package className="w-4 h-4" /> }
 };
+// Fallback seguro para categorias legadas (pdf/arquivo) que possam vir do backend
+const metaFor = (t: MaterialTipo) => tipoMeta[t] || tipoMeta.material;
 
 const Stars: React.FC<{ value: number; total?: number; size?: number }> = ({ value, total, size = 14 }) => (
   <span className="inline-flex items-center gap-1">
@@ -67,7 +68,7 @@ const Materiais: React.FC = () => {
     });
   }, [materials, search, tipoFiltro]);
 
-  const tipos: Array<'todos' | MaterialTipo> = ['todos', 'aula', 'pdf', 'arquivo', 'conjunto'];
+  const tipos: Array<'todos' | MaterialTipo> = ['todos', 'aula', 'material', 'conjunto'];
 
   const handleRecover = async () => {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recoverEmail)) {
@@ -131,7 +132,7 @@ const Materiais: React.FC = () => {
                   : 'bg-[var(--glass-bg)] text-[var(--color-text-secondary)] border-[var(--glass-border)] hover:border-primary-400'
               }`}
             >
-              {t === 'todos' ? 'Todos' : tipoMeta[t].label}
+              {t === 'todos' ? 'Todos' : (t === 'material' ? 'Materiais' : metaFor(t).label)}
             </button>
           ))}
         </div>
@@ -183,15 +184,15 @@ const Materiais: React.FC = () => {
                     onDragStart={(e) => e.preventDefault()}
                   />
                 ) : (
-                  <div className="text-white/80">{tipoMeta[m.tipo].icon}</div>
+                  <div className="text-white/80">{metaFor(m.tipo).icon}</div>
                 )}
               </div>
 
               <div className="p-5 flex flex-col flex-1">
                 <div className="flex items-center gap-2 mb-2">
                   <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-primary-500/10 text-primary-600 dark:text-primary-400">
-                    {tipoMeta[m.tipo].icon}
-                    {tipoMeta[m.tipo].label}
+                    {metaFor(m.tipo).icon}
+                    {metaFor(m.tipo).label}
                   </span>
                   {m.totalConteudos > 1 && (
                     <span className="text-xs text-[var(--color-text-muted)]">{m.totalConteudos} itens</span>
