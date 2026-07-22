@@ -41,11 +41,18 @@ export const authService = {
     email: string;
     password: string;
     nomeCompleto: string;
-    cpf: string;
-    crm: string;
-    crmLocal: string;
-    dataNascimento: string;
+    estado: string;
+    tipoUsuario: 'Médico' | 'Residente' | 'Acadêmico de Medicina';
+    crm?: string;
+    crmLocal?: string;
     especialidade?: string;
+    areaResidencia?: string;
+    hospital?: string;
+    anoResidencia?: string;
+    semestreResidencia?: string;
+    instituicao?: string;
+    periodo?: string;
+    dataNascimento?: string;
   }) => api.post('/auth/register', data),
 
   getMe: () => api.get('/auth/me'),
@@ -55,6 +62,12 @@ export const authService = {
     especialidade?: string;
     bio?: string;
     fotoPerfil?: string;
+    areaResidencia?: string;
+    hospital?: string;
+    anoResidencia?: string;
+    semestreResidencia?: string;
+    instituicao?: string;
+    periodo?: string;
   }) => api.put('/auth/profile', data),
 
   changePassword: (senhaAtual: string, novaSenha: string) =>
@@ -66,7 +79,7 @@ export const authService = {
 
 // Users
 export const userService = {
-  getAll: (params?: { cargo?: string; ativo?: string; search?: string; page?: number; limit?: number }) =>
+  getAll: (params?: { cargo?: string; tipoUsuario?: string; estado?: string; ativo?: string; search?: string; page?: number; limit?: number }) =>
     api.get('/users', { params }),
 
   getById: (id: string) => api.get(`/users/${id}`),

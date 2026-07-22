@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Trash2, Eye, ChevronLeft, ChevronRight, User, Calendar, Mail, CreditCard } from 'lucide-react';
+import { Search, Trash2, Eye, ChevronLeft, ChevronRight, User, Calendar, Mail, CreditCard, MapPin, Building2, GraduationCap, Award, Stethoscope } from 'lucide-react';
 import { userService } from '../../services/api';
 import { User as UserType } from '../../types';
 import Loading from '../../components/common/Loading';
+import { ESTADOS } from '../../data/cadastroData';
 import toast from 'react-hot-toast';
 
 const AdminUsers: React.FC = () => {
@@ -10,13 +11,15 @@ const AdminUsers: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCargo, setFilterCargo] = useState('');
+  const [filterTipo, setFilterTipo] = useState('');
+  const [filterEstado, setFilterEstado] = useState('');
   const [pagination, setPagination] = useState({ total: 0, page: 1, pages: 1 });
   const [selectedUser, setSelectedUser] = useState<UserType | null>(null);
   const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
     loadUsers();
-  }, [pagination.page, filterCargo]);
+  }, [pagination.page, filterCargo, filterTipo, filterEstado]);
 
   const loadUsers = async () => {
     setIsLoading(true);
@@ -25,6 +28,8 @@ const AdminUsers: React.FC = () => {
         page: pagination.page,
         limit: 20,
         cargo: filterCargo || undefined,
+        tipoUsuario: filterTipo || undefined,
+        estado: filterEstado || undefined,
         search: searchTerm || undefined
       });
       setUsers(response.data.users);
@@ -98,6 +103,34 @@ const AdminUsers: React.FC = () => {
     return cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
   };
 
+  const tipoBadgeClass = (tipo?: string) => {
+    switch (tipo) {
+      case 'Médico':
+        return 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300';
+      case 'Residente':
+        return 'bg-teal-50 dark:bg-teal-500/10 text-teal-700 dark:text-teal-300';
+      case 'Acadêmico de Medicina':
+        return 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300';
+      default:
+        return 'bg-gray-50 dark:bg-white/5 text-gray-600 dark:text-gray-300';
+    }
+  };
+
+  // Resumo da formação exibido na tabela
+  const formacaoResumo = (u: UserType): string => {
+    if (u.tipoUsuario === 'Médico') {
+      const crm = u.crm ? `CRM ${u.crm}${u.crmLocal ? '-' + u.crmLocal : ''}` : '';
+      return [u.especialidade, crm].filter(Boolean).join(' · ') || '-';
+    }
+    if (u.tipoUsuario === 'Residente') {
+      return [u.areaResidencia, u.hospital, u.anoResidencia].filter(Boolean).join(' · ') || '-';
+    }
+    if (u.tipoUsuario === 'Acadêmico de Medicina') {
+      return [u.instituicao, u.periodo].filter(Boolean).join(' · ') || '-';
+    }
+    return u.crm ? `CRM ${u.crm}${u.crmLocal ? '-' + u.crmLocal : ''}` : '-';
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
@@ -107,12 +140,12 @@ const AdminUsers: React.FC = () => {
 
       {/* Filters */}
       <div className="card p-4">
-        <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1 relative">
+        <form onSubmit={handleSearch} className="flex flex-col md:flex-row md:flex-wrap gap-4">
+          <div className="flex-1 min-w-[220px] relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
               type="text"
-              placeholder="Buscar por nome, email, CPF ou CRM..."
+              placeholder="Buscar por nome, email, CRM, hospital, instituição..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="input pl-10"
@@ -124,13 +157,39 @@ const AdminUsers: React.FC = () => {
               setFilterCargo(e.target.value);
               setPagination(prev => ({ ...prev, page: 1 }));
             }}
-            className="input w-full md:w-48"
+            className="input w-full md:w-44"
           >
             <option value="">Todos os cargos</option>
             <option value="Visitante">Visitante</option>
             <option value="Aluno">Aluno</option>
             <option value="Instrutor">Instrutor</option>
             <option value="Administrador">Administrador</option>
+          </select>
+          <select
+            value={filterTipo}
+            onChange={(e) => {
+              setFilterTipo(e.target.value);
+              setPagination(prev => ({ ...prev, page: 1 }));
+            }}
+            className="input w-full md:w-52"
+          >
+            <option value="">Todos os perfis</option>
+            <option value="Médico">Médico</option>
+            <option value="Residente">Residente</option>
+            <option value="Acadêmico de Medicina">Acadêmico de Medicina</option>
+          </select>
+          <select
+            value={filterEstado}
+            onChange={(e) => {
+              setFilterEstado(e.target.value);
+              setPagination(prev => ({ ...prev, page: 1 }));
+            }}
+            className="input w-full md:w-40"
+          >
+            <option value="">Todos os estados</option>
+            {ESTADOS.map((e) => (
+              <option key={e.uf} value={e.uf}>{e.uf} - {e.nome}</option>
+            ))}
           </select>
           <button type="submit" className="btn btn-primary">
             Buscar
@@ -150,7 +209,8 @@ const AdminUsers: React.FC = () => {
               <thead className="bg-gray-50 dark:bg-white/5 border-b border-[var(--glass-border)]">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-muted)] uppercase">Usuário</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-muted)] uppercase">CRM</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-muted)] uppercase">Perfil / Estado</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-muted)] uppercase">Formação</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-muted)] uppercase">Cargo</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-muted)] uppercase">Último Login</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-muted)] uppercase">Status</th>
@@ -175,7 +235,19 @@ const AdminUsers: React.FC = () => {
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-sm">{user.crm}-{user.crmLocal}</td>
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col gap-1">
+                        <span className={`inline-flex w-fit text-xs px-2 py-0.5 rounded-full font-medium ${tipoBadgeClass(user.tipoUsuario)}`}>
+                          {user.tipoUsuario || 'Não informado'}
+                        </span>
+                        <span className="text-xs text-[var(--color-text-muted)] flex items-center gap-1">
+                          <MapPin className="w-3 h-3" /> {user.estado || '-'}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-[var(--color-text-secondary)] max-w-xs">
+                      <span className="line-clamp-2">{formacaoResumo(user)}</span>
+                    </td>
                     <td className="px-6 py-4">
                       <select
                         value={user.cargo}
@@ -274,7 +346,12 @@ const AdminUsers: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="font-semibold text-lg text-[var(--color-text-primary)]">{selectedUser.nomeCompleto}</h3>
-                  <p className="text-[var(--color-text-muted)]">{selectedUser.cargo}</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${tipoBadgeClass(selectedUser.tipoUsuario)}`}>
+                      {selectedUser.tipoUsuario || 'Não informado'}
+                    </span>
+                    <span className="text-[var(--color-text-muted)] text-sm">{selectedUser.cargo}</span>
+                  </div>
                 </div>
               </div>
 
@@ -283,32 +360,80 @@ const AdminUsers: React.FC = () => {
                   <p className="text-[var(--color-text-muted)] flex items-center gap-1">
                     <Mail className="w-4 h-4" /> Email
                   </p>
-                  <p className="font-medium text-[var(--color-text-primary)]">{selectedUser.email}</p>
+                  <p className="font-medium text-[var(--color-text-primary)] break-all">{selectedUser.email}</p>
                 </div>
                 <div>
                   <p className="text-[var(--color-text-muted)] flex items-center gap-1">
-                    <CreditCard className="w-4 h-4" /> CPF
-                  </p>
-                  <p className="font-medium text-[var(--color-text-primary)]">{formatCPF(selectedUser.cpf)}</p>
-                </div>
-                <div>
-                  <p className="text-[var(--color-text-muted)]">CRM</p>
-                  <p className="font-medium text-[var(--color-text-primary)]">{selectedUser.crm}-{selectedUser.crmLocal}</p>
-                </div>
-                <div>
-                  <p className="text-[var(--color-text-muted)] flex items-center gap-1">
-                    <Calendar className="w-4 h-4" /> Nascimento
+                    <MapPin className="w-4 h-4" /> Estado
                   </p>
                   <p className="font-medium text-[var(--color-text-primary)]">
-                    {new Date(selectedUser.dataNascimento).toLocaleDateString('pt-BR')}
+                    {ESTADOS.find((e) => e.uf === selectedUser.estado)?.nome
+                      ? `${ESTADOS.find((e) => e.uf === selectedUser.estado)!.nome} (${selectedUser.estado})`
+                      : selectedUser.estado || '-'}
+                  </p>
+                </div>
+
+                {/* Campos específicos por tipo */}
+                {selectedUser.tipoUsuario === 'Médico' && (
+                  <>
+                    <div>
+                      <p className="text-[var(--color-text-muted)] flex items-center gap-1"><Stethoscope className="w-4 h-4" /> Especialidade</p>
+                      <p className="font-medium text-[var(--color-text-primary)]">{selectedUser.especialidade || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-[var(--color-text-muted)] flex items-center gap-1"><Award className="w-4 h-4" /> CRM</p>
+                      <p className="font-medium text-[var(--color-text-primary)]">
+                        {selectedUser.crm ? `${selectedUser.crm}${selectedUser.crmLocal ? '-' + selectedUser.crmLocal : ''}` : '-'}
+                      </p>
+                    </div>
+                  </>
+                )}
+
+                {selectedUser.tipoUsuario === 'Residente' && (
+                  <>
+                    <div>
+                      <p className="text-[var(--color-text-muted)] flex items-center gap-1"><Award className="w-4 h-4" /> Área da Residência</p>
+                      <p className="font-medium text-[var(--color-text-primary)]">{selectedUser.areaResidencia || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-[var(--color-text-muted)] flex items-center gap-1"><Building2 className="w-4 h-4" /> Hospital</p>
+                      <p className="font-medium text-[var(--color-text-primary)]">{selectedUser.hospital || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-[var(--color-text-muted)] flex items-center gap-1"><Calendar className="w-4 h-4" /> Ano / Semestre</p>
+                      <p className="font-medium text-[var(--color-text-primary)]">
+                        {selectedUser.anoResidencia || '-'}
+                        {selectedUser.semestreResidencia ? ` · ${selectedUser.semestreResidencia}` : ''}
+                      </p>
+                    </div>
+                  </>
+                )}
+
+                {selectedUser.tipoUsuario === 'Acadêmico de Medicina' && (
+                  <>
+                    <div>
+                      <p className="text-[var(--color-text-muted)] flex items-center gap-1"><GraduationCap className="w-4 h-4" /> Instituição</p>
+                      <p className="font-medium text-[var(--color-text-primary)]">{selectedUser.instituicao || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-[var(--color-text-muted)] flex items-center gap-1"><Calendar className="w-4 h-4" /> Período</p>
+                      <p className="font-medium text-[var(--color-text-primary)]">{selectedUser.periodo || '-'}</p>
+                    </div>
+                  </>
+                )}
+
+                <div>
+                  <p className="text-[var(--color-text-muted)] flex items-center gap-1">
+                    <CreditCard className="w-4 h-4" /> CPF (da compra)
+                  </p>
+                  <p className="font-medium text-[var(--color-text-primary)]">
+                    {selectedUser.cpf ? formatCPF(selectedUser.cpf) : '— (definido na compra)'}
                   </p>
                 </div>
                 <div>
-                  <p className="text-[var(--color-text-muted)]">Especialidade</p>
-                  <p className="font-medium text-[var(--color-text-primary)]">{selectedUser.especialidade || '-'}</p>
-                </div>
-                <div>
-                  <p className="text-[var(--color-text-muted)]">Cadastro</p>
+                  <p className="text-[var(--color-text-muted)] flex items-center gap-1">
+                    <Calendar className="w-4 h-4" /> Cadastro
+                  </p>
                   <p className="font-medium text-[var(--color-text-primary)]">{formatDate(selectedUser.createdAt)}</p>
                 </div>
               </div>

@@ -19,11 +19,21 @@ interface RegisterData {
   email: string;
   password: string;
   nomeCompleto: string;
-  cpf: string;
-  crm: string;
-  crmLocal: string;
-  dataNascimento: string;
+  estado: string;
+  tipoUsuario: 'Médico' | 'Residente' | 'Acadêmico de Medicina';
+  // Médico
+  crm?: string;
+  crmLocal?: string;
   especialidade?: string;
+  // Residente
+  areaResidencia?: string;
+  hospital?: string;
+  anoResidencia?: string;
+  semestreResidencia?: string;
+  // Acadêmico
+  instituicao?: string;
+  periodo?: string;
+  dataNascimento?: string;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);

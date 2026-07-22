@@ -2,8 +2,15 @@ import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import User from '../models/User';
-import { validateCPF, validateCRM, validateUF } from '../utils/validators';
+import { validateCRM, validateUF } from '../utils/validators';
 import { AuthRequest } from '../middleware/auth';
+
+const TIPOS_VALIDOS = ['Médico', 'Residente', 'Acadêmico de Medicina'];
+const UFS_VALIDAS = [
+  'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',
+  'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN',
+  'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
+];
 
 // Gerar JWT
 const generateToken = (id: string): string => {
@@ -26,31 +33,84 @@ export const register = async (req: Request, res: Response) => {
       email,
       password,
       nomeCompleto,
-      cpf,
+      estado,
+      tipoUsuario,
+      // Médico
       crm,
       crmLocal,
-      dataNascimento,
-      especialidade
+      especialidade,
+      // Residente
+      areaResidencia,
+      hospital,
+      anoResidencia,
+      semestreResidencia,
+      // Acadêmico
+      instituicao,
+      periodo,
+      dataNascimento
     } = req.body;
 
-    // Validações
-    if (!email || !password || !nomeCompleto || !cpf || !crm || !crmLocal || !dataNascimento) {
-      return res.status(400).json({ message: 'Todos os campos obrigatórios devem ser preenchidos' });
+    // Validações básicas
+    if (!email || !password || !nomeCompleto) {
+      return res.status(400).json({ message: 'Nome, e-mail e senha são obrigatórios' });
     }
 
-    // Validar CPF
-    if (!validateCPF(cpf)) {
-      return res.status(400).json({ message: 'CPF inválido' });
+    // Estado é obrigatório e vem antes de tudo
+    if (!estado || !UFS_VALIDAS.includes(String(estado).toUpperCase())) {
+      return res.status(400).json({ message: 'Selecione um estado válido' });
     }
 
-    // Validar CRM
-    if (!validateCRM(crm)) {
-      return res.status(400).json({ message: 'CRM inválido. Deve conter de 4 a 7 dígitos numéricos.' });
+    // Tipo de usuário obrigatório
+    if (!tipoUsuario || !TIPOS_VALIDOS.includes(tipoUsuario)) {
+      return res.status(400).json({ message: 'Selecione o tipo de perfil (Médico, Residente ou Acadêmico de Medicina)' });
     }
 
-    // Validar UF
-    if (!validateUF(crmLocal)) {
-      return res.status(400).json({ message: 'UF do CRM inválida' });
+    // Dados a serem persistidos, montados conforme o tipo
+    const dadosPerfil: Record<string, any> = {};
+
+    let crmClean: string | undefined;
+
+    if (tipoUsuario === 'Médico') {
+      if (!especialidade || !String(especialidade).trim()) {
+        return res.status(400).json({ message: 'Informe a especialidade' });
+      }
+      if (!crm) {
+        return res.status(400).json({ message: 'Informe o CRM' });
+      }
+      if (!validateCRM(crm)) {
+        return res.status(400).json({ message: 'CRM inválido. Deve conter de 4 a 7 dígitos numéricos.' });
+      }
+      const localCrm = crmLocal || estado;
+      if (!validateUF(localCrm)) {
+        return res.status(400).json({ message: 'UF do CRM inválida' });
+      }
+      crmClean = crm.replace(/[^\dA-Za-z]/g, '').toUpperCase();
+      dadosPerfil.especialidade = String(especialidade).trim();
+      dadosPerfil.crm = crmClean;
+      dadosPerfil.crmLocal = String(localCrm).toUpperCase();
+    } else if (tipoUsuario === 'Residente') {
+      if (!areaResidencia || !String(areaResidencia).trim()) {
+        return res.status(400).json({ message: 'Informe a área da residência' });
+      }
+      if (!hospital || !String(hospital).trim()) {
+        return res.status(400).json({ message: 'Informe o hospital da residência' });
+      }
+      if (!anoResidencia || !String(anoResidencia).trim()) {
+        return res.status(400).json({ message: 'Informe o ano da residência (R1, R2...)' });
+      }
+      dadosPerfil.areaResidencia = String(areaResidencia).trim();
+      dadosPerfil.hospital = String(hospital).trim();
+      dadosPerfil.anoResidencia = String(anoResidencia).trim();
+      if (semestreResidencia) dadosPerfil.semestreResidencia = String(semestreResidencia).trim();
+    } else if (tipoUsuario === 'Acadêmico de Medicina') {
+      if (!instituicao || !String(instituicao).trim()) {
+        return res.status(400).json({ message: 'Informe a instituição de ensino' });
+      }
+      if (!periodo || !String(periodo).trim()) {
+        return res.status(400).json({ message: 'Informe o período do curso' });
+      }
+      dadosPerfil.instituicao = String(instituicao).trim();
+      dadosPerfil.periodo = String(periodo).trim();
     }
 
     // Verificar se email já existe
@@ -59,18 +119,12 @@ export const register = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Este e-mail já está cadastrado' });
     }
 
-    // Verificar se CPF já existe
-    const cpfClean = cpf.replace(/[^\d]/g, '');
-    const cpfExists = await User.findOne({ cpf: cpfClean });
-    if (cpfExists) {
-      return res.status(400).json({ message: 'Este CPF já está cadastrado' });
-    }
-
-    // Verificar se CRM já existe
-    const crmClean = crm.replace(/[^\dA-Za-z]/g, '').toUpperCase();
-    const crmExists = await User.findOne({ crm: crmClean });
-    if (crmExists) {
-      return res.status(400).json({ message: 'Este CRM já está cadastrado' });
+    // Verificar se CRM já existe (apenas médicos)
+    if (crmClean) {
+      const crmExists = await User.findOne({ crm: crmClean });
+      if (crmExists) {
+        return res.status(400).json({ message: 'Este CRM já está cadastrado' });
+      }
     }
 
     // Gerar token de recuperação de senha único
@@ -81,11 +135,10 @@ export const register = async (req: Request, res: Response) => {
       email: email.toLowerCase(),
       password,
       nomeCompleto,
-      cpf: cpfClean,
-      crm: crmClean,
-      crmLocal: crmLocal.toUpperCase(),
-      dataNascimento: new Date(dataNascimento),
-      especialidade,
+      estado: String(estado).toUpperCase(),
+      tipoUsuario,
+      ...dadosPerfil,
+      ...(dataNascimento ? { dataNascimento: new Date(dataNascimento) } : {}),
       cargo: 'Visitante',
       emailConfirmado: true, // Por enquanto sem confirmação por email
       tokenRecuperacao
@@ -114,6 +167,10 @@ export const register = async (req: Request, res: Response) => {
         cpf: 'CPF',
         crm: 'CRM'
       };
+      // Um CPF nulo duplicado não deve ocorrer (índice sparse), mas por segurança:
+      if (field === 'cpf') {
+        return res.status(400).json({ message: 'Este CPF já está vinculado a outra conta' });
+      }
       return res.status(400).json({
         message: `${fieldNames[field] || field} já está cadastrado`
       });
@@ -202,7 +259,19 @@ export const getMe = async (req: AuthRequest, res: Response) => {
 // @access  Private
 export const updateProfile = async (req: AuthRequest, res: Response) => {
   try {
-    const { nomeCompleto, especialidade, bio, fotoPerfil } = req.body;
+    const {
+      nomeCompleto,
+      especialidade,
+      bio,
+      fotoPerfil,
+      // Campos por tipo de perfil
+      areaResidencia,
+      hospital,
+      anoResidencia,
+      semestreResidencia,
+      instituicao,
+      periodo
+    } = req.body;
 
     const user = await User.findById(req.user?._id);
     if (!user) {
@@ -213,6 +282,13 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
     if (especialidade !== undefined) user.especialidade = especialidade;
     if (bio !== undefined) user.bio = bio;
     if (fotoPerfil !== undefined) user.fotoPerfil = fotoPerfil;
+    // Atualização dos campos específicos (residente / acadêmico)
+    if (areaResidencia !== undefined) user.areaResidencia = areaResidencia;
+    if (hospital !== undefined) user.hospital = hospital;
+    if (anoResidencia !== undefined) user.anoResidencia = anoResidencia;
+    if (semestreResidencia !== undefined) user.semestreResidencia = semestreResidencia;
+    if (instituicao !== undefined) user.instituicao = instituicao;
+    if (periodo !== undefined) user.periodo = periodo;
 
     await user.save();
 
@@ -223,7 +299,15 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
       especialidade: user.especialidade,
       bio: user.bio,
       fotoPerfil: user.fotoPerfil,
-      cargo: user.cargo
+      cargo: user.cargo,
+      tipoUsuario: user.tipoUsuario,
+      estado: user.estado,
+      areaResidencia: user.areaResidencia,
+      hospital: user.hospital,
+      anoResidencia: user.anoResidencia,
+      semestreResidencia: user.semestreResidencia,
+      instituicao: user.instituicao,
+      periodo: user.periodo
     });
   } catch (error) {
     console.error('Erro ao atualizar perfil:', error);

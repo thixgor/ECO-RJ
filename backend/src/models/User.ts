@@ -10,15 +10,28 @@ export interface IUltimaAulaAssistida {
   savedTimestamp?: number; // Video timestamp in seconds where user stopped
 }
 
+export type TipoUsuario = 'Médico' | 'Residente' | 'Acadêmico de Medicina';
+
 export interface IUser extends Document {
   email: string;
   password: string;
   nomeCompleto: string;
-  cpf: string;
-  crm: string;
-  crmLocal: string;
-  dataNascimento: Date;
+  cpf?: string; // Não é mais coletado no cadastro. Vinculado ao CPF da compra (checkout) para watermark.
+  estado?: string; // UF selecionada no cadastro
+  tipoUsuario?: TipoUsuario; // Médico | Residente | Acadêmico de Medicina
+  // Campos de Médico
+  crm?: string;
+  crmLocal?: string;
   especialidade?: string;
+  // Campos de Residente
+  areaResidencia?: string;
+  hospital?: string;
+  anoResidencia?: string; // R1, R2, R3...
+  semestreResidencia?: string; // 1º semestre / 2º semestre
+  // Campos de Acadêmico
+  instituicao?: string;
+  periodo?: string; // 1º Período ... 12º Período
+  dataNascimento?: Date;
   cargo: 'Visitante' | 'Aluno' | 'Instrutor' | 'Administrador';
   fotoPerfil?: string;
   bio?: string;
@@ -58,30 +71,65 @@ const UserSchema = new Schema<IUser>(
       trim: true
     },
     cpf: {
+      // Não coletado no cadastro; preenchido a partir do CPF da compra (checkout).
       type: String,
-      required: [true, 'CPF é obrigatório'],
       unique: true,
+      sparse: true,
       trim: true
     },
+    estado: {
+      type: String,
+      uppercase: true,
+      trim: true
+    },
+    tipoUsuario: {
+      type: String,
+      enum: ['Médico', 'Residente', 'Acadêmico de Medicina']
+    },
+    // Médico
     crm: {
       type: String,
-      required: [true, 'CRM é obrigatório'],
       unique: true,
+      sparse: true,
       trim: true
     },
     crmLocal: {
       type: String,
-      required: [true, 'Local do CRM (UF) é obrigatório'],
       uppercase: true,
       trim: true
-    },
-    dataNascimento: {
-      type: Date,
-      required: [true, 'Data de nascimento é obrigatória']
     },
     especialidade: {
       type: String,
       trim: true
+    },
+    // Residente
+    areaResidencia: {
+      type: String,
+      trim: true
+    },
+    hospital: {
+      type: String,
+      trim: true
+    },
+    anoResidencia: {
+      type: String,
+      trim: true
+    },
+    semestreResidencia: {
+      type: String,
+      trim: true
+    },
+    // Acadêmico
+    instituicao: {
+      type: String,
+      trim: true
+    },
+    periodo: {
+      type: String,
+      trim: true
+    },
+    dataNascimento: {
+      type: Date
     },
     cargo: {
       type: String,

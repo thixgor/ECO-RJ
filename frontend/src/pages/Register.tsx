@@ -1,19 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, User, CreditCard, MapPin, Calendar, Stethoscope, Eye, EyeOff, AlertTriangle, Download, Key } from 'lucide-react';
+import { Mail, Lock, User, MapPin, Stethoscope, Eye, EyeOff, AlertTriangle, Download, Key, GraduationCap, Building2, Award, Calendar, BadgeCheck } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import SearchableSelect from '../components/ui/SearchableSelect';
+import {
+  ESTADOS,
+  ESPECIALIDADES_MEDICAS,
+  AREAS_RESIDENCIA,
+  ANOS_RESIDENCIA,
+  SEMESTRES_RESIDENCIA,
+  PERIODOS_ACADEMICOS,
+  getFaculdadesByUF,
+  getHospitaisByUF,
+  OUTRO,
+  UF_LIST
+} from '../data/cadastroData';
 import toast from 'react-hot-toast';
 
 // Logos ECO RJ
 const LOGO_DARK = 'https://i.imgur.com/qBXnSUD.png';
 const LOGO_LIGHT = 'https://i.imgur.com/B1SnAtD.png';
 
-const UF_OPTIONS = [
-  'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',
-  'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN',
-  'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
-];
+type TipoUsuario = 'Médico' | 'Residente' | 'Acadêmico de Medicina';
 
 interface RecoveryTokenData {
   id: string;
@@ -21,18 +30,29 @@ interface RecoveryTokenData {
   tokenRecuperacao: string;
 }
 
+const withOutro = (list: string[]) => [...list, OUTRO];
+
 const Register: React.FC = () => {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     confirmPassword: '',
     nomeCompleto: '',
-    cpf: '',
+    estado: '',
+    // Médico
     crm: '',
-    crmLocal: 'RJ',
-    dataNascimento: '',
-    especialidade: ''
+    crmLocal: '',
+    especialidade: '',
+    // Residente
+    areaResidencia: '',
+    hospital: '',
+    anoResidencia: '',
+    semestreResidencia: '',
+    // Acadêmico
+    instituicao: '',
+    periodo: ''
   });
+  const [tipoUsuario, setTipoUsuario] = useState<TipoUsuario | ''>('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -46,36 +66,61 @@ const Register: React.FC = () => {
   const { isDark } = useTheme();
   const navigate = useNavigate();
 
-  const formatCPF = (value: string) => {
-    const numbers = value.replace(/\D/g, '');
-    return numbers
-      .replace(/(\d{3})(\d)/, '$1.$2')
-      .replace(/(\d{3})(\d)/, '$1.$2')
-      .replace(/(\d{3})(\d{1,2})/, '$1-$2')
-      .replace(/(-\d{2})\d+?$/, '$1');
+  const hospitais = useMemo(
+    () => (formData.estado ? withOutro(getHospitaisByUF(formData.estado)) : []),
+    [formData.estado]
+  );
+  const faculdades = useMemo(
+    () => (formData.estado ? withOutro(getFaculdadesByUF(formData.estado)) : []),
+    [formData.estado]
+  );
+
+  const setField = (name: string, value: string) => {
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }));
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-
-    if (name === 'cpf') {
-      setFormData(prev => ({ ...prev, cpf: formatCPF(value) }));
-    } else if (name === 'crm') {
-      // Permitir apenas números no CRM
-      const numbers = value.replace(/\D/g, '');
-      setFormData(prev => ({ ...prev, crm: numbers }));
+    if (name === 'crm') {
+      setField('crm', value.replace(/\D/g, ''));
+    } else if (name === 'estado') {
+      // Ao trocar de estado, limpa hospital/instituição (dependem da UF)
+      setFormData((prev) => ({ ...prev, estado: value, hospital: '', instituicao: '' }));
+      if (errors.estado) setErrors((prev) => ({ ...prev, estado: '' }));
     } else {
-      setFormData(prev => ({ ...prev, [name]: value }));
+      setField(name, value);
     }
+  };
 
-    // Clear error when field is modified
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
-    }
+  const handleSelectTipo = (tipo: TipoUsuario) => {
+    setTipoUsuario(tipo);
+    // Limpa campos específicos de outros tipos ao trocar
+    setFormData((prev) => ({
+      ...prev,
+      crm: '',
+      crmLocal: '',
+      especialidade: '',
+      areaResidencia: '',
+      hospital: '',
+      anoResidencia: '',
+      semestreResidencia: '',
+      instituicao: '',
+      periodo: ''
+    }));
+    setErrors({});
   };
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
+
+    if (!formData.estado || !UF_LIST.includes(formData.estado)) {
+      newErrors.estado = 'Selecione seu estado';
+    }
+
+    if (!tipoUsuario) {
+      newErrors.tipoUsuario = 'Selecione o tipo de perfil';
+    }
 
     if (!formData.nomeCompleto.trim()) {
       newErrors.nomeCompleto = 'Nome completo é obrigatório';
@@ -87,20 +132,6 @@ const Register: React.FC = () => {
       newErrors.email = 'E-mail inválido';
     }
 
-    if (!formData.cpf.trim()) {
-      newErrors.cpf = 'CPF é obrigatório';
-    } else if (formData.cpf.replace(/\D/g, '').length !== 11) {
-      newErrors.cpf = 'CPF deve ter 11 dígitos';
-    }
-
-    if (!formData.crm.trim()) {
-      newErrors.crm = 'CRM é obrigatório';
-    }
-
-    if (!formData.dataNascimento) {
-      newErrors.dataNascimento = 'Data de nascimento é obrigatória';
-    }
-
     if (!formData.password) {
       newErrors.password = 'Senha é obrigatória';
     } else if (formData.password.length < 6) {
@@ -109,6 +140,20 @@ const Register: React.FC = () => {
 
     if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = 'As senhas não conferem';
+    }
+
+    // Campos específicos por tipo
+    if (tipoUsuario === 'Médico') {
+      if (!formData.especialidade.trim()) newErrors.especialidade = 'Selecione a especialidade';
+      if (!formData.crm.trim()) newErrors.crm = 'CRM é obrigatório';
+      else if (formData.crm.replace(/\D/g, '').length < 4) newErrors.crm = 'CRM inválido';
+    } else if (tipoUsuario === 'Residente') {
+      if (!formData.areaResidencia.trim()) newErrors.areaResidencia = 'Selecione a área da residência';
+      if (!formData.hospital.trim()) newErrors.hospital = 'Selecione o hospital';
+      if (!formData.anoResidencia.trim()) newErrors.anoResidencia = 'Selecione o ano da residência';
+    } else if (tipoUsuario === 'Acadêmico de Medicina') {
+      if (!formData.instituicao.trim()) newErrors.instituicao = 'Selecione a instituição';
+      if (!formData.periodo.trim()) newErrors.periodo = 'Selecione o período';
     }
 
     setErrors(newErrors);
@@ -126,18 +171,30 @@ const Register: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const result = await register({
+      const payload: any = {
         email: formData.email,
         password: formData.password,
         nomeCompleto: formData.nomeCompleto,
-        cpf: formData.cpf,
-        crm: formData.crm,
-        crmLocal: formData.crmLocal,
-        dataNascimento: formData.dataNascimento,
-        especialidade: formData.especialidade || undefined
-      });
+        estado: formData.estado,
+        tipoUsuario
+      };
 
-      // Exibir modal com token de recuperação
+      if (tipoUsuario === 'Médico') {
+        payload.especialidade = formData.especialidade;
+        payload.crm = formData.crm;
+        payload.crmLocal = formData.crmLocal || formData.estado;
+      } else if (tipoUsuario === 'Residente') {
+        payload.areaResidencia = formData.areaResidencia;
+        payload.hospital = formData.hospital;
+        payload.anoResidencia = formData.anoResidencia;
+        payload.semestreResidencia = formData.semestreResidencia || undefined;
+      } else if (tipoUsuario === 'Acadêmico de Medicina') {
+        payload.instituicao = formData.instituicao;
+        payload.periodo = formData.periodo;
+      }
+
+      const result = await register(payload);
+
       setRecoveryData({
         id: result.id,
         email: result.email,
@@ -204,6 +261,12 @@ NÃO COMPARTILHE ESTE TOKEN COM NINGUÉM!
     }
   };
 
+  const tipoOptions: { tipo: TipoUsuario; icon: React.ReactNode; desc: string }[] = [
+    { tipo: 'Médico', icon: <Stethoscope className="w-6 h-6" />, desc: 'CRM e especialidade' },
+    { tipo: 'Residente', icon: <BadgeCheck className="w-6 h-6" />, desc: 'Área, hospital e ano' },
+    { tipo: 'Acadêmico de Medicina', icon: <GraduationCap className="w-6 h-6" />, desc: 'Instituição e período' }
+  ];
+
   return (
     <div className="min-h-screen py-12 px-4 animate-fade-in">
       <div className="max-w-2xl mx-auto">
@@ -230,7 +293,204 @@ NÃO COMPARTILHE ESTE TOKEN COM NINGUÉM!
 
         <div className="card p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Nome Completo */}
+            {/* 1) ESTADO (antes de tudo) */}
+            <div>
+              <label htmlFor="estado" className="label">Estado *</label>
+              <div className="relative">
+                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 z-10" />
+                <select
+                  id="estado"
+                  name="estado"
+                  value={formData.estado}
+                  onChange={handleChange}
+                  className={`input pl-10 ${errors.estado ? 'input-error' : ''}`}
+                >
+                  <option value="">Selecione seu estado</option>
+                  {ESTADOS.map((e) => (
+                    <option key={e.uf} value={e.uf}>{e.nome} ({e.uf})</option>
+                  ))}
+                </select>
+              </div>
+              {errors.estado && <p className="error-message">{errors.estado}</p>}
+            </div>
+
+            {/* 2) TIPO DE PERFIL */}
+            <div>
+              <label className="label">Você é: *</label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {tipoOptions.map(({ tipo, icon, desc }) => (
+                  <button
+                    key={tipo}
+                    type="button"
+                    onClick={() => handleSelectTipo(tipo)}
+                    className={`p-4 rounded-xl border-2 text-center transition-all ${
+                      tipoUsuario === tipo
+                        ? 'border-primary-500 bg-primary-50 dark:bg-primary-500/10 text-primary-600 dark:text-primary-400'
+                        : 'border-[var(--glass-border)] hover:border-primary-300 text-[var(--color-text-secondary)]'
+                    }`}
+                  >
+                    <div className="flex justify-center mb-2">{icon}</div>
+                    <div className="font-medium text-sm text-[var(--color-text-primary)]">{tipo}</div>
+                    <div className="text-xs text-[var(--color-text-muted)] mt-0.5">{desc}</div>
+                  </button>
+                ))}
+              </div>
+              {errors.tipoUsuario && <p className="error-message">{errors.tipoUsuario}</p>}
+            </div>
+
+            {/* 3) CAMPOS ESPECÍFICOS */}
+            {tipoUsuario === 'Médico' && (
+              <div className="space-y-6 p-4 rounded-xl bg-gray-50 dark:bg-white/5 border border-[var(--glass-border)] animate-fade-in">
+                <div>
+                  <label className="label flex items-center gap-1"><Award className="w-4 h-4" /> Especialidade *</label>
+                  <SearchableSelect
+                    options={withOutro(ESPECIALIDADES_MEDICAS)}
+                    value={formData.especialidade}
+                    onChange={(v) => setField('especialidade', v)}
+                    placeholder="Selecione a especialidade"
+                    otherLabel={OUTRO}
+                    otherPlaceholder="Digite sua especialidade"
+                    error={!!errors.especialidade}
+                  />
+                  {errors.especialidade && <p className="error-message">{errors.especialidade}</p>}
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="crm" className="label">
+                      Número do CRM *
+                      <span className="text-xs text-gray-500 font-normal ml-1">(apenas números)</span>
+                    </label>
+                    <input
+                      id="crm"
+                      name="crm"
+                      type="text"
+                      inputMode="numeric"
+                      value={formData.crm}
+                      onChange={handleChange}
+                      className={`input ${errors.crm ? 'input-error' : ''}`}
+                      placeholder="123456"
+                    />
+                    {errors.crm && <p className="error-message">{errors.crm}</p>}
+                  </div>
+                  <div>
+                    <label htmlFor="crmLocal" className="label">UF do CRM *</label>
+                    <select
+                      id="crmLocal"
+                      name="crmLocal"
+                      value={formData.crmLocal || formData.estado}
+                      onChange={handleChange}
+                      className="input"
+                    >
+                      {UF_LIST.map((uf) => (
+                        <option key={uf} value={uf}>{uf}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {tipoUsuario === 'Residente' && (
+              <div className="space-y-6 p-4 rounded-xl bg-gray-50 dark:bg-white/5 border border-[var(--glass-border)] animate-fade-in">
+                <div>
+                  <label className="label flex items-center gap-1"><Award className="w-4 h-4" /> Área da Residência *</label>
+                  <SearchableSelect
+                    options={withOutro(AREAS_RESIDENCIA)}
+                    value={formData.areaResidencia}
+                    onChange={(v) => setField('areaResidencia', v)}
+                    placeholder="Selecione a área"
+                    otherLabel={OUTRO}
+                    otherPlaceholder="Digite a área da residência"
+                    error={!!errors.areaResidencia}
+                  />
+                  {errors.areaResidencia && <p className="error-message">{errors.areaResidencia}</p>}
+                </div>
+                <div>
+                  <label className="label flex items-center gap-1"><Building2 className="w-4 h-4" /> Hospital *</label>
+                  <SearchableSelect
+                    options={hospitais}
+                    value={formData.hospital}
+                    onChange={(v) => setField('hospital', v)}
+                    placeholder={formData.estado ? 'Selecione o hospital' : 'Selecione o estado primeiro'}
+                    otherLabel={OUTRO}
+                    otherPlaceholder="Digite o nome do hospital"
+                    disabled={!formData.estado}
+                    error={!!errors.hospital}
+                  />
+                  {errors.hospital && <p className="error-message">{errors.hospital}</p>}
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="anoResidencia" className="label">Ano da Residência *</label>
+                    <select
+                      id="anoResidencia"
+                      name="anoResidencia"
+                      value={formData.anoResidencia}
+                      onChange={handleChange}
+                      className={`input ${errors.anoResidencia ? 'input-error' : ''}`}
+                    >
+                      <option value="">Selecione</option>
+                      {ANOS_RESIDENCIA.map((a) => (
+                        <option key={a} value={a}>{a}</option>
+                      ))}
+                    </select>
+                    {errors.anoResidencia && <p className="error-message">{errors.anoResidencia}</p>}
+                  </div>
+                  <div>
+                    <label htmlFor="semestreResidencia" className="label">Semestre atual</label>
+                    <select
+                      id="semestreResidencia"
+                      name="semestreResidencia"
+                      value={formData.semestreResidencia}
+                      onChange={handleChange}
+                      className="input"
+                    >
+                      <option value="">Selecione</option>
+                      {SEMESTRES_RESIDENCIA.map((s) => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {tipoUsuario === 'Acadêmico de Medicina' && (
+              <div className="space-y-6 p-4 rounded-xl bg-gray-50 dark:bg-white/5 border border-[var(--glass-border)] animate-fade-in">
+                <div>
+                  <label className="label flex items-center gap-1"><Building2 className="w-4 h-4" /> Instituição de Ensino *</label>
+                  <SearchableSelect
+                    options={faculdades}
+                    value={formData.instituicao}
+                    onChange={(v) => setField('instituicao', v)}
+                    placeholder={formData.estado ? 'Selecione a instituição' : 'Selecione o estado primeiro'}
+                    otherLabel={OUTRO}
+                    otherPlaceholder="Digite o nome da instituição"
+                    disabled={!formData.estado}
+                    error={!!errors.instituicao}
+                  />
+                  {errors.instituicao && <p className="error-message">{errors.instituicao}</p>}
+                </div>
+                <div>
+                  <label htmlFor="periodo" className="label flex items-center gap-1"><Calendar className="w-4 h-4" /> Período *</label>
+                  <select
+                    id="periodo"
+                    name="periodo"
+                    value={formData.periodo}
+                    onChange={handleChange}
+                    className={`input ${errors.periodo ? 'input-error' : ''}`}
+                  >
+                    <option value="">Selecione o período</option>
+                    {PERIODOS_ACADEMICOS.map((p) => (
+                      <option key={p} value={p}>{p}</option>
+                    ))}
+                  </select>
+                  {errors.periodo && <p className="error-message">{errors.periodo}</p>}
+                </div>
+              </div>
+            )}
+
+            {/* 4) DADOS DA CONTA */}
             <div>
               <label htmlFor="nomeCompleto" className="label">Nome Completo *</label>
               <div className="relative">
@@ -248,7 +508,6 @@ NÃO COMPARTILHE ESTE TOKEN COM NINGUÉM!
               {errors.nomeCompleto && <p className="error-message">{errors.nomeCompleto}</p>}
             </div>
 
-            {/* Email */}
             <div>
               <label htmlFor="email" className="label">E-mail *</label>
               <div className="relative">
@@ -264,100 +523,6 @@ NÃO COMPARTILHE ESTE TOKEN COM NINGUÉM!
                 />
               </div>
               {errors.email && <p className="error-message">{errors.email}</p>}
-            </div>
-
-            {/* CPF */}
-            <div>
-              <label htmlFor="cpf" className="label">CPF *</label>
-              <div className="relative">
-                <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  id="cpf"
-                  name="cpf"
-                  type="text"
-                  value={formData.cpf}
-                  onChange={handleChange}
-                  className={`input pl-10 ${errors.cpf ? 'input-error' : ''}`}
-                  placeholder="000.000.000-00"
-                  maxLength={14}
-                />
-              </div>
-              {errors.cpf && <p className="error-message">{errors.cpf}</p>}
-            </div>
-
-            {/* CRM */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="crm" className="label">
-                  Número do CRM *
-                  <span className="text-xs text-gray-500 font-normal ml-1">(apenas números)</span>
-                </label>
-                <input
-                  id="crm"
-                  name="crm"
-                  type="text"
-                  inputMode="numeric"
-                  value={formData.crm}
-                  onChange={handleChange}
-                  className={`input ${errors.crm ? 'input-error' : ''}`}
-                  placeholder="123456"
-                />
-                {errors.crm && <p className="error-message">{errors.crm}</p>}
-              </div>
-              <div>
-                <label htmlFor="crmLocal" className="label">
-                  Estado (UF) *
-                  <span className="text-xs text-gray-500 font-normal ml-1">(onde o CRM foi emitido)</span>
-                </label>
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <select
-                    id="crmLocal"
-                    name="crmLocal"
-                    value={formData.crmLocal}
-                    onChange={handleChange}
-                    className="input pl-10"
-                  >
-                    {UF_OPTIONS.map(uf => (
-                      <option key={uf} value={uf}>{uf}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* Data de Nascimento */}
-            <div>
-              <label htmlFor="dataNascimento" className="label">Data de Nascimento *</label>
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  id="dataNascimento"
-                  name="dataNascimento"
-                  type="date"
-                  value={formData.dataNascimento}
-                  onChange={handleChange}
-                  className={`input pl-10 ${errors.dataNascimento ? 'input-error' : ''}`}
-                />
-              </div>
-              {errors.dataNascimento && <p className="error-message">{errors.dataNascimento}</p>}
-            </div>
-
-            {/* Especialidade */}
-            <div>
-              <label htmlFor="especialidade" className="label">Especialidade (opcional)</label>
-              <div className="relative">
-                <Stethoscope className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  id="especialidade"
-                  name="especialidade"
-                  type="text"
-                  value={formData.especialidade}
-                  onChange={handleChange}
-                  className="input pl-10"
-                  placeholder="Ex: Cardiologia"
-                />
-              </div>
             </div>
 
             {/* Senhas */}
@@ -535,4 +700,3 @@ NÃO COMPARTILHE ESTE TOKEN COM NINGUÉM!
 };
 
 export default Register;
-

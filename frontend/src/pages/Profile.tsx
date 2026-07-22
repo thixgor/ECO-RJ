@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { User, Mail, CreditCard, Calendar, Stethoscope, Key, Lock, Edit, Check, X, AlertCircle, Award, Download, Clock, BookOpen, StickyNote, Play, Trash2, ShoppingBag, Receipt } from 'lucide-react';
+import { User, Mail, CreditCard, Calendar, Stethoscope, Key, Lock, Edit, Check, X, AlertCircle, Award, Download, Clock, BookOpen, StickyNote, Play, Trash2, ShoppingBag, Receipt, MapPin, Building2, GraduationCap, BadgeCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { authService, userService, certificateService, notesService, paymentService } from '../services/api';
 import { Certificate, User as UserType, Course, UserNote, GroupedNotesByCourse, NoteDisplay } from '../types';
 import { generateCertificatePDF } from '../utils/certificatePdfGenerator';
 import Loading from '../components/common/Loading';
+import { ESTADOS } from '../data/cadastroData';
 import toast from 'react-hot-toast';
 
 const Profile: React.FC = () => {
@@ -346,6 +347,12 @@ const Profile: React.FC = () => {
     return cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
   };
 
+  const estadoNome = user?.estado
+    ? (ESTADOS.find((e) => e.uf === user.estado)?.nome
+        ? `${ESTADOS.find((e) => e.uf === user.estado)!.nome} (${user.estado})`
+        : user.estado)
+    : '';
+
   const formatDate = (date: string) => {
     return new Date(date).toLocaleDateString('pt-BR');
   };
@@ -504,15 +511,17 @@ const Profile: React.FC = () => {
                       className="input"
                     />
                   </div>
-                  <div>
-                    <label className="label">Especialidade</label>
-                    <input
-                      type="text"
-                      value={editData.especialidade}
-                      onChange={(e) => setEditData({ ...editData, especialidade: e.target.value })}
-                      className="input"
-                    />
-                  </div>
+                  {user?.tipoUsuario === 'Médico' && (
+                    <div>
+                      <label className="label">Especialidade</label>
+                      <input
+                        type="text"
+                        value={editData.especialidade}
+                        onChange={(e) => setEditData({ ...editData, especialidade: e.target.value })}
+                        className="input"
+                      />
+                    </div>
+                  )}
                   <div>
                     <label className="label">Bio</label>
                     <textarea
@@ -550,38 +559,110 @@ const Profile: React.FC = () => {
                       <p className="font-medium text-[var(--color-text-primary)]">{user?.email}</p>
                     </div>
                   </div>
+
+                  {/* Estado */}
                   <div className="flex items-center gap-3">
-                    <CreditCard className="w-5 h-5 text-gray-400" />
+                    <MapPin className="w-5 h-5 text-gray-400" />
                     <div>
-                      <p className="text-sm text-[var(--color-text-muted)]">CPF</p>
-                      <p className="font-medium text-[var(--color-text-primary)]">{formatCPF(user?.cpf || '')}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <User className="w-5 h-5 text-gray-400" />
-                    <div>
-                      <p className="text-sm text-[var(--color-text-muted)]">CRM</p>
-                      <p className="font-medium text-[var(--color-text-primary)]">{user?.crm}-{user?.crmLocal}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Calendar className="w-5 h-5 text-gray-400" />
-                    <div>
-                      <p className="text-sm text-[var(--color-text-muted)]">Data de Nascimento</p>
+                      <p className="text-sm text-[var(--color-text-muted)]">Estado</p>
                       <p className="font-medium text-[var(--color-text-primary)]">
-                        {user?.dataNascimento
-                          ? new Date(user.dataNascimento).toLocaleDateString('pt-BR')
-                          : '-'}
+                        {estadoNome || 'Não informado'}
                       </p>
                     </div>
                   </div>
+
+                  {/* Tipo de perfil */}
                   <div className="flex items-center gap-3">
-                    <Stethoscope className="w-5 h-5 text-gray-400" />
+                    <BadgeCheck className="w-5 h-5 text-gray-400" />
                     <div>
-                      <p className="text-sm text-[var(--color-text-muted)]">Especialidade</p>
-                      <p className="font-medium text-[var(--color-text-primary)]">{user?.especialidade || 'Não informada'}</p>
+                      <p className="text-sm text-[var(--color-text-muted)]">Tipo de Perfil</p>
+                      <p className="font-medium text-[var(--color-text-primary)]">{user?.tipoUsuario || 'Não informado'}</p>
                     </div>
                   </div>
+
+                  {/* Campos de Médico */}
+                  {user?.tipoUsuario === 'Médico' && (
+                    <>
+                      <div className="flex items-center gap-3">
+                        <Stethoscope className="w-5 h-5 text-gray-400" />
+                        <div>
+                          <p className="text-sm text-[var(--color-text-muted)]">Especialidade</p>
+                          <p className="font-medium text-[var(--color-text-primary)]">{user?.especialidade || 'Não informada'}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <User className="w-5 h-5 text-gray-400" />
+                        <div>
+                          <p className="text-sm text-[var(--color-text-muted)]">CRM</p>
+                          <p className="font-medium text-[var(--color-text-primary)]">
+                            {user?.crm ? `${user.crm}-${user.crmLocal || ''}` : '-'}
+                          </p>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Campos de Residente */}
+                  {user?.tipoUsuario === 'Residente' && (
+                    <>
+                      <div className="flex items-center gap-3">
+                        <Award className="w-5 h-5 text-gray-400" />
+                        <div>
+                          <p className="text-sm text-[var(--color-text-muted)]">Área da Residência</p>
+                          <p className="font-medium text-[var(--color-text-primary)]">{user?.areaResidencia || '-'}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Building2 className="w-5 h-5 text-gray-400" />
+                        <div>
+                          <p className="text-sm text-[var(--color-text-muted)]">Hospital</p>
+                          <p className="font-medium text-[var(--color-text-primary)]">{user?.hospital || '-'}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Calendar className="w-5 h-5 text-gray-400" />
+                        <div>
+                          <p className="text-sm text-[var(--color-text-muted)]">Ano da Residência</p>
+                          <p className="font-medium text-[var(--color-text-primary)]">
+                            {user?.anoResidencia || '-'}
+                            {user?.semestreResidencia ? ` · ${user.semestreResidencia}` : ''}
+                          </p>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Campos de Acadêmico */}
+                  {user?.tipoUsuario === 'Acadêmico de Medicina' && (
+                    <>
+                      <div className="flex items-center gap-3">
+                        <GraduationCap className="w-5 h-5 text-gray-400" />
+                        <div>
+                          <p className="text-sm text-[var(--color-text-muted)]">Instituição</p>
+                          <p className="font-medium text-[var(--color-text-primary)]">{user?.instituicao || '-'}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Calendar className="w-5 h-5 text-gray-400" />
+                        <div>
+                          <p className="text-sm text-[var(--color-text-muted)]">Período</p>
+                          <p className="font-medium text-[var(--color-text-primary)]">{user?.periodo || '-'}</p>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* CPF — vinculado à compra (checkout) */}
+                  <div className="flex items-center gap-3">
+                    <CreditCard className="w-5 h-5 text-gray-400" />
+                    <div>
+                      <p className="text-sm text-[var(--color-text-muted)]">CPF (da compra)</p>
+                      <p className="font-medium text-[var(--color-text-primary)]">
+                        {user?.cpf ? formatCPF(user.cpf) : 'Definido na sua próxima compra'}
+                      </p>
+                    </div>
+                  </div>
+
                   <div className="flex items-center gap-3">
                     <Calendar className="w-5 h-5 text-gray-400" />
                     <div>

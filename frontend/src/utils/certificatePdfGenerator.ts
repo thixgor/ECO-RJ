@@ -34,7 +34,8 @@ const BORDER_LIGHT = [229, 231, 235];   // Cinza claro para bordas
 
 
 // Formatar CPF
-const formatCPF = (cpf: string): string => {
+const formatCPF = (cpf?: string): string => {
+  if (!cpf) return '';
   const cleaned = cpf.replace(/\D/g, '');
   return cleaned.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
 };
@@ -53,7 +54,8 @@ const formatDateExtended = (dateStr: string): string => {
 };
 
 // Formatar data simples
-const formatDateSimple = (dateStr: string): string => {
+const formatDateSimple = (dateStr?: string): string => {
+  if (!dateStr) return '';
   return new Date(dateStr).toLocaleDateString('pt-BR');
 };
 
@@ -214,9 +216,15 @@ export const generateCertificatePDF = async (data: CertificateData): Promise<voi
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
     doc.setTextColor(TEXT_MUTED[0], TEXT_MUTED[1], TEXT_MUTED[2]);
-    const personalInfo = `CPF: ${formatCPF(aluno.cpf)}  •  Data de Nascimento: ${formatDateSimple(aluno.dataNascimento)}`;
-    doc.text(personalInfo, pageWidth / 2, y, { align: 'center' });
-    y += 12;
+    const personalInfoParts: string[] = [];
+    if (aluno.cpf) personalInfoParts.push(`CPF: ${formatCPF(aluno.cpf)}`);
+    if (aluno.dataNascimento) personalInfoParts.push(`Data de Nascimento: ${formatDateSimple(aluno.dataNascimento)}`);
+    if (personalInfoParts.length > 0) {
+      doc.text(personalInfoParts.join('  •  '), pageWidth / 2, y, { align: 'center' });
+      y += 12;
+    } else {
+      y += 4;
+    }
 
     // Texto de conclusão
     doc.setFont('helvetica', 'normal');

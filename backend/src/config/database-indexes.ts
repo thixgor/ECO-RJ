@@ -9,14 +9,43 @@ import CourseTopic from '../models/CourseTopic';
 /**
  * Cria índices no MongoDB para melhorar performance de queries
  */
+/**
+ * Garante que um índice único seja SPARSE (permite múltiplos documentos sem o campo).
+ * Necessário porque CPF e CRM deixaram de ser obrigatórios no cadastro: usuários
+ * sem esses campos gerariam colisão de chave `null` em índices únicos não-sparse.
+ * Se existir um índice antigo não-sparse, ele é derrubado e recriado como sparse.
+ */
+const ensureSparseUniqueIndex = async (
+  collection: any,
+  field: string,
+  indexName: string
+) => {
+  try {
+    const indexes = await collection.indexes();
+    const existing = indexes.find((idx: any) => idx.name === indexName);
+    if (existing && (!existing.sparse || !existing.unique)) {
+      // Índice antigo não é sparse/único — recriar
+      await collection.dropIndex(indexName);
+      console.log(`♻️  Índice ${indexName} recriado como único + sparse`);
+    }
+    await collection.createIndex({ [field]: 1 }, { unique: true, sparse: true, name: indexName });
+  } catch (err: any) {
+    console.error(`⚠️  Não foi possível ajustar o índice ${indexName}:`, err?.message || err);
+  }
+};
+
 export const createDatabaseIndexes = async () => {
   try {
     console.log('🔍 Criando índices no banco de dados...');
 
     // User indexes
     await User.collection.createIndex({ email: 1 }, { unique: true });
-    await User.collection.createIndex({ cpf: 1 });
+    // CPF e CRM agora são opcionais → índices únicos precisam ser SPARSE
+    await ensureSparseUniqueIndex(User.collection, 'cpf', 'cpf_1');
+    await ensureSparseUniqueIndex(User.collection, 'crm', 'crm_1');
     await User.collection.createIndex({ cargo: 1 });
+    await User.collection.createIndex({ tipoUsuario: 1 });
+    await User.collection.createIndex({ estado: 1 });
     await User.collection.createIndex({ ativo: 1 });
     await User.collection.createIndex({ createdAt: -1 });
     await User.collection.createIndex({ cursosInscritos: 1 });

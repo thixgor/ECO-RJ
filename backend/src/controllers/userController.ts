@@ -9,12 +9,20 @@ import { AuthRequest } from '../middleware/auth';
 // @access  Private/Admin
 export const getUsers = async (req: Request, res: Response) => {
   try {
-    const { cargo, ativo, search, page = 1, limit = 20 } = req.query;
+    const { cargo, tipoUsuario, estado, ativo, search, page = 1, limit = 20 } = req.query;
 
     const query: any = {};
 
     if (cargo) {
       query.cargo = cargo;
+    }
+
+    if (tipoUsuario) {
+      query.tipoUsuario = tipoUsuario;
+    }
+
+    if (estado) {
+      query.estado = String(estado).toUpperCase();
     }
 
     if (ativo !== undefined) {
@@ -26,7 +34,12 @@ export const getUsers = async (req: Request, res: Response) => {
         { nomeCompleto: { $regex: search, $options: 'i' } },
         { email: { $regex: search, $options: 'i' } },
         { cpf: { $regex: search, $options: 'i' } },
-        { crm: { $regex: search, $options: 'i' } }
+        { crm: { $regex: search, $options: 'i' } },
+        { estado: { $regex: search, $options: 'i' } },
+        { especialidade: { $regex: search, $options: 'i' } },
+        { areaResidencia: { $regex: search, $options: 'i' } },
+        { hospital: { $regex: search, $options: 'i' } },
+        { instituicao: { $regex: search, $options: 'i' } }
       ];
     }
 

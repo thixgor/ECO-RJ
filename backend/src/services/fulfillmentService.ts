@@ -112,6 +112,16 @@ export async function fulfillOrder(orderId: string): Promise<void> {
     const user = await User.findById(order.comprador);
     if (user) {
       isGuest = false;
+      // Vincula o CPF da compra ao usuário (usado na marca d'água dos vídeos).
+      // O CPF não é mais coletado no cadastro; passa a ser o CPF utilizado no checkout.
+      const cpfCompra = (order.compradorDados?.cpf || '').replace(/[^\d]/g, '');
+      if (cpfCompra && cpfCompra.length === 11 && !user.cpf) {
+        // Evita conflito de índice único: só vincula se nenhum outro usuário tiver esse CPF.
+        const cpfEmUso = await User.findOne({ cpf: cpfCompra, _id: { $ne: user._id } }).select('_id');
+        if (!cpfEmUso) {
+          user.cpf = cpfCompra;
+        }
+      }
       // Promove para Aluno apenas se ainda for Visitante (não rebaixa Instrutor/Admin)
       if (user.cargo === 'Visitante') {
         user.cargo = 'Aluno';

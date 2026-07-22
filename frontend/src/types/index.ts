@@ -5,15 +5,28 @@ export interface UltimaAulaAssistida {
   progresso?: number;
 }
 
+export type TipoUsuario = 'Médico' | 'Residente' | 'Acadêmico de Medicina';
+
 export interface User {
   _id: string;
   email: string;
   nomeCompleto: string;
-  cpf: string;
-  crm: string;
-  crmLocal: string;
-  dataNascimento: string;
+  cpf?: string; // Vinculado ao CPF da compra (checkout), não coletado no cadastro
+  estado?: string;
+  tipoUsuario?: TipoUsuario;
+  // Médico
+  crm?: string;
+  crmLocal?: string;
   especialidade?: string;
+  // Residente
+  areaResidencia?: string;
+  hospital?: string;
+  anoResidencia?: string;
+  semestreResidencia?: string;
+  // Acadêmico
+  instituicao?: string;
+  periodo?: string;
+  dataNascimento?: string;
   cargo: 'Visitante' | 'Aluno' | 'Instrutor' | 'Administrador';
   fotoPerfil?: string;
   bio?: string;
