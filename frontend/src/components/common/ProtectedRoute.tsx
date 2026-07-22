@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { hasAlunoAccess } from '../../config/roles';
 import { LoadingPage } from './Loading';
 
 interface ProtectedRouteProps {
@@ -30,9 +31,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   if (requireAluno) {
-    const allowedRoles = ['Aluno', 'Instrutor', 'Administrador'];
-    if (!allowedRoles.includes(user?.cargo || '')) {
-      return <Navigate to="/perfil" state={{ message: 'Aplique uma serial key para acessar este conteúdo' }} replace />;
+    if (!hasAlunoAccess(user?.cargo)) {
+      return <Navigate to="/perfil" state={{ message: 'Este conteúdo é para Alunos. Compre um curso ou ative sua chave de acesso.' }} replace />;
     }
   }
 

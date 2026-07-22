@@ -351,6 +351,9 @@ const AdminSerialKeys: React.FC = () => {
                   <option value="Instrutor">Instrutor</option>
                   <option value="Administrador">Administrador</option>
                 </select>
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">
+                  Ao ativar a chave, o usuário é promovido para este cargo (nunca é rebaixado).
+                </p>
               </div>
               <div>
                 <label className="label">Validade (em dias)</label>

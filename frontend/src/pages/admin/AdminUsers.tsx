@@ -4,6 +4,7 @@ import { userService } from '../../services/api';
 import { User as UserType } from '../../types';
 import Loading from '../../components/common/Loading';
 import { ESTADOS } from '../../data/cadastroData';
+import { getRoleInfo } from '../../config/roles';
 import toast from 'react-hot-toast';
 
 const AdminUsers: React.FC = () => {
@@ -252,14 +253,8 @@ const AdminUsers: React.FC = () => {
                       <select
                         value={user.cargo}
                         onChange={(e) => handleChangeCargo(user._id, e.target.value)}
-                        className={`text-sm px-2 py-1 rounded border ${user.cargo === 'Administrador'
-                          ? 'bg-purple-50 dark:bg-purple-500/10 border-purple-200 dark:border-purple-500/30 text-purple-700 dark:text-purple-300'
-                          : user.cargo === 'Aluno'
-                            ? 'bg-green-50 dark:bg-green-500/10 border-green-200 dark:border-green-200/30 text-green-700 dark:text-green-300'
-                            : user.cargo === 'Instrutor'
-                              ? 'bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/30 text-blue-700 dark:text-blue-300'
-                              : 'bg-gray-50 dark:bg-white/5 border-gray-200 dark:border-white/10 text-gray-700 dark:text-gray-300'
-                          }`}
+                        title={getRoleInfo(user.cargo).descricao}
+                        className={`text-sm px-2 py-1 rounded border border-transparent ${getRoleInfo(user.cargo).badgeClass}`}
                       >
                         <option value="Visitante">Visitante</option>
                         <option value="Aluno">Aluno</option>

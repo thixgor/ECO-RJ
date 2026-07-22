@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import User, { IUser } from '../models/User';
+import { CARGOS_COM_ACESSO } from '../config/roles';
 
 export interface AuthRequest extends Request {
   user?: IUser;
@@ -73,10 +74,9 @@ export const canViewLessons = (req: AuthRequest, res: Response, next: NextFuncti
     return res.status(401).json({ message: 'Não autorizado' });
   }
 
-  const allowedRoles = ['Aluno', 'Instrutor', 'Administrador'];
-  if (!allowedRoles.includes(req.user.cargo)) {
+  if (!CARGOS_COM_ACESSO.includes(req.user.cargo as any)) {
     return res.status(403).json({
-      message: 'Você precisa ser um aluno para acessar as aulas. Aplique uma serial key válida no seu perfil.'
+      message: 'Você precisa ser Aluno para acessar as aulas. Compre um curso ou ative sua chave de acesso no perfil.'
     });
   }
 

@@ -3,6 +3,7 @@ import User from '../models/User';
 import SerialKey from '../models/SerialKey';
 import Course from '../models/Course';
 import { AuthRequest } from '../middleware/auth';
+import { Cargo, maiorCargo, isCargoValido } from '../config/roles';
 
 // @desc    Listar todos os usuários (Admin)
 // @route   GET /api/users
@@ -95,9 +96,8 @@ export const getUserById = async (req: Request, res: Response) => {
 export const updateUserCargo = async (req: Request, res: Response) => {
   try {
     const { cargo } = req.body;
-    const validCargos = ['Visitante', 'Aluno', 'Instrutor', 'Administrador'];
 
-    if (!validCargos.includes(cargo)) {
+    if (!isCargoValido(cargo)) {
       return res.status(400).json({ message: 'Cargo inválido' });
     }
 
@@ -196,24 +196,29 @@ export const applySerialKey = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: 'Usuário não encontrado' });
     }
 
-    user.cargo = serialKey.cargoAtribuido as any;
+    // Promove o cargo SEM rebaixar: uma chave de "Aluno" nunca deve rebaixar
+    // um Instrutor ou Administrador que por acaso ativar a chave.
+    const cargoAnterior = user.cargo as Cargo;
+    user.cargo = maiorCargo(cargoAnterior, serialKey.cargoAtribuido as Cargo);
     user.serialKeysUsadas.push(serialKey._id as any);
     await user.save();
 
-    // Se a chave tem um curso restrito associado, dar acesso ao usuário
+    // Se a chave está vinculada a um curso, inscreve o usuário nesse curso.
     let cursoNome = '';
     if (serialKey.cursoRestrito) {
       const course = await Course.findById(serialKey.cursoRestrito);
-      if (course && course.acessoRestrito) {
-        // Adicionar usuário à lista de alunos autorizados se ainda não estiver
-        if (!course.alunosAutorizados.includes(user._id as any)) {
-          course.alunosAutorizados.push(user._id as any);
-          await course.save();
-        }
-        // Inscrever o usuário no curso se ainda não estiver inscrito
-        if (!user.cursosInscritos.includes(course._id as any)) {
+      if (course) {
+        const courseIdStr = (course._id as any).toString();
+        const userIdStr = (user._id as any).toString();
+        // Inscreve no curso para que ele apareça em "Meus Cursos"
+        if (!user.cursosInscritos.some((c) => c.toString() === courseIdStr)) {
           user.cursosInscritos.push(course._id as any);
           await user.save();
+        }
+        // Cursos restritos exigem estar na lista de autorizados
+        if (course.acessoRestrito && !course.alunosAutorizados.some((a) => a.toString() === userIdStr)) {
+          course.alunosAutorizados.push(user._id as any);
+          await course.save();
         }
         cursoNome = course.titulo;
       }
@@ -225,9 +230,17 @@ export const applySerialKey = async (req: AuthRequest, res: Response) => {
     serialKey.dataUso = new Date();
     await serialKey.save();
 
-    const message = cursoNome
-      ? `Cargo atualizado para ${serialKey.cargoAtribuido} e acesso liberado ao curso "${cursoNome}"`
-      : `Cargo atualizado com sucesso para ${serialKey.cargoAtribuido}`;
+    const promovido = user.cargo !== cargoAnterior;
+    let message: string;
+    if (cursoNome && promovido) {
+      message = `Tudo certo! Você agora é ${user.cargo} e o curso "${cursoNome}" já está liberado na sua conta.`;
+    } else if (cursoNome) {
+      message = `Acesso ao curso "${cursoNome}" liberado na sua conta.`;
+    } else if (promovido) {
+      message = `Tudo certo! Seu cargo foi atualizado para ${user.cargo}.`;
+    } else {
+      message = 'Chave aplicada com sucesso.';
+    }
 
     res.json({
       message,

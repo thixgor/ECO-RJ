@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import User from '../models/User';
 import Role from '../models/Role';
+import { CARGO_DESCRICAO } from '../config/roles';
 
 dotenv.config();
 
@@ -21,7 +22,7 @@ const seedDatabase = async () => {
     const roles = [
       {
         nome: 'Visitante',
-        descricao: 'Acesso limitado - apenas informações públicas',
+        descricao: CARGO_DESCRICAO.Visitante,
         permissoes: {
           visualizarAulas: false,
           criarAulas: false,
@@ -36,7 +37,7 @@ const seedDatabase = async () => {
       },
       {
         nome: 'Aluno',
-        descricao: 'Acesso total a aulas, exercícios e fórum',
+        descricao: CARGO_DESCRICAO.Aluno,
         permissoes: {
           visualizarAulas: true,
           criarAulas: false,
@@ -51,7 +52,7 @@ const seedDatabase = async () => {
       },
       {
         nome: 'Instrutor',
-        descricao: 'Pode criar aulas e responder no fórum',
+        descricao: CARGO_DESCRICAO.Instrutor,
         permissoes: {
           visualizarAulas: true,
           criarAulas: true,
@@ -66,7 +67,7 @@ const seedDatabase = async () => {
       },
       {
         nome: 'Administrador',
-        descricao: 'Acesso total ao sistema',
+        descricao: CARGO_DESCRICAO.Administrador,
         permissoes: {
           visualizarAulas: true,
           criarAulas: true,

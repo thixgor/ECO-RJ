@@ -8,6 +8,7 @@ import { Certificate, User as UserType, Course, UserNote, GroupedNotesByCourse, 
 import { generateCertificatePDF } from '../utils/certificatePdfGenerator';
 import Loading from '../components/common/Loading';
 import { ESTADOS } from '../data/cadastroData';
+import { getRoleInfo } from '../config/roles';
 import toast from 'react-hot-toast';
 
 const Profile: React.FC = () => {
@@ -404,16 +405,14 @@ const Profile: React.FC = () => {
               {user?.nomeCompleto}
             </h1>
             <p className="text-[var(--color-text-secondary)]">{user?.email}</p>
-            <span className={`inline-block mt-2 px-3 py-1 rounded-full text-sm font-medium ${user?.cargo === 'Administrador'
-              ? 'bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300'
-              : user?.cargo === 'Aluno'
-                ? 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-300'
-                : user?.cargo === 'Instrutor'
-                  ? 'bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300'
-                  : 'bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300'
-              }`}>
-              {user?.cargo}
-            </span>
+            <div className="mt-2 flex flex-col md:items-start items-center gap-1">
+              <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${getRoleInfo(user?.cargo).badgeClass}`}>
+                {user?.cargo}
+              </span>
+              <span className="text-xs text-[var(--color-text-muted)]">
+                {getRoleInfo(user?.cargo).resumo}
+              </span>
+            </div>
           </div>
           {!isEditing && (
             <div className="flex flex-wrap gap-2">
@@ -448,10 +447,20 @@ const Profile: React.FC = () => {
         <div className="bg-yellow-50 dark:bg-amber-500/10 border border-yellow-200 dark:border-amber-500/30 rounded-lg p-4 flex items-start gap-3">
           <AlertCircle className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" />
           <div>
-            <h3 className="font-medium text-yellow-800 dark:text-amber-400">Acesso Limitado</h3>
+            <h3 className="font-medium text-yellow-800 dark:text-amber-400">Você é Visitante — acesso limitado</h3>
             <p className="text-yellow-700 dark:text-amber-300/80 text-sm mt-1">
-              Você está como Visitante. Aplique uma serial key abaixo para ter acesso completo às aulas e exercícios.
+              Para virar <strong>Aluno</strong> e liberar aulas, exercícios e fórum, você tem duas opções:
             </p>
+            <ul className="text-yellow-700 dark:text-amber-300/80 text-sm mt-2 space-y-1 list-disc list-inside">
+              <li>
+                <strong>Comprar um curso</strong> — o acesso é liberado automaticamente na sua conta.{' '}
+                <Link to="/cursos" className="underline font-medium">Ver cursos</Link>
+              </li>
+              <li>
+                <strong>Ativar uma chave</strong> que você recebeu por e-mail ou do suporte, na aba
+                “Serial Key” abaixo.
+              </li>
+            </ul>
           </div>
         </div>
       )}

@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import SerialKey from '../models/SerialKey';
 import User from '../models/User';
+import { isCargoValido } from '../config/roles';
 
 // Função para gerar chave única no formato ECO-YYYYMM-XXXXXXXX
 const generateUniqueKey = async (): Promise<string> => {
@@ -79,8 +80,7 @@ export const generateSerialKeys = async (req: Request, res: Response) => {
       });
     }
 
-    const validCargos = ['Visitante', 'Aluno', 'Instrutor', 'Administrador'];
-    if (!validCargos.includes(cargoAtribuido)) {
+    if (!isCargoValido(cargoAtribuido)) {
       return res.status(400).json({ message: 'Cargo inválido' });
     }
 

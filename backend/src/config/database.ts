@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import User from '../models/User';
 import Role from '../models/Role';
+import { CARGO_DESCRICAO } from './roles';
 
 dotenv.config();
 
@@ -19,10 +20,10 @@ const connectDB = async (): Promise<void> => {
     if (roleCount === 0) {
       console.log('Seeding initial roles...');
       const roles = [
-        { nome: 'Visitante', descricao: 'Acesso limitado', permissoes: { visualizarAulas: false, usarForum: false, acessarAdmin: false } },
-        { nome: 'Aluno', descricao: 'Acesso total', permissoes: { visualizarAulas: true, usarForum: true, acessarAdmin: false } },
-        { nome: 'Instrutor', descricao: 'Pode criar conteúdo', permissoes: { visualizarAulas: true, criarAulas: true, usarForum: true, acessarAdmin: false } },
-        { nome: 'Administrador', descricao: 'Acesso total', permissoes: { visualizarAulas: true, criarAulas: true, usarForum: true, acessarAdmin: true } }
+        { nome: 'Visitante', descricao: CARGO_DESCRICAO.Visitante, permissoes: { visualizarAulas: false, usarForum: false, acessarAdmin: false } },
+        { nome: 'Aluno', descricao: CARGO_DESCRICAO.Aluno, permissoes: { visualizarAulas: true, responderExercicios: true, usarForum: true, acessarAdmin: false } },
+        { nome: 'Instrutor', descricao: CARGO_DESCRICAO.Instrutor, permissoes: { visualizarAulas: true, criarAulas: true, editarAulas: true, responderExercicios: true, criarExercicios: true, usarForum: true, acessarAdmin: false } },
+        { nome: 'Administrador', descricao: CARGO_DESCRICAO.Administrador, permissoes: { visualizarAulas: true, criarAulas: true, editarAulas: true, deletarAulas: true, responderExercicios: true, criarExercicios: true, usarForum: true, moderarForum: true, acessarAdmin: true } }
       ];
       await Role.insertMany(roles);
     }
