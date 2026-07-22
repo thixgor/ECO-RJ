@@ -5,6 +5,7 @@ export interface ICourse extends Document {
   descricao: string;
   instrutor: mongoose.Types.ObjectId;
   dataInicio: Date;
+  dataTermino?: Date; // Data de término do curso (opcional) — dispara e-mail de conclusão
   dataLimiteInscricao?: Date;
   imagemCapa?: string;
   aulas: mongoose.Types.ObjectId[];
@@ -41,6 +42,9 @@ const CourseSchema = new Schema<ICourse>(
     dataInicio: {
       type: Date,
       required: [true, 'Data de início é obrigatória']
+    },
+    dataTermino: {
+      type: Date
     },
     dataLimiteInscricao: {
       type: Date

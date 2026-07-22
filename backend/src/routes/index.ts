@@ -18,6 +18,7 @@ import announcementRoutes from './announcementRoutes';
 import certificateRoutes from './certificateRoutes';
 import certificateRequestRoutes from './certificateRequestRoutes';
 import notesRoutes from './notesRoutes';
+import emailRoutes from './emailRoutes';
 
 const router = Router();
 
@@ -40,6 +41,7 @@ router.use('/announcements', announcementRoutes);
 router.use('/certificates', certificateRoutes);
 router.use('/certificate-requests', certificateRequestRoutes);
 router.use('/notes', notesRoutes);
+router.use('/emails', emailRoutes);
 
 export default router;
 

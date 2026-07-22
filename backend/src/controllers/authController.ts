@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import User from '../models/User';
 import { validateCPF, validateCRM, validateUF } from '../utils/validators';
 import { AuthRequest } from '../middleware/auth';
+import { sendWelcomeEmailAsync } from '../utils/emailService';
 
 // Gerar JWT
 const generateToken = (id: string): string => {
@@ -93,6 +94,14 @@ export const register = async (req: Request, res: Response) => {
 
     // Gerar token JWT
     const token = generateToken(user._id.toString());
+
+    // Enviar e-mail de boas-vindas (não bloqueia o cadastro em caso de falha)
+    sendWelcomeEmailAsync({
+      _id: user._id,
+      email: user.email,
+      nomeCompleto: user.nomeCompleto,
+      cargo: user.cargo
+    });
 
     // Retornar dados incluindo token de recuperação (apenas neste momento!)
     res.status(201).json({

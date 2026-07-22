@@ -39,6 +39,7 @@ const AdminAccessLogs = lazy(() => import('./pages/admin/AdminAccessLogs'));
 const AdminExercises = lazy(() => import('./pages/admin/AdminExercises'));
 const AdminSiteConfig = lazy(() => import('./pages/admin/AdminSiteConfig'));
 const AdminAnnouncements = lazy(() => import('./pages/admin/AdminAnnouncements'));
+const AdminEmails = lazy(() => import('./pages/admin/AdminEmails'));
 const AdminCertificates = lazy(() => import('./pages/admin/AdminCertificates'));
 const AdminCertificateRequests = lazy(() => import('./pages/admin/AdminCertificateRequests'));
 const ValidateCertificate = lazy(() => import('./pages/ValidateCertificate'));
@@ -184,6 +185,7 @@ const App: React.FC = () => {
                 <Route path="/admin/exercicios" element={<AdminExercises />} />
                 <Route path="/admin/serial-keys" element={<AdminSerialKeys />} />
                 <Route path="/admin/avisos" element={<AdminAnnouncements />} />
+                <Route path="/admin/emails" element={<AdminEmails />} />
                 <Route path="/admin/logs" element={<AdminAccessLogs />} />
                 <Route path="/admin/configuracoes" element={<AdminSiteConfig />} />
                 <Route path="/admin/certificados" element={<AdminCertificates />} />

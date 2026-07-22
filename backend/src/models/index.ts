@@ -9,3 +9,5 @@ export { default as ExerciseAnswer } from './ExerciseAnswer';
 export { default as SerialKey } from './SerialKey';
 export { default as ForumTopic } from './ForumTopic';
 export { default as Announcement } from './Announcement';
+export { default as EmailTemplate } from './EmailTemplate';
+export { default as EmailLog } from './EmailLog';

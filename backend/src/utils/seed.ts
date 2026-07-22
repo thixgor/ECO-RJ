@@ -4,6 +4,8 @@ import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import User from '../models/User';
 import Role from '../models/Role';
+import EmailTemplate from '../models/EmailTemplate';
+import { DEFAULT_TEMPLATES } from './emailTemplates';
 
 dotenv.config();
 
@@ -119,6 +121,17 @@ const seedDatabase = async () => {
     } else {
       console.log(`\nUsuário administrador já existe: ${adminEmail}`);
     }
+
+    // Criar templates de e-mail padrão (idempotente — não sobrescreve editados)
+    let templatesCriados = 0;
+    for (const def of DEFAULT_TEMPLATES) {
+      const exists = await EmailTemplate.findOne({ key: def.key });
+      if (!exists) {
+        await EmailTemplate.create(def);
+        templatesCriados++;
+      }
+    }
+    console.log(`\nTemplates de e-mail: ${templatesCriados} criado(s), ${DEFAULT_TEMPLATES.length - templatesCriados} já existente(s).`);
 
     console.log('\nSeed concluído com sucesso!');
     process.exit(0);

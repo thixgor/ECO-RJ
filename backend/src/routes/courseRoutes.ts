@@ -7,6 +7,7 @@ import {
   deleteCourse,
   enrollCourse,
   unenrollCourse,
+  purchaseCourse,
   getCourseProgress,
   addAuthorizedStudent,
   removeAuthorizedStudent,
@@ -24,6 +25,7 @@ router.get('/:id', optionalAuth, getCourseById);
 // Rotas autenticadas
 router.post('/:id/enroll', protect, enrollCourse);
 router.delete('/:id/enroll', protect, unenrollCourse);
+router.post('/:id/purchase', protect, purchaseCourse);
 router.get('/:id/progress', protect, getCourseProgress);
 
 // Rotas administrativas

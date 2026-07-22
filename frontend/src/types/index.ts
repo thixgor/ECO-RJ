@@ -36,6 +36,7 @@ export interface Course {
   descricao: string;
   instrutor: string | User;
   dataInicio: string;
+  dataTermino?: string; // Data de término do curso (opcional)
   imagemCapa?: string;
   aulas: string[] | Lesson[];
   ativo: boolean;
@@ -320,4 +321,63 @@ export interface GroupedNotesByCourse {
   cursoId: string;
   cursoTitulo: string;
   lessons: GroupedNotesByLesson[];
+}
+
+// ==================== Sistema de E-mails ====================
+export type EmailCategoria = 'sistema' | 'manual';
+export type EmailStatus = 'enviado' | 'falhou' | 'simulado' | 'pendente';
+
+export interface EmailTemplate {
+  _id: string;
+  key: string;
+  nome: string;
+  descricao: string;
+  assunto: string;
+  corpoHtml: string;
+  categoria: EmailCategoria;
+  variaveis: string[];
+  sistema: boolean;
+  ativo: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EmailRecipient {
+  _id: string;
+  nomeCompleto: string;
+  email: string;
+  cargo: string;
+  fotoPerfil?: string;
+  ativo: boolean;
+}
+
+export interface EmailLog {
+  _id: string;
+  para: string;
+  nomeDestinatario?: string;
+  assunto: string;
+  templateKey?: string;
+  categoria: EmailCategoria;
+  status: EmailStatus;
+  erro?: string;
+  destinatario?: string | User;
+  cursoRelacionado?: string | Course;
+  enviadoPor?: string | User;
+  loteId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EmailConfig {
+  configured: boolean;
+  modo: 'ativo' | 'simulado';
+  remetente: string;
+  appUrl: string;
+}
+
+export interface EmailStats {
+  total: number;
+  ultimos30dias: number;
+  porStatus: Record<EmailStatus, number>;
+  configurado: boolean;
 }

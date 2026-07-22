@@ -95,6 +95,7 @@ export const courseService = {
     titulo: string;
     descricao: string;
     dataInicio: string;
+    dataTermino?: string;
     imagemCapa?: string;
     tipo?: 'online' | 'presencial';
   }) => api.post('/courses', data),
@@ -103,11 +104,19 @@ export const courseService = {
     titulo?: string;
     descricao?: string;
     dataInicio?: string;
+    dataTermino?: string;
     imagemCapa?: string;
     ativo?: boolean;
     tipo?: 'online' | 'presencial';
     exibirDuracao?: boolean;
   }) => api.put(`/courses/${id}`, data),
+
+  purchase: (id: string, data?: {
+    valor?: string;
+    metodoPagamento?: string;
+    idTransacao?: string;
+    duracao?: string;
+  }) => api.post(`/courses/${id}/purchase`, data || {}),
 
   delete: (id: string) => api.delete(`/courses/${id}`),
 
@@ -473,6 +482,78 @@ export const certificateRequestService = {
   canRequest: (courseId: string) => api.get(`/certificate-requests/can-request/${courseId}`),
 
   issueImmediate: (courseId: string) => api.post(`/certificate-requests/immediate/${courseId}`)
+};
+
+// E-mails (Admin)
+export const emailService = {
+  // Status da configuração SMTP
+  getConfig: () => api.get('/emails/config'),
+
+  getStats: () => api.get('/emails/stats'),
+
+  // Templates
+  getTemplates: (params?: { categoria?: 'sistema' | 'manual' }) =>
+    api.get('/emails/templates', { params }),
+
+  getTemplateById: (id: string) => api.get(`/emails/templates/${id}`),
+
+  updateTemplate: (id: string, data: {
+    nome?: string;
+    assunto?: string;
+    corpoHtml?: string;
+    descricao?: string;
+    ativo?: boolean;
+  }) => api.put(`/emails/templates/${id}`, data),
+
+  resetTemplate: (id: string) => api.post(`/emails/templates/${id}/reset`),
+
+  // Pré-visualização
+  preview: (data: {
+    templateKey?: string;
+    assunto?: string;
+    corpoHtml?: string;
+    vars?: Record<string, string>;
+  }) => api.post('/emails/preview', data),
+
+  // Destinatários
+  getRecipients: (params?: { cargo?: string; cursoId?: string; ativo?: string; search?: string }) =>
+    api.get('/emails/recipients', { params }),
+
+  // Envio em massa
+  send: (data: {
+    templateKey?: string;
+    assunto?: string;
+    corpoHtml?: string;
+    vars?: Record<string, string>;
+    userIds?: string[];
+    filtro?: { cargo?: string; cursoId?: string; ativo?: string; search?: string };
+  }) => api.post('/emails/send', data),
+
+  // Comprovante de compra (placeholder Mercado Pago)
+  sendPurchaseReceipt: (data: {
+    userId: string;
+    cursoId: string;
+    valor?: string;
+    metodoPagamento?: string;
+    idTransacao?: string;
+    duracao?: string;
+  }) => api.post('/emails/purchase-receipt', data),
+
+  // Processar términos de curso (job manual)
+  processCourseCompletions: () => api.post('/emails/process-course-completions'),
+
+  // Histórico
+  getLogs: (params?: {
+    status?: string;
+    categoria?: string;
+    templateKey?: string;
+    search?: string;
+    page?: number;
+    limit?: number;
+  }) => api.get('/emails/logs', { params }),
+
+  clearLogs: (params?: { status?: string }) =>
+    api.delete('/emails/logs', { params })
 };
 
 // Notes (Anotações do usuário)

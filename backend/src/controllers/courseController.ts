@@ -4,6 +4,7 @@ import Lesson from '../models/Lesson';
 import User from '../models/User';
 import { AuthRequest } from '../middleware/auth';
 import { registrarAcesso } from './accessLogController';
+import { sendCoursePurchaseEmail } from '../utils/emailService';
 
 // @desc    Listar todos os cursos
 // @route   GET /api/courses
@@ -138,6 +139,7 @@ export const createCourse = async (req: AuthRequest, res: Response) => {
       titulo,
       descricao,
       dataInicio,
+      dataTermino,
       imagemCapa,
       dataLimiteInscricao,
       acessoRestrito,
@@ -154,6 +156,7 @@ export const createCourse = async (req: AuthRequest, res: Response) => {
       descricao,
       instrutor: req.user?._id,
       dataInicio: new Date(dataInicio),
+      dataTermino: dataTermino ? new Date(dataTermino) : undefined,
       imagemCapa,
       dataLimiteInscricao: dataLimiteInscricao ? new Date(dataLimiteInscricao) : undefined,
       acessoRestrito: acessoRestrito || false,
@@ -177,6 +180,7 @@ export const updateCourse = async (req: Request, res: Response) => {
       titulo,
       descricao,
       dataInicio,
+      dataTermino,
       imagemCapa,
       ativo,
       dataLimiteInscricao,
@@ -196,6 +200,9 @@ export const updateCourse = async (req: Request, res: Response) => {
     if (titulo) course.titulo = titulo;
     if (descricao) course.descricao = descricao;
     if (dataInicio) course.dataInicio = new Date(dataInicio);
+    if (dataTermino !== undefined) {
+      course.dataTermino = dataTermino ? new Date(dataTermino) : undefined;
+    }
     if (imagemCapa !== undefined) course.imagemCapa = imagemCapa;
     if (ativo !== undefined) course.ativo = ativo;
     if (dataLimiteInscricao !== undefined) {
@@ -291,6 +298,56 @@ export const enrollCourse = async (req: AuthRequest, res: Response) => {
   } catch (error) {
     console.error('Erro ao inscrever no curso:', error);
     res.status(500).json({ message: 'Erro ao inscrever no curso' });
+  }
+};
+
+// @desc    Simular compra de um curso (PLACEHOLDER — integração Mercado Pago pendente)
+// @route   POST /api/courses/:id/purchase
+// @access  Private
+// @nota    Enquanto o gateway de pagamento (Mercado Pago) não é implementado,
+//          este endpoint simula a confirmação de uma compra: inscreve o usuário
+//          e dispara o e-mail de comprovante com os dados do curso. Quando o
+//          Mercado Pago for integrado, o webhook de pagamento aprovado deve
+//          chamar sendCoursePurchaseEmail com os dados reais da transação.
+export const purchaseCourse = async (req: AuthRequest, res: Response) => {
+  try {
+    const course = await Course.findById(req.params.id);
+    if (!course) {
+      return res.status(404).json({ message: 'Curso não encontrado' });
+    }
+
+    if (!course.ativo) {
+      return res.status(400).json({ message: 'Este curso não está disponível' });
+    }
+
+    const user = await User.findById(req.user?._id);
+    if (!user) {
+      return res.status(404).json({ message: 'Usuário não encontrado' });
+    }
+
+    // Inscrever o usuário caso ainda não esteja inscrito
+    if (!user.cursosInscritos.some((id) => id.toString() === course._id.toString())) {
+      user.cursosInscritos.push(course._id as any);
+      await user.save();
+    }
+
+    // Dados de pagamento (placeholder). Quando o Mercado Pago for integrado,
+    // estes valores virão da transação real.
+    const { valor, metodoPagamento, idTransacao, duracao } = req.body || {};
+
+    const emailResult = await sendCoursePurchaseEmail(
+      user,
+      course as any,
+      { valor, metodoPagamento, idTransacao, duracao }
+    );
+
+    res.json({
+      message: 'Compra confirmada. Enviamos o comprovante para o seu e-mail.',
+      emailStatus: emailResult.status
+    });
+  } catch (error) {
+    console.error('Erro ao processar compra do curso:', error);
+    res.status(500).json({ message: 'Erro ao processar compra do curso' });
   }
 };
 
