@@ -7,7 +7,29 @@ import { Course, User as UserType } from '../types';
 import { CoursesGridSkeleton } from '../components/common/Loading';
 import { formatDuration } from '../utils/formatDuration';
 import { GlassTabs, ContextMenu, ContextMenuItem } from '../components/ui';
+import { renderBold } from '../utils/richText';
 import toast from 'react-hot-toast';
+
+const brl = (v: number) => `R$ ${Number(v || 0).toFixed(2).replace('.', ',')}`;
+
+// Calcula o preço final de um curso aplicando o desconto ativado (percentual/fixo)
+const getCoursePricing = (course: Course) => {
+  const venda = course.venda;
+  const disponivel = !!venda?.disponivel && Number(venda?.preco || 0) > 0;
+  if (!disponivel) {
+    return { disponivel: false, precoBase: 0, precoFinal: 0, economia: 0, temDesconto: false };
+  }
+  const precoBase = Number(venda!.preco);
+  let precoFinal = precoBase;
+  const desc = venda!.descontoAtivado;
+  if (desc?.ativo && Number(desc.valor) > 0) {
+    precoFinal = desc.tipo === 'percentual'
+      ? precoBase * (1 - Number(desc.valor) / 100)
+      : Math.max(0, precoBase - Number(desc.valor));
+  }
+  const economia = Math.max(0, precoBase - precoFinal);
+  return { disponivel: true, precoBase, precoFinal, economia, temDesconto: economia > 0.001 };
+};
 
 const Courses: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
@@ -261,7 +283,7 @@ const Courses: React.FC = () => {
                     {course.titulo}
                   </h3>
                   <p className="text-[var(--color-text-secondary)] text-sm mb-4 line-clamp-2">
-                    {course.descricao}
+                    {renderBold(course.descricao)}
                   </p>
                   <div className="space-y-2 text-sm text-[var(--color-text-muted)]">
                     <div className="flex items-center gap-2">
@@ -281,6 +303,44 @@ const Courses: React.FC = () => {
                       </div>
                     )}
                   </div>
+
+                  {/* Preço persuasivo */}
+                  {(() => {
+                    const pricing = getCoursePricing(course);
+                    if (!pricing.disponivel) return null;
+                    return (
+                      <div className="mt-4 pt-4 border-t border-[var(--glass-border)]">
+                        {pricing.temDesconto && (
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xs text-[var(--color-text-muted)] line-through">
+                              {brl(pricing.precoBase)}
+                            </span>
+                            <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400">
+                              -{Math.round((pricing.economia / pricing.precoBase) * 100)}%
+                            </span>
+                          </div>
+                        )}
+                        <div className="flex items-end justify-between">
+                          <div className="leading-tight">
+                            <span className="text-[11px] text-[var(--color-text-muted)] block">
+                              {isEnrolled ? 'Você já está inscrito' : 'Garanta sua vaga por'}
+                            </span>
+                            <span className="text-2xl font-extrabold text-primary-500">
+                              {brl(pricing.precoFinal)}
+                            </span>
+                            {pricing.temDesconto && (
+                              <span className="block text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                                Economize {brl(pricing.economia)}
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-sm font-semibold text-primary-500 whitespace-nowrap">
+                            {isEnrolled ? 'Acessar →' : 'Quero me inscrever →'}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               </Link>
               </ContextMenu>

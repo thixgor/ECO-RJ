@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 import { materialService } from '../services/api';
 import type { MaterialListItem, MaterialTipo } from '../types';
 import { GlassButton, GlassInput, GlassModal } from '../components/ui';
+import { renderBold } from '../utils/richText';
 
 const brl = (v: number) => `R$ ${Number(v || 0).toFixed(2).replace('.', ',')}`;
 
@@ -202,25 +203,46 @@ const Materiais: React.FC = () => {
                   {m.titulo}
                 </h3>
                 <p className="text-[var(--color-text-secondary)] text-sm mb-3 line-clamp-2 flex-1">
-                  {m.descricaoCurta}
+                  {renderBold(m.descricaoCurta)}
                 </p>
 
                 <div className="mb-3">
                   <Stars value={m.avaliacaoMedia} total={m.avaliacaoTotal} />
                 </div>
 
-                <div className="flex items-end justify-between mt-auto">
-                  <div>
-                    {m.temDesconto && m.precoOriginal && (
-                      <span className="block text-xs text-[var(--color-text-muted)] line-through">
+                {/* Preço persuasivo */}
+                <div className="mt-auto">
+                  {m.temDesconto && m.precoOriginal && m.precoOriginal > m.preco && (
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs text-[var(--color-text-muted)] line-through">
                         {brl(m.precoOriginal)}
                       </span>
-                    )}
-                    <span className="text-xl font-bold text-primary-500">{brl(m.preco)}</span>
+                      <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400">
+                        -{Math.round((1 - m.preco / m.precoOriginal) * 100)}%
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex items-end justify-between">
+                    <div className="leading-tight">
+                      <span className="text-[11px] text-[var(--color-text-muted)] block">
+                        {m.adquirido ? 'Você já tem acesso' : 'Por apenas'}
+                      </span>
+                      <span className="text-2xl font-extrabold text-primary-500">{brl(m.preco)}</span>
+                      {m.temDesconto && m.precoOriginal && m.precoOriginal > m.preco && (
+                        <span className="block text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                          Economize {brl(m.precoOriginal - m.preco)}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-sm font-semibold text-primary-500 whitespace-nowrap">
+                      {m.adquirido ? 'Acessar →' : 'Quero este →'}
+                    </span>
                   </div>
-                  <span className="text-sm font-medium text-primary-500">
-                    {m.adquirido ? 'Acessar →' : 'Ver detalhes →'}
-                  </span>
+                  {m.vendasTotais > 0 && !m.adquirido && (
+                    <p className="mt-2 text-[11px] text-[var(--color-text-muted)]">
+                      🔥 {m.vendasTotais} {m.vendasTotais === 1 ? 'aluno já garantiu' : 'alunos já garantiram'}
+                    </p>
+                  )}
                 </div>
               </div>
             </Link>
