@@ -30,6 +30,7 @@ export async function uploadToBlob(
   file: File,
   opts?: {
     prefix?: string;                              // pasta lógica, ex.: 'materiais'
+    access?: 'public' | 'private';                // 'private' (arquivos) | 'public' (capa)
     onProgress?: (percentage: number) => void;    // 0–100
     signal?: AbortSignal;
   }
@@ -43,7 +44,9 @@ export async function uploadToBlob(
   const pathname = `${prefix}/${Date.now()}-${sanitize(file.name)}`;
 
   const blob = await upload(pathname, file, {
-    access: 'public',
+    // Arquivos de material são privados (download por URL assinada); a capa é
+    // pública (aparece na vitrine). Apenas admins conseguem chegar aqui.
+    access: opts?.access || 'private',
     handleUploadUrl: '/api/materials/admin/blob-upload',
     clientPayload: token,
     multipart: true, // divide arquivos grandes em partes (mais robusto)

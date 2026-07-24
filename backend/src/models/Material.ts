@@ -36,8 +36,8 @@ export interface IMaterialConteudo {
   embedVideo?: string;
   duracao?: number; // minutos
   // Para 'pdf' / 'arquivo'
-  arquivoUrl?: string;   // URL direta (usada enquanto o Vercel Blob não está aplicado)
-  blobKey?: string;      // chave no Vercel Blob (futuro)
+  arquivoUrl?: string;   // URL direta externa (fallback/legado — sem blobKey)
+  blobKey?: string;      // pathname do blob PRIVADO no Vercel Blob (download por URL assinada)
   nomeArquivo?: string;  // nome de exibição/download
   mimeType?: string;
   tamanhoBytes?: number;

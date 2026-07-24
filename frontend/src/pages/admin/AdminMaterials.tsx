@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Package, Plus, Pencil, Trash2, Loader2, Star, X, Video, FileText, File, Info, Gift, TrendingUp, UploadCloud
+  Package, Plus, Pencil, Trash2, Loader2, Star, X, Video, FileText, File, Info, Gift, TrendingUp, UploadCloud, Lock
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { GlassCard, GlassButton, GlassInput, GlassTextarea, GlassSelect, GlassModal } from '../../components/ui';
@@ -26,8 +26,9 @@ const BlobUploadButton: React.FC<{
   prefix: string;
   accept?: string;
   label?: string;
+  access?: 'public' | 'private';
   onUploaded: (r: { url: string; pathname: string; name: string; type: string; size: number }) => void;
-}> = ({ prefix, accept, label = 'Enviar arquivo', onUploaded }) => {
+}> = ({ prefix, accept, label = 'Enviar arquivo', access = 'private', onUploaded }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [progress, setProgress] = useState<number | null>(null);
 
@@ -36,7 +37,7 @@ const BlobUploadButton: React.FC<{
     if (!file) return;
     setProgress(0);
     try {
-      const res = await uploadToBlob(file, { prefix, onProgress: setProgress });
+      const res = await uploadToBlob(file, { prefix, access, onProgress: setProgress });
       onUploaded({ url: res.url, pathname: res.pathname, name: file.name, type: file.type, size: file.size });
       toast.success('Arquivo enviado');
     } catch (err: any) {
@@ -213,9 +214,10 @@ const AdminMaterials: React.FC = () => {
       <div className="mb-6 p-3 rounded-xl bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30 flex items-start gap-3 text-sm text-blue-800 dark:text-blue-300">
         <Info className="w-5 h-5 flex-shrink-0 mt-0.5" />
         <span>
-          <strong>Upload de arquivos via Vercel Blob ativo.</strong> Ao cadastrar um conteúdo (PDF/arquivo), use
-          <strong> Enviar arquivo (grande)</strong> para subir arquivos direto do navegador — sem o limite de 4.5 MB
-          (até 500 MB por arquivo). Você também pode colar uma <strong>URL direta</strong> no campo, se preferir.
+          <strong>Upload via Vercel Blob ativo.</strong> Ao cadastrar um conteúdo (PDF/arquivo), use
+          <strong> Enviar arquivo (privado)</strong> para subir direto do navegador — sem o limite de 4.5 MB
+          (até 500 MB por arquivo). Arquivos ficam <strong>protegidos</strong>: o download só é liberado por uma
+          <strong> URL assinada temporária</strong> para quem comprou. A capa é pública (aparece na vitrine).
         </span>
       </div>
 
@@ -286,6 +288,7 @@ const AdminMaterials: React.FC = () => {
                 <BlobUploadButton
                   prefix="materiais/capas"
                   accept="image/*"
+                  access="public"
                   label="Enviar imagem de capa"
                   onUploaded={(r) => setF({ capa: r.url })}
                 />
@@ -359,29 +362,48 @@ const AdminMaterials: React.FC = () => {
                     </div>
                   ) : (
                     <div className="mt-3 space-y-3">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <GlassInput label="URL do arquivo" value={c.arquivoUrl || ''} onChange={(e) => updateConteudo(i, { arquivoUrl: e.target.value })} placeholder="https://.../arquivo.pdf" />
-                        <GlassInput label="Nome de download" value={c.nomeArquivo || ''} onChange={(e) => updateConteudo(i, { nomeArquivo: e.target.value })} placeholder="apostila.pdf" />
-                      </div>
-                      <div className="flex flex-wrap items-center gap-3">
-                        <BlobUploadButton
-                          prefix="materiais"
-                          accept={c.tipo === 'pdf' ? 'application/pdf' : undefined}
-                          label="Enviar arquivo (grande)"
-                          onUploaded={(r) => updateConteudo(i, {
-                            arquivoUrl: r.url,
-                            blobKey: r.pathname,
-                            nomeArquivo: c.nomeArquivo?.trim() ? c.nomeArquivo : r.name,
-                            mimeType: r.type || undefined,
-                            tamanhoBytes: r.size || undefined
-                          })}
-                        />
-                        <span className="text-xs text-[var(--color-text-muted)]">
-                          {c.arquivoUrl
-                            ? `Arquivo definido${c.tamanhoBytes ? ` · ${formatBytes(c.tamanhoBytes)}` : ''}`
-                            : 'Envie o arquivo (até 500 MB) ou cole uma URL direta.'}
-                        </span>
-                      </div>
+                      {c.blobKey ? (
+                        /* Arquivo privado enviado ao Vercel Blob (download por URL assinada). */
+                        <div className="flex flex-wrap items-center gap-3">
+                          <span className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400">
+                            <Lock className="w-4 h-4" />
+                            Arquivo privado enviado
+                            {c.tamanhoBytes ? ` · ${formatBytes(c.tamanhoBytes)}` : ''}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => updateConteudo(i, { blobKey: undefined, arquivoUrl: '', mimeType: undefined, tamanhoBytes: undefined })}
+                            className="inline-flex items-center gap-1.5 text-xs text-red-500 hover:underline"
+                          >
+                            <X className="w-3.5 h-3.5" /> Remover / trocar
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <GlassInput label="URL do arquivo (opcional)" value={c.arquivoUrl || ''} onChange={(e) => updateConteudo(i, { arquivoUrl: e.target.value })} placeholder="https://.../arquivo.pdf" />
+                            <GlassInput label="Nome de download" value={c.nomeArquivo || ''} onChange={(e) => updateConteudo(i, { nomeArquivo: e.target.value })} placeholder="apostila.pdf" />
+                          </div>
+                          <div className="flex flex-wrap items-center gap-3">
+                            <BlobUploadButton
+                              prefix="materiais"
+                              access="private"
+                              accept={c.tipo === 'pdf' ? 'application/pdf' : undefined}
+                              label="Enviar arquivo (privado)"
+                              onUploaded={(r) => updateConteudo(i, {
+                                blobKey: r.pathname,
+                                arquivoUrl: '',
+                                nomeArquivo: c.nomeArquivo?.trim() ? c.nomeArquivo : r.name,
+                                mimeType: r.type || undefined,
+                                tamanhoBytes: r.size || undefined
+                              })}
+                            />
+                            <span className="text-xs text-[var(--color-text-muted)]">
+                              Envie o arquivo (até 500 MB, protegido por URL assinada) ou cole uma URL direta pública.
+                            </span>
+                          </div>
+                        </>
+                      )}
                     </div>
                   )}
                 </div>

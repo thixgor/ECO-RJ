@@ -12,6 +12,10 @@ import User from '../models/User';
  * emite um token de upload de curta duração após validar que quem pede é um
  * Administrador.
  *
+ * Acesso (público/privado) é escolhido no cliente (`upload({ access })`):
+ * arquivos de material são PRIVADOS (download por URL assinada) e a capa é
+ * PÚBLICA. Como só admins chegam aqui, confiar nessa escolha é aceitável.
+ *
  * Esta rota atende dois tipos de requisição do SDK `@vercel/blob/client`:
  *   1. `blob.generate-client-token`  → vinda do navegador (com clientPayload).
  *   2. `blob.upload-completed`       → callback dos servidores da Vercel.

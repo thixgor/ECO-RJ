@@ -5,6 +5,7 @@ import MaterialEntitlement from '../models/MaterialEntitlement';
 import Coupon from '../models/Coupon';
 import User from '../models/User';
 import { sendMaterialPurchaseEmail, MailAttachment } from './emailService';
+import { getSignedUrl } from './blobStorageService';
 
 const KEY_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 
@@ -148,16 +149,19 @@ export async function fulfillMaterialOrder(orderId: string): Promise<void> {
   const accessLink = `${getBaseUrl()}/materiais/acesso?token=${accessToken}`;
 
   // Anexa PDFs (para convidados) — best-effort; falha de anexo não impede envio.
+  // Resolve a URL via getSignedUrl: para blobs privados gera uma URL assinada
+  // temporária (o nodemailer busca o arquivo no momento do envio).
   const attachments: MailAttachment[] = [];
   if (isGuest && material) {
     for (const c of material.conteudos) {
-      if (c.tipo === 'pdf' && c.arquivoUrl && c.arquivoUrl.trim()) {
-        attachments.push({
-          filename: c.nomeArquivo || `${(c.titulo || 'material').replace(/[^\w.-]+/g, '_')}.pdf`,
-          path: c.arquivoUrl.trim(),
-          contentType: 'application/pdf'
-        });
-      }
+      if (c.tipo !== 'pdf') continue;
+      const url = await getSignedUrl(c);
+      if (!url) continue;
+      attachments.push({
+        filename: c.nomeArquivo || `${(c.titulo || 'material').replace(/[^\w.-]+/g, '_')}.pdf`,
+        path: url,
+        contentType: 'application/pdf'
+      });
     }
   }
 
