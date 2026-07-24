@@ -252,11 +252,6 @@ export const createCheckout = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Valor mínimo do Mercado Pago
-    if (breakdown.total < 1) {
-      return res.status(400).json({ message: 'O valor total mínimo para pagamento é R$ 1,00' });
-    }
-
     const order = await Order.create(orderData);
     const { firstName, lastName } = splitName(nome);
 

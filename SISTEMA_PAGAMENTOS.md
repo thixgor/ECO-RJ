@@ -176,7 +176,7 @@ Ordem determinística (calculada **sempre no servidor**, nunca no cliente):
 
 - A **taxa operacional** (1% por padrão, editável) é somada ao produto e exibida como linha separada no checkout, no comprovante e no painel.
 - Um cupom de **100%** gera compra **gratuita** (cortesia), entregue sem passar pelo Mercado Pago.
-- Valor mínimo de cobrança: **R$ 1,00** (limite do Mercado Pago).
+- Não há valor mínimo imposto pela plataforma (útil para testes com valores baixos). O Mercado Pago pode recusar valores muito pequenos conforme o meio de pagamento.
 
 ---
 

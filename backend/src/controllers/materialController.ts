@@ -364,10 +364,6 @@ export const createMaterialCheckout = async (req: AuthRequest, res: Response) =>
       });
     }
 
-    if (breakdown.total < 1) {
-      return res.status(400).json({ message: 'O valor total mínimo para pagamento é R$ 1,00' });
-    }
-
     const order = await MaterialOrder.create(orderData);
     const { firstName, lastName } = splitName(nome);
 
