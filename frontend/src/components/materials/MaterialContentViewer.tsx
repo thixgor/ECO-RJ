@@ -39,7 +39,7 @@ const MaterialContentViewer: React.FC<Props> = ({ conteudos, identity }) => {
     setBaixando(i);
     try {
       await downloadWatermarkedPdf(c.downloadUrl, identity || {}, c.nomeArquivo || c.titulo);
-      toast.success('Download iniciado. O arquivo contém sua marca d\'água pessoal.');
+      toast.success('Arquivo pronto com sua marca d\'água pessoal (nome, CPF e e-mail).');
     } catch (err) {
       console.error('Falha ao aplicar marca d\'água — abrindo arquivo original:', err);
       toast.error('Não foi possível personalizar o arquivo; abrindo o download original.');
