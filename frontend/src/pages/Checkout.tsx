@@ -187,6 +187,7 @@ const Checkout: React.FC = () => {
       return { ok: false, message: 'Pagamento não aprovado' };
     } catch (err: any) {
       const data = err.response?.data;
+      console.error('Falha no pagamento (Mercado Pago):', data || err);
       toast.error(data?.motivo || data?.message || 'Não foi possível processar o pagamento');
       return { ok: false };
     }

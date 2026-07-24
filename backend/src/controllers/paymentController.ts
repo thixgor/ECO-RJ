@@ -31,16 +31,24 @@ function splitName(nome: string): { firstName: string; lastName: string } {
   return { firstName, lastName };
 }
 
-/** Extrai uma descrição legível de erro do SDK do Mercado Pago. */
-function extractMpError(error: any): string | undefined {
-  const c = error?.cause;
-  if (Array.isArray(c) && c.length) return c[0]?.description || c[0]?.message;
-  if (c && typeof c === 'object') return c.description || c.message;
-  if (typeof c === 'string') return c;
-  if (typeof error?.message === 'string' && error.message && error.message !== '[object Object]') {
-    return error.message;
+/**
+ * Extrai motivo + detalhe de um erro do SDK do Mercado Pago.
+ * O SDK lança diretamente o corpo JSON de erro da API do MP
+ * (`{ message, status, error, cause: [{ code, description }] }`).
+ */
+function extractMpError(error: any): { motivo?: string; detalhe?: string } {
+  if (!error || typeof error !== 'object') {
+    return { motivo: typeof error === 'string' ? error : undefined };
   }
-  return undefined;
+  const causeArr = Array.isArray(error.cause) ? error.cause : (error.cause ? [error.cause] : []);
+  const causeDesc = causeArr
+    .map((c: any) => (typeof c === 'string' ? c : (c?.description || c?.message || c?.code)))
+    .filter(Boolean)
+    .join('; ');
+  const motivo = causeDesc || error.message || error.error || undefined;
+  let detalhe: string | undefined;
+  try { detalhe = JSON.stringify(error).slice(0, 900); } catch { /* noop */ }
+  return { motivo, detalhe };
 }
 
 function getClientIp(req: Request): string {
@@ -414,13 +422,12 @@ export const processPayment = async (req: AuthRequest, res: Response) => {
     await applyPaymentToOrder(order, result);
     return res.status(201).json(serializePaymentResponse(order));
   } catch (error: any) {
-    const motivo = extractMpError(error);
-    console.error('Erro ao processar pagamento (MP):', JSON.stringify({
-      message: error?.message, status: error?.status, cause: error?.cause
-    }));
+    const { motivo, detalhe } = extractMpError(error);
+    console.error('Erro ao processar pagamento (MP):', detalhe || error);
     return res.status(502).json({
       message: 'Não foi possível processar o pagamento. Verifique os dados e tente novamente.',
-      motivo
+      motivo,
+      detalhe
     });
   }
 };
