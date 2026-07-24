@@ -34,6 +34,7 @@ import {
   grantMaterialAccess,
   updateEntitlement
 } from '../controllers/adminMaterialController';
+import { handleBlobUpload } from '../controllers/blobUploadController';
 import { protect, adminOnly, optionalAuth } from '../middleware/auth';
 
 const router = Router();
@@ -58,6 +59,11 @@ router.get('/my', protect, getMyMaterials);
 router.post('/claim', protect, claimMaterialAccess);
 
 // ---- Admin ----
+// Client Upload do Vercel Blob (arquivos grandes). SEM protect/adminOnly: a rota
+// também recebe o callback dos servidores da Vercel (sem nosso JWT). A autenticação
+// do admin ocorre dentro de handleBlobUpload (JWT via clientPayload).
+router.post('/admin/blob-upload', handleBlobUpload);
+
 router.get('/admin/all', protect, adminOnly, listMaterialsAdmin);
 router.get('/admin/stats', protect, adminOnly, getMaterialStats);
 router.get('/admin/orders', protect, adminOnly, listMaterialOrders);

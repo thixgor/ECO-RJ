@@ -1,14 +1,74 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Package, Plus, Pencil, Trash2, Loader2, Star, X, Video, FileText, File, Info, Gift, TrendingUp
+  Package, Plus, Pencil, Trash2, Loader2, Star, X, Video, FileText, File, Info, Gift, TrendingUp, UploadCloud
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { GlassCard, GlassButton, GlassInput, GlassTextarea, GlassSelect, GlassModal } from '../../components/ui';
 import { materialService } from '../../services/api';
+import { uploadToBlob } from '../../services/blobUpload';
 import type { MaterialAdmin, MaterialConteudo, ConteudoTipo, MaterialTipo } from '../../types';
 
 const brl = (v: number) => `R$ ${Number(v || 0).toFixed(2).replace('.', ',')}`;
+
+const formatBytes = (bytes?: number) => {
+  if (!bytes || bytes <= 0) return '';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  return `${(bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+};
+
+/**
+ * Botão de upload direto para o Vercel Blob (Client Upload — suporta arquivos
+ * grandes, acima de 4.5 MB, pois o arquivo vai do navegador direto ao Blob).
+ */
+const BlobUploadButton: React.FC<{
+  prefix: string;
+  accept?: string;
+  label?: string;
+  onUploaded: (r: { url: string; pathname: string; name: string; type: string; size: number }) => void;
+}> = ({ prefix, accept, label = 'Enviar arquivo', onUploaded }) => {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [progress, setProgress] = useState<number | null>(null);
+
+  const handleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setProgress(0);
+    try {
+      const res = await uploadToBlob(file, { prefix, onProgress: setProgress });
+      onUploaded({ url: res.url, pathname: res.pathname, name: file.name, type: file.type, size: file.size });
+      toast.success('Arquivo enviado');
+    } catch (err: any) {
+      toast.error(err?.message || 'Falha no upload do arquivo');
+    } finally {
+      setProgress(null);
+      if (inputRef.current) inputRef.current.value = '';
+    }
+  };
+
+  const uploading = progress !== null;
+
+  return (
+    <div>
+      <input ref={inputRef} type="file" accept={accept} className="hidden" onChange={handleChange} disabled={uploading} />
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        disabled={uploading}
+        className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border border-[var(--glass-border)] bg-[var(--glass-bg)] hover:bg-primary-500/10 text-primary-600 disabled:opacity-60"
+      >
+        {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <UploadCloud className="w-4 h-4" />}
+        {uploading ? `Enviando… ${progress}%` : label}
+      </button>
+      {uploading && (
+        <div className="mt-2 h-1.5 w-full rounded-full bg-[var(--glass-border)] overflow-hidden">
+          <div className="h-full bg-primary-500 transition-all" style={{ width: `${progress}%` }} />
+        </div>
+      )}
+    </div>
+  );
+};
 
 const emptyConteudo = (): MaterialConteudo => ({ tipo: 'pdf', titulo: '', descricao: '', arquivoUrl: '', nomeArquivo: '' });
 
@@ -153,8 +213,9 @@ const AdminMaterials: React.FC = () => {
       <div className="mb-6 p-3 rounded-xl bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30 flex items-start gap-3 text-sm text-blue-800 dark:text-blue-300">
         <Info className="w-5 h-5 flex-shrink-0 mt-0.5" />
         <span>
-          Enquanto o <strong>Vercel Blob</strong> não é aplicado, cadastre os arquivos (PDF/arquivo) informando a
-          <strong> URL direta</strong> do arquivo no campo correspondente. A migração para upload via Blob já está preparada no backend.
+          <strong>Upload de arquivos via Vercel Blob ativo.</strong> Ao cadastrar um conteúdo (PDF/arquivo), use
+          <strong> Enviar arquivo (grande)</strong> para subir arquivos direto do navegador — sem o limite de 4.5 MB
+          (até 500 MB por arquivo). Você também pode colar uma <strong>URL direta</strong> no campo, se preferir.
         </span>
       </div>
 
@@ -219,7 +280,17 @@ const AdminMaterials: React.FC = () => {
                 { value: 'conjunto', label: 'Conjunto (misto)' }
               ]}
             />
-            <GlassInput label="Capa (URL da imagem)" value={form.capa || ''} onChange={(e) => setF({ capa: e.target.value })} placeholder="https://i.imgur.com/..." />
+            <div>
+              <GlassInput label="Capa (URL da imagem)" value={form.capa || ''} onChange={(e) => setF({ capa: e.target.value })} placeholder="https://i.imgur.com/..." />
+              <div className="mt-2">
+                <BlobUploadButton
+                  prefix="materiais/capas"
+                  accept="image/*"
+                  label="Enviar imagem de capa"
+                  onUploaded={(r) => setF({ capa: r.url })}
+                />
+              </div>
+            </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <GlassInput label="Preço (R$)" type="number" min={0} step="0.01" value={String(form.preco ?? 0)} onChange={(e) => setF({ preco: Number(e.target.value) })} />
@@ -287,9 +358,30 @@ const AdminMaterials: React.FC = () => {
                       <GlassInput label="Duração (min)" type="number" min={0} value={String(c.duracao ?? '')} onChange={(e) => updateConteudo(i, { duracao: Number(e.target.value) })} />
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
-                      <GlassInput label="URL do arquivo" value={c.arquivoUrl || ''} onChange={(e) => updateConteudo(i, { arquivoUrl: e.target.value })} placeholder="https://.../arquivo.pdf" />
-                      <GlassInput label="Nome de download" value={c.nomeArquivo || ''} onChange={(e) => updateConteudo(i, { nomeArquivo: e.target.value })} placeholder="apostila.pdf" />
+                    <div className="mt-3 space-y-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <GlassInput label="URL do arquivo" value={c.arquivoUrl || ''} onChange={(e) => updateConteudo(i, { arquivoUrl: e.target.value })} placeholder="https://.../arquivo.pdf" />
+                        <GlassInput label="Nome de download" value={c.nomeArquivo || ''} onChange={(e) => updateConteudo(i, { nomeArquivo: e.target.value })} placeholder="apostila.pdf" />
+                      </div>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <BlobUploadButton
+                          prefix="materiais"
+                          accept={c.tipo === 'pdf' ? 'application/pdf' : undefined}
+                          label="Enviar arquivo (grande)"
+                          onUploaded={(r) => updateConteudo(i, {
+                            arquivoUrl: r.url,
+                            blobKey: r.pathname,
+                            nomeArquivo: c.nomeArquivo?.trim() ? c.nomeArquivo : r.name,
+                            mimeType: r.type || undefined,
+                            tamanhoBytes: r.size || undefined
+                          })}
+                        />
+                        <span className="text-xs text-[var(--color-text-muted)]">
+                          {c.arquivoUrl
+                            ? `Arquivo definido${c.tamanhoBytes ? ` · ${formatBytes(c.tamanhoBytes)}` : ''}`
+                            : 'Envie o arquivo (até 500 MB) ou cole uma URL direta.'}
+                        </span>
+                      </div>
                     </div>
                   )}
                 </div>
