@@ -72,6 +72,7 @@ const MercadoPagoBrick: React.FC<MercadoPagoBrickProps> = ({
             amount,
             payer: {
               email: payer.email,
+              entityType: 'individual',
               firstName: payer.firstName,
               lastName: payer.lastName,
               ...(payer.cpf ? { identification: { type: 'CPF', number: payer.cpf } } : {})
