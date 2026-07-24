@@ -34,6 +34,18 @@ function splitName(nome: string): { firstName: string; lastName: string } {
   return { firstName, lastName };
 }
 
+/** Extrai uma descrição legível de erro do SDK do Mercado Pago. */
+function extractMpError(error: any): string | undefined {
+  const c = error?.cause;
+  if (Array.isArray(c) && c.length) return c[0]?.description || c[0]?.message;
+  if (c && typeof c === 'object') return c.description || c.message;
+  if (typeof c === 'string') return c;
+  if (typeof error?.message === 'string' && error.message && error.message !== '[object Object]') {
+    return error.message;
+  }
+  return undefined;
+}
+
 function getClientIp(req: Request): string {
   const fwd = req.headers['x-forwarded-for'];
   if (typeof fwd === 'string' && fwd.length) return fwd.split(',')[0].trim();
@@ -509,9 +521,14 @@ export const processMaterialPayment = async (req: AuthRequest, res: Response) =>
     await applyMaterialPayment(order, result);
     return res.status(201).json(serializeMaterialPaymentResponse(order));
   } catch (error: any) {
-    const mpMsg = error?.cause?.[0]?.description || error?.message;
-    console.error('Erro ao processar pagamento de material:', mpMsg || error);
-    return res.status(502).json({ message: 'Não foi possível processar o pagamento. Verifique os dados e tente novamente.' });
+    const motivo = extractMpError(error);
+    console.error('Erro ao processar pagamento de material (MP):', JSON.stringify({
+      message: error?.message, status: error?.status, cause: error?.cause
+    }));
+    return res.status(502).json({
+      message: 'Não foi possível processar o pagamento. Verifique os dados e tente novamente.',
+      motivo
+    });
   }
 };
 
