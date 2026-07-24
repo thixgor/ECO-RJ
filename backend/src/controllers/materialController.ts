@@ -48,7 +48,9 @@ function extractMpError(error: any): { motivo?: string; detalhe?: string } {
     .map((c: any) => (typeof c === 'string' ? c : (c?.description || c?.message || c?.code)))
     .filter(Boolean)
     .join('; ');
-  const motivo = causeDesc || error.message || error.error || undefined;
+  // A mensagem de topo do MP costuma ser a mais específica; o cause é um rótulo genérico.
+  const raw = error.message || causeDesc || error.error || undefined;
+  const motivo = typeof raw === 'string' ? raw.replace(/\s*null\s*$/i, '').trim() : raw;
   let detalhe: string | undefined;
   try { detalhe = JSON.stringify(error).slice(0, 900); } catch { /* noop */ }
   return { motivo, detalhe };
