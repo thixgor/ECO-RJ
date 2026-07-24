@@ -7,6 +7,7 @@ import {
 import toast from 'react-hot-toast';
 import { GlassCard, GlassButton, GlassTextarea } from '../components/ui';
 import MaterialContentViewer from '../components/materials/MaterialContentViewer';
+import { renderBold } from '../utils/richText';
 import { materialService } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import type { MaterialDetalhe, MaterialReview, MaterialTipo } from '../types';
@@ -52,7 +53,7 @@ const StarPicker: React.FC<{ value: number; onChange?: (n: number) => void; size
 const MaterialDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
 
   const [material, setMaterial] = useState<MaterialDetalhe | null>(null);
   const [temAcesso, setTemAcesso] = useState(false);
@@ -148,7 +149,7 @@ const MaterialDetail: React.FC = () => {
                 </span>
               </div>
               <h1 className="text-2xl font-heading font-bold mb-3 text-[var(--color-text-primary)]">{material.titulo}</h1>
-              <p className="text-[var(--color-text-secondary)] whitespace-pre-wrap leading-relaxed">{material.descricao}</p>
+              <p className="text-[var(--color-text-secondary)] whitespace-pre-wrap leading-relaxed">{renderBold(material.descricao)}</p>
             </div>
           </GlassCard>
 
@@ -160,7 +161,10 @@ const MaterialDetail: React.FC = () => {
             </h2>
 
             {temAcesso ? (
-              <MaterialContentViewer conteudos={material.conteudos} />
+              <MaterialContentViewer
+                conteudos={material.conteudos}
+                identity={{ nome: user?.nomeCompleto, cpf: user?.cpf, email: user?.email }}
+              />
             ) : (
               <div className="space-y-2">
                 {material.conteudos.map((c, i) => (
@@ -170,7 +174,7 @@ const MaterialDetail: React.FC = () => {
                     </span>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-[var(--color-text-primary)] truncate">{c.titulo}</p>
-                      {c.descricao && <p className="text-xs text-[var(--color-text-muted)] truncate">{c.descricao}</p>}
+                      {c.descricao && <p className="text-xs text-[var(--color-text-muted)] truncate">{renderBold(c.descricao)}</p>}
                     </div>
                     {typeof c.duracao === 'number' && c.duracao > 0 && (
                       <span className="text-xs text-[var(--color-text-muted)] flex items-center gap-1">

@@ -1,6 +1,9 @@
-import React from 'react';
-import { Video, FileText, File, Download, PlayCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { Video, FileText, File, Download, PlayCircle, Loader2, ShieldCheck } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { extractYouTubeId, extractVimeoId } from '../../utils/videoUtils';
+import { renderBold } from '../../utils/richText';
+import { downloadWatermarkedPdf, hasWatermarkIdentity, type WatermarkIdentity } from '../../utils/pdfWatermark';
 import type { MaterialConteudo } from '../../types';
 
 /** Converte um embed/URL em uma src de iframe utilizável (YouTube/Vimeo/URL direta). */
@@ -23,9 +26,30 @@ const iconFor = (tipo: string) => {
 
 interface Props {
   conteudos: MaterialConteudo[];
+  /** Dados do titular para marca d'água nos PDFs baixados (nome, CPF, e-mail). */
+  identity?: WatermarkIdentity;
 }
 
-const MaterialContentViewer: React.FC<Props> = ({ conteudos }) => {
+const MaterialContentViewer: React.FC<Props> = ({ conteudos, identity }) => {
+  const [baixando, setBaixando] = useState<number | null>(null);
+  const podeMarcar = hasWatermarkIdentity(identity);
+
+  const handleDownloadPdf = async (c: MaterialConteudo, i: number) => {
+    if (!c.downloadUrl) return;
+    setBaixando(i);
+    try {
+      await downloadWatermarkedPdf(c.downloadUrl, identity || {}, c.nomeArquivo || c.titulo);
+      toast.success('Download iniciado. O arquivo contém sua marca d\'água pessoal.');
+    } catch (err) {
+      console.error('Falha ao aplicar marca d\'água — abrindo arquivo original:', err);
+      toast.error('Não foi possível personalizar o arquivo; abrindo o download original.');
+      // Fallback: abre o download original para não deixar o comprador sem o arquivo.
+      window.open(c.downloadUrl, '_blank', 'noopener,noreferrer');
+    } finally {
+      setBaixando(null);
+    }
+  };
+
   if (!conteudos || conteudos.length === 0) {
     return (
       <p className="text-sm text-[var(--color-text-muted)]">Nenhum conteúdo disponível neste material.</p>
@@ -36,6 +60,7 @@ const MaterialContentViewer: React.FC<Props> = ({ conteudos }) => {
     <div className="space-y-5">
       {conteudos.map((c, i) => {
         const embedSrc = c.tipo === 'aula' ? buildEmbedSrc(c.embedVideo) : null;
+        const isPdf = c.tipo === 'pdf';
         return (
           <div key={c._id || i} className="rounded-xl border border-[var(--glass-border)] bg-[var(--glass-bg)] overflow-hidden">
             <div className="flex items-center gap-2 px-4 py-3 border-b border-[var(--glass-border)]">
@@ -51,7 +76,7 @@ const MaterialContentViewer: React.FC<Props> = ({ conteudos }) => {
 
             <div className="p-4">
               {c.descricao && (
-                <p className="text-sm text-[var(--color-text-secondary)] mb-3">{c.descricao}</p>
+                <p className="text-sm text-[var(--color-text-secondary)] mb-3">{renderBold(c.descricao)}</p>
               )}
 
               {c.tipo === 'aula' ? (
@@ -71,6 +96,22 @@ const MaterialContentViewer: React.FC<Props> = ({ conteudos }) => {
                     <PlayCircle className="w-4 h-4" /> Vídeo indisponível no momento.
                   </div>
                 )
+              ) : isPdf && c.downloadUrl && podeMarcar ? (
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadPdf(c, i)}
+                    disabled={baixando === i}
+                    className="glass-btn-primary inline-flex items-center gap-2 !py-2.5 disabled:opacity-60"
+                  >
+                    {baixando === i ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                    {baixando === i ? 'Preparando arquivo…' : `Baixar ${c.nomeArquivo || c.titulo}`}
+                  </button>
+                  <p className="mt-2 flex items-center gap-1.5 text-xs text-[var(--color-text-muted)]">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+                    Este PDF é personalizado com seu nome, CPF e e-mail (marca d'água).
+                  </p>
+                </div>
               ) : (
                 <a
                   href={c.downloadUrl}

@@ -20,6 +20,7 @@ const MaterialAccess: React.FC = () => {
   const [material, setMaterial] = useState<MaterialDetalhe | null>(null);
   const [serialKey, setSerialKey] = useState<string | null>(null);
   const [validade, setValidade] = useState<string | null>(null);
+  const [comprador, setComprador] = useState<{ nome?: string; cpf?: string; email?: string } | null>(null);
   const [vinculando, setVinculando] = useState(false);
 
   const load = async (t: string) => {
@@ -31,6 +32,7 @@ const MaterialAccess: React.FC = () => {
       setMaterial(res.data.material);
       setSerialKey(res.data.serialKey);
       setValidade(res.data.validade || null);
+      setComprador(res.data.comprador || (res.data.email ? { email: res.data.email } : null));
     } catch (err: any) {
       setErro(err.response?.data?.message || 'Acesso não encontrado ou inválido.');
       setMaterial(null);
@@ -179,7 +181,7 @@ const MaterialAccess: React.FC = () => {
 
       <GlassCard className="p-6">
         <h2 className="font-heading font-bold text-lg mb-4">Conteúdo</h2>
-        <MaterialContentViewer conteudos={material.conteudos} />
+        <MaterialContentViewer conteudos={material.conteudos} identity={comprador || undefined} />
       </GlassCard>
     </div>
   );

@@ -743,6 +743,18 @@ export const getAccessByToken = async (req: Request, res: Response) => {
     ent.ultimoAcesso = new Date();
     await ent.save();
 
+    // Dados do titular (para marca d'água nos PDFs baixados pelo convidado).
+    // O e-mail vem do próprio entitlement; nome/CPF vêm do pedido, quando houver.
+    let compradorNome = '';
+    let compradorCpf = '';
+    if (ent.order) {
+      const order = await MaterialOrder.findById(ent.order).select('compradorDados');
+      if (order?.compradorDados) {
+        compradorNome = order.compradorDados.nome || '';
+        compradorCpf = order.compradorDados.cpf || '';
+      }
+    }
+
     res.json({
       material: {
         _id: material._id,
@@ -754,7 +766,8 @@ export const getAccessByToken = async (req: Request, res: Response) => {
       },
       serialKey: ent.serialKey,
       validade: ent.validade,
-      email: ent.email
+      email: ent.email,
+      comprador: { nome: compradorNome, cpf: compradorCpf, email: ent.email }
     });
   } catch (error) {
     console.error('Erro ao acessar material por token:', error);
@@ -786,6 +799,30 @@ export const downloadByToken = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Arquivo ainda não disponível. Contate o suporte.' });
     }
     await MaterialEntitlement.updateOne({ _id: ent._id }, { $inc: { totalDownloads: 1 }, $set: { ultimoAcesso: new Date() } });
+
+    // Modo RAW (?raw=1): transmite os bytes pela NOSSA API (mesma origem).
+    // Necessário para a marca d'água client-side conseguir LER o arquivo sem
+    // esbarrar em CORS ao buscar o Blob diretamente do navegador.
+    if (String(req.query.raw || '') === '1') {
+      try {
+        const upstream = await fetch(url);
+        if (!upstream.ok || !upstream.body) {
+          return res.redirect(302, url); // fallback: deixa o navegador buscar direto
+        }
+        const arrayBuf = await upstream.arrayBuffer();
+        const buffer = Buffer.from(arrayBuf);
+        const nome = conteudo.nomeArquivo || `${(conteudo.titulo || 'material').replace(/[^\w.-]+/g, '_')}`;
+        res.setHeader('Content-Type', conteudo.mimeType || upstream.headers.get('content-type') || 'application/octet-stream');
+        res.setHeader('Content-Disposition', `attachment; filename="${nome.replace(/"/g, '')}"`);
+        res.setHeader('Content-Length', String(buffer.length));
+        res.setHeader('Cache-Control', 'no-store');
+        return res.status(200).send(buffer);
+      } catch (e) {
+        console.error('Erro no proxy RAW de download (fallback p/ redirect):', e);
+        return res.redirect(302, url);
+      }
+    }
+
     return res.redirect(302, url);
   } catch (error) {
     console.error('Erro no download por token:', error);

@@ -6,6 +6,7 @@ import Coupon from '../models/Coupon';
 import User from '../models/User';
 import { sendMaterialPurchaseEmail, MailAttachment } from './emailService';
 import { getSignedUrl } from './blobStorageService';
+import { watermarkPdfBuffer } from './pdfWatermarkService';
 
 const KEY_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 
@@ -149,19 +150,34 @@ export async function fulfillMaterialOrder(orderId: string): Promise<void> {
   const accessLink = `${getBaseUrl()}/materiais/acesso?token=${accessToken}`;
 
   // Anexa PDFs (para convidados) — best-effort; falha de anexo não impede envio.
-  // Resolve a URL via getSignedUrl: para blobs privados gera uma URL assinada
-  // temporária (o nodemailer busca o arquivo no momento do envio).
+  // Cada PDF é baixado, recebe MARCA D'ÁGUA + metadados com os dados do
+  // comprador (nome, CPF, e-mail) e é anexado como conteúdo (Buffer).
+  // Se o download/marca falhar, cai no anexo por URL assinada (sem marca).
+  const wmIdentity = {
+    nome: order.compradorDados?.nome || '',
+    cpf: order.compradorDados?.cpf || '',
+    email: order.compradorDados?.email || ''
+  };
   const attachments: MailAttachment[] = [];
   if (isGuest && material) {
     for (const c of material.conteudos) {
       if (c.tipo !== 'pdf') continue;
       const url = await getSignedUrl(c);
       if (!url) continue;
-      attachments.push({
-        filename: c.nomeArquivo || `${(c.titulo || 'material').replace(/[^\w.-]+/g, '_')}.pdf`,
-        path: url,
-        contentType: 'application/pdf'
-      });
+      const filename = c.nomeArquivo || `${(c.titulo || 'material').replace(/[^\w.-]+/g, '_')}.pdf`;
+      try {
+        const upstream = await fetch(url);
+        if (upstream.ok) {
+          const buf = Buffer.from(await upstream.arrayBuffer());
+          const marcado = await watermarkPdfBuffer(buf, wmIdentity);
+          attachments.push({ filename, content: marcado, contentType: 'application/pdf' });
+          continue;
+        }
+      } catch (err) {
+        console.error('Falha ao baixar/marcar PDF para anexo (fallback p/ URL):', err);
+      }
+      // Fallback: nodemailer busca o arquivo pela URL no momento do envio.
+      attachments.push({ filename, path: url, contentType: 'application/pdf' });
     }
   }
 

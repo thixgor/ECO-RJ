@@ -30,6 +30,10 @@ export default defineConfig({
             if (id.includes('jspdf') || id.includes('html2canvas')) {
               return 'vendor-pdf';
             }
+            // pdf-lib - carregado sob demanda só ao baixar material com marca d'água
+            if (id.includes('pdf-lib')) {
+              return 'vendor-pdf-lib';
+            }
             // Icons - Lucide React
             if (id.includes('lucide-react')) {
               return 'vendor-icons';
