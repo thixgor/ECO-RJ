@@ -47,6 +47,11 @@ export interface IOrder extends Document {
     lastFourDigits?: string;
     installments?: number;
     dateApproved?: Date;
+    // Checkout Transparente — dados de Pix / boleto para exibir na página de status
+    pixQrCode?: string;
+    pixQrCodeBase64?: string;
+    ticketUrl?: string;
+    barcode?: string;
   };
   metodoPagamento?: string; // pix / credit_card / boleto / etc
   // Entrega / fulfillment
@@ -131,7 +136,11 @@ const OrderSchema = new Schema<IOrder>(
       paymentTypeId: { type: String },
       lastFourDigits: { type: String },
       installments: { type: Number },
-      dateApproved: { type: Date }
+      dateApproved: { type: Date },
+      pixQrCode: { type: String },
+      pixQrCodeBase64: { type: String },
+      ticketUrl: { type: String },
+      barcode: { type: String }
     },
     metodoPagamento: {
       type: String

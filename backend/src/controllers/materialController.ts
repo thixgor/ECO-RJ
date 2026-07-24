@@ -14,8 +14,9 @@ import {
 } from '../services/pricingService';
 import {
   isMercadoPagoConfigured,
+  getPublicKey,
   getWebhookSecret,
-  createPreference,
+  createPayment,
   getPayment
 } from '../services/mercadoPagoService';
 import { getSignedUrl } from '../services/blobStorageService';
@@ -24,6 +25,14 @@ import { sendMaterialPurchaseEmail } from '../services/emailService';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const KEY_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+
+/** Separa "Nome Sobrenome" em first/last name para o Mercado Pago. */
+function splitName(nome: string): { firstName: string; lastName: string } {
+  const parts = nome.trim().split(/\s+/);
+  const firstName = parts.shift() || nome;
+  const lastName = parts.join(' ') || '.';
+  return { firstName, lastName };
+}
 
 function getClientIp(req: Request): string {
   const fwd = req.headers['x-forwarded-for'];
@@ -360,46 +369,153 @@ export const createMaterialCheckout = async (req: AuthRequest, res: Response) =>
     }
 
     const order = await MaterialOrder.create(orderData);
+    const { firstName, lastName } = splitName(nome);
 
-    const excluded: string[] = [];
-    if (!config.metodos.pix) excluded.push('bank_transfer');
-    if (!config.metodos.cartaoCredito) excluded.push('credit_card');
-    if (!config.metodos.cartaoDebito) excluded.push('debit_card');
-    if (!config.metodos.boleto) excluded.push('ticket');
-
-    try {
-      const pref = await createPreference({
-        orderId: (order._id as any).toString(),
-        numeroPedido: order.numeroPedido,
-        cursoTitulo: material.titulo,
-        itemDescription: `Material ECO RJ - Pedido ${order.numeroPedido}`,
-        total: breakdown.total,
-        comprador: { nome, email, telefone, cpf: cpfDigitos },
-        excludedPaymentTypes: excluded,
-        parcelasMaximas: config.parcelasMaximas,
-        baseUrl: getBaseUrl(),
-        notificationUrl: `${getBaseUrl()}/api/materials/webhook`,
-        statusUrl: `${getBaseUrl()}/materiais/compra/status?pedido=${order.numeroPedido}`
-      });
-
-      order.mercadoPago.preferenceId = pref.preferenceId;
-      await order.save();
-
-      return res.status(201).json({
-        numeroPedido: order.numeroPedido,
-        preferenceId: pref.preferenceId,
-        initPoint: pref.initPoint,
-        redirectUrl: pref.initPoint
-      });
-    } catch (mpError: any) {
-      console.error('Erro Mercado Pago (material):', mpError?.message || mpError);
-      order.status = 'cancelado';
-      await order.save();
-      return res.status(502).json({ message: 'Não foi possível iniciar o pagamento. Tente novamente.' });
-    }
+    // Checkout Transparente: pedido pendente; o pagamento é criado em /process a
+    // partir do Payment Brick (o valor é sempre recalculado no servidor).
+    return res.status(201).json({
+      numeroPedido: order.numeroPedido,
+      transparente: true,
+      publicKey: getPublicKey(),
+      amount: breakdown.total,
+      payer: { nome, email, firstName, lastName, cpf: cpfDigitos },
+      metodos: config.metodos,
+      parcelasMaximas: config.parcelasMaximas
+    });
   } catch (error) {
     console.error('Erro ao criar checkout de material:', error);
     res.status(500).json({ message: 'Erro ao processar checkout' });
+  }
+};
+
+/** Persiste dados de um pagamento MP no pedido de material e entrega se aprovado. */
+async function applyMaterialPayment(order: any, payment: {
+  id: string; status: string; statusDetail: string; transactionAmount: number;
+  paymentMethodId?: string; paymentTypeId?: string; lastFourDigits?: string;
+  installments?: number; dateApproved?: string;
+  pixQrCode?: string; pixQrCodeBase64?: string; ticketUrl?: string; barcode?: string;
+}): Promise<MaterialOrderStatus> {
+  order.mercadoPago.paymentId = payment.id;
+  order.mercadoPago.status = payment.status;
+  order.mercadoPago.statusDetail = payment.statusDetail;
+  order.mercadoPago.paymentMethodId = payment.paymentMethodId;
+  order.mercadoPago.paymentTypeId = payment.paymentTypeId;
+  order.mercadoPago.lastFourDigits = payment.lastFourDigits;
+  order.mercadoPago.installments = payment.installments;
+  if (payment.dateApproved) order.mercadoPago.dateApproved = new Date(payment.dateApproved);
+  if (payment.pixQrCode !== undefined) order.mercadoPago.pixQrCode = payment.pixQrCode;
+  if (payment.pixQrCodeBase64 !== undefined) order.mercadoPago.pixQrCodeBase64 = payment.pixQrCodeBase64;
+  if (payment.ticketUrl !== undefined) order.mercadoPago.ticketUrl = payment.ticketUrl;
+  if (payment.barcode !== undefined) order.mercadoPago.barcode = payment.barcode;
+  order.metodoPagamento = payment.paymentTypeId || payment.paymentMethodId;
+
+  const novoStatus = mapMpStatus(payment.status);
+  const valorConfere = Math.abs(payment.transactionAmount - order.valores.total) <= 0.02;
+
+  if (novoStatus === 'aprovado' && !valorConfere) {
+    console.error(
+      `ALERTA SEGURANÇA (material): valor divergente no pedido ${order.numeroPedido}. Pago=${payment.transactionAmount} Esperado=${order.valores.total}`
+    );
+    order.status = 'em_processo';
+    await order.save();
+    return 'em_processo';
+  }
+
+  order.status = novoStatus;
+  await order.save();
+  if (novoStatus === 'aprovado' && valorConfere) {
+    await fulfillMaterialOrder((order._id as any).toString());
+  }
+  return novoStatus;
+}
+
+function serializeMaterialPaymentResponse(order: any) {
+  const mp = order.mercadoPago || {};
+  const isPix = mp.paymentTypeId === 'bank_transfer' || mp.paymentMethodId === 'pix';
+  const isBoleto = mp.paymentTypeId === 'ticket' || !!mp.barcode;
+  return {
+    numeroPedido: order.numeroPedido,
+    status: order.status,
+    statusDetail: mp.statusDetail,
+    metodoPagamento: order.metodoPagamento,
+    pix: isPix && mp.pixQrCode ? {
+      qrCode: mp.pixQrCode,
+      qrCodeBase64: mp.pixQrCodeBase64,
+      ticketUrl: mp.ticketUrl
+    } : undefined,
+    boleto: isBoleto ? { url: mp.ticketUrl, barcode: mp.barcode } : undefined
+  };
+}
+
+// @desc    Processar pagamento de material (Checkout Transparente)
+// @route   POST /api/materials/order/:numeroPedido/process
+// @access  Public (optionalAuth)
+export const processMaterialPayment = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!isMercadoPagoConfigured()) {
+      return res.status(503).json({ message: 'Pagamentos indisponíveis no momento. Tente novamente mais tarde.' });
+    }
+
+    const order = await MaterialOrder.findOne({ numeroPedido: req.params.numeroPedido });
+    if (!order) return res.status(404).json({ message: 'Pedido não encontrado' });
+
+    if (order.status === 'aprovado' || order.entregue) {
+      return res.json(serializeMaterialPaymentResponse(order));
+    }
+
+    const payload = req.body?.payment || req.body || {};
+    const paymentMethodId = String(payload.payment_method_id || '').trim();
+    if (!paymentMethodId) {
+      return res.status(400).json({ message: 'Método de pagamento inválido' });
+    }
+
+    const config = await getPaymentConfig();
+    if (!config.vendasAtivas) {
+      return res.status(503).json({ message: 'As vendas estão temporariamente desativadas' });
+    }
+    const token = payload.token ? String(payload.token) : undefined;
+    if (paymentMethodId === 'pix' && !config.metodos.pix) {
+      return res.status(400).json({ message: 'Pagamento via Pix indisponível' });
+    }
+    if (!token && paymentMethodId !== 'pix' && !config.metodos.boleto) {
+      return res.status(400).json({ message: 'Pagamento via boleto indisponível' });
+    }
+
+    // Anti-duplicidade
+    if (order.mercadoPago.paymentId) {
+      const existing = await getPayment(order.mercadoPago.paymentId);
+      if (existing) {
+        const st = mapMpStatus(existing.status);
+        if (st !== 'rejeitado' && st !== 'cancelado') {
+          await applyMaterialPayment(order, existing);
+          return res.json(serializeMaterialPaymentResponse(order));
+        }
+      }
+    }
+
+    const { firstName, lastName } = splitName(order.compradorDados.nome);
+    const result = await createPayment({
+      transactionAmount: order.valores.total,
+      description: `Material ECO RJ - ${order.materialTitulo}`,
+      externalReference: (order._id as any).toString(),
+      notificationUrl: `${getBaseUrl()}/api/materials/webhook`,
+      statementDescriptor: 'ECORJ MAT',
+      idempotencyKey: `matpay-${(order._id as any).toString()}-${Date.now()}`,
+      metadata: { order_id: (order._id as any).toString(), numero_pedido: order.numeroPedido },
+      payer: { email: order.compradorDados.email, firstName, lastName, cpf: order.compradorDados.cpf },
+      paymentMethodId,
+      token,
+      issuerId: payload.issuer_id ? String(payload.issuer_id) : undefined,
+      installments: payload.installments ? Number(payload.installments) : 1,
+      payerAddress: payload.payer?.address || undefined
+    });
+
+    await applyMaterialPayment(order, result);
+    return res.status(201).json(serializeMaterialPaymentResponse(order));
+  } catch (error: any) {
+    const mpMsg = error?.cause?.[0]?.description || error?.message;
+    console.error('Erro ao processar pagamento de material:', mpMsg || error);
+    return res.status(502).json({ message: 'Não foi possível processar o pagamento. Verifique os dados e tente novamente.' });
   }
 };
 
@@ -454,34 +570,8 @@ export const materialWebhook = async (req: Request, res: Response) => {
       return res.status(200).json({ received: true, ignored: 'order-not-found' });
     }
 
-    order.mercadoPago.paymentId = payment.id;
-    order.mercadoPago.status = payment.status;
-    order.mercadoPago.statusDetail = payment.statusDetail;
-    order.mercadoPago.paymentMethodId = payment.paymentMethodId;
-    order.mercadoPago.paymentTypeId = payment.paymentTypeId;
-    order.mercadoPago.lastFourDigits = payment.lastFourDigits;
-    order.mercadoPago.installments = payment.installments;
-    if (payment.dateApproved) order.mercadoPago.dateApproved = new Date(payment.dateApproved);
-    order.metodoPagamento = payment.paymentTypeId || payment.paymentMethodId;
-
-    const novoStatus = mapMpStatus(payment.status);
-    const valorConfere = Math.abs(payment.transactionAmount - order.valores.total) <= 0.02;
-
-    if (novoStatus === 'aprovado' && !valorConfere) {
-      console.error(
-        `ALERTA SEGURANÇA (material): valor divergente no pedido ${order.numeroPedido}. Pago=${payment.transactionAmount} Esperado=${order.valores.total}`
-      );
-      order.status = 'em_processo';
-      await order.save();
-      return res.status(200).json({ received: true, warning: 'amount-mismatch' });
-    }
-
-    order.status = novoStatus;
-    await order.save();
-
-    if (novoStatus === 'aprovado' && valorConfere) {
-      await fulfillMaterialOrder((order._id as any).toString());
-    }
+    // Atualiza dados do pagamento, confere valor (segurança) e entrega se aprovado
+    await applyMaterialPayment(order, payment);
 
     return res.status(200).json({ received: true });
   } catch (error) {
@@ -500,6 +590,10 @@ export const getMaterialOrderStatus = async (req: Request, res: Response) => {
 
     const isGuest = !order.comprador;
     const aprovado = order.status === 'aprovado';
+    const pendente = order.status === 'pendente' || order.status === 'em_processo';
+    const mp = order.mercadoPago || {};
+    const isPix = mp.paymentTypeId === 'bank_transfer' || mp.paymentMethodId === 'pix';
+    const isBoleto = mp.paymentTypeId === 'ticket' || !!mp.barcode;
 
     res.json({
       numeroPedido: order.numeroPedido,
@@ -514,6 +608,12 @@ export const getMaterialOrderStatus = async (req: Request, res: Response) => {
       compradorEmail: order.compradorDados.email,
       createdAt: order.createdAt,
       isGuest,
+      pix: pendente && isPix && mp.pixQrCode ? {
+        qrCode: mp.pixQrCode,
+        qrCodeBase64: mp.pixQrCodeBase64,
+        ticketUrl: mp.ticketUrl
+      } : undefined,
+      boleto: pendente && isBoleto ? { url: mp.ticketUrl, barcode: mp.barcode } : undefined,
       // Acesso é exposto na página de status como salvaguarda anti-perda do produto.
       serialKeyCodigo: aprovado ? order.serialKeyCodigo : undefined,
       accessToken: aprovado && isGuest ? order.accessToken : undefined,
@@ -535,19 +635,13 @@ export const syncMaterialOrder = async (req: Request, res: Response) => {
   try {
     const order = await MaterialOrder.findOne({ numeroPedido: req.params.numeroPedido });
     if (!order) return res.status(404).json({ message: 'Pedido não encontrado' });
-    if (order.status === 'aprovado' || !order.mercadoPago.preferenceId) {
+    if (order.status === 'aprovado') {
       return res.json({ status: order.status, entregue: order.entregue });
     }
     if (order.mercadoPago.paymentId && isMercadoPagoConfigured()) {
       const payment = await getPayment(order.mercadoPago.paymentId);
       if (payment) {
-        const novoStatus = mapMpStatus(payment.status);
-        const valorConfere = Math.abs(payment.transactionAmount - order.valores.total) <= 0.02;
-        order.status = novoStatus;
-        await order.save();
-        if (novoStatus === 'aprovado' && valorConfere) {
-          await fulfillMaterialOrder((order._id as any).toString());
-        }
+        await applyMaterialPayment(order, payment);
       }
     }
     const updated = await MaterialOrder.findById(order._id);

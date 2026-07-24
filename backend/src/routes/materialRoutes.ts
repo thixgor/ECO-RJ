@@ -4,6 +4,7 @@ import {
   getMaterialById,
   quoteMaterial,
   createMaterialCheckout,
+  processMaterialPayment,
   materialWebhook,
   getMaterialOrderStatus,
   syncMaterialOrder,
@@ -43,6 +44,7 @@ router.all('/webhook', materialWebhook);
 // ---- Público / Checkout ----
 router.post('/quote', quoteMaterial);
 router.post('/checkout', optionalAuth, createMaterialCheckout);
+router.post('/order/:numeroPedido/process', optionalAuth, processMaterialPayment);
 router.post('/recover', recoverMaterialAccess);
 router.get('/order/:numeroPedido', getMaterialOrderStatus);
 router.post('/order/:numeroPedido/sync', syncMaterialOrder);

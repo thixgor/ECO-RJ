@@ -5,9 +5,19 @@ import {
   ShoppingCart, Tag, ShieldCheck, Loader2, ArrowLeft, CheckCircle2, Lock, PackageX, Mail
 } from 'lucide-react';
 import { GlassCard, GlassButton, GlassInput, GlassModal } from '../components/ui';
+import MercadoPagoBrick from '../components/MercadoPagoBrick';
 import { materialService, paymentService } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import type { MaterialDetalhe, OrderValores, PaymentConfig } from '../types';
+
+interface CheckoutData {
+  numeroPedido: string;
+  publicKey: string;
+  amount: number;
+  payer: { nome: string; email: string; firstName: string; lastName: string; cpf: string };
+  metodos: { pix: boolean; cartaoCredito: boolean; cartaoDebito: boolean; boleto: boolean };
+  parcelasMaximas: number;
+}
 
 const brl = (v: number) => `R$ ${Number(v || 0).toFixed(2).replace('.', ',')}`;
 
@@ -32,6 +42,7 @@ const MaterialCheckout: React.FC = () => {
   const [valores, setValores] = useState<OrderValores | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [checkoutData, setCheckoutData] = useState<CheckoutData | null>(null);
 
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
@@ -152,10 +163,29 @@ const MaterialCheckout: React.FC = () => {
         navigate(`/materiais/compra/status?pedido=${data.numeroPedido}`);
         return;
       }
-      window.location.href = data.redirectUrl || data.initPoint;
+      // Checkout Transparente: avança para a etapa de pagamento (Payment Brick)
+      setCheckoutData(data);
+      setSubmitting(false);
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Não foi possível iniciar o pagamento');
       setSubmitting(false);
+    }
+  };
+
+  const handlePay = async (formData: any): Promise<{ ok: boolean; message?: string }> => {
+    if (!checkoutData?.numeroPedido) return { ok: false };
+    try {
+      const res = await materialService.process(checkoutData.numeroPedido, formData);
+      const d = res.data;
+      if (d.status === 'aprovado' || d.status === 'em_processo' || d.status === 'pendente') {
+        navigate(`/materiais/compra/status?pedido=${checkoutData.numeroPedido}`);
+        return { ok: true };
+      }
+      toast.error('Pagamento não aprovado. Revise os dados e tente novamente.');
+      return { ok: false, message: 'Pagamento não aprovado' };
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Não foi possível processar o pagamento');
+      return { ok: false };
     }
   };
 
@@ -210,6 +240,8 @@ const MaterialCheckout: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         <div className="lg:col-span-3 space-y-6">
           <GlassCard className="p-6">
+            {!checkoutData ? (
+            <>
             <h1 className="text-2xl font-heading font-bold mb-1 flex items-center gap-2">
               <ShoppingCart className="w-6 h-6 text-primary-500" /> Finalizar Compra
             </h1>
@@ -279,6 +311,43 @@ const MaterialCheckout: React.FC = () => {
                 <ShieldCheck className="w-4 h-4 text-emerald-500" /> Pagamento processado com segurança pelo Mercado Pago
               </div>
             </form>
+            </>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h1 className="text-2xl font-heading font-bold flex items-center gap-2">
+                    <Lock className="w-6 h-6 text-primary-500" /> Pagamento
+                  </h1>
+                  <button
+                    type="button"
+                    onClick={() => setCheckoutData(null)}
+                    className="text-sm text-[var(--color-text-muted)] hover:text-primary-500 transition-colors"
+                  >
+                    Editar dados
+                  </button>
+                </div>
+                <p className="text-[var(--color-text-muted)] text-sm">
+                  Escolha a forma de pagamento e conclua sua compra com segurança, sem sair da plataforma.
+                </p>
+                <MercadoPagoBrick
+                  publicKey={checkoutData.publicKey}
+                  amount={checkoutData.amount}
+                  payer={{
+                    email: checkoutData.payer.email,
+                    firstName: checkoutData.payer.firstName,
+                    lastName: checkoutData.payer.lastName,
+                    cpf: checkoutData.payer.cpf
+                  }}
+                  metodos={checkoutData.metodos}
+                  parcelasMaximas={checkoutData.parcelasMaximas}
+                  onPay={handlePay}
+                />
+                <div className="flex items-center justify-center gap-2 text-xs text-[var(--color-text-muted)]">
+                  <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                  Seus dados de pagamento são protegidos e processados pelo Mercado Pago
+                </div>
+              </div>
+            )}
           </GlassCard>
         </div>
 

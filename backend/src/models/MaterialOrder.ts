@@ -47,6 +47,10 @@ export interface IMaterialOrder extends Document {
     lastFourDigits?: string;
     installments?: number;
     dateApproved?: Date;
+    pixQrCode?: string;
+    pixQrCodeBase64?: string;
+    ticketUrl?: string;
+    barcode?: string;
   };
   metodoPagamento?: string;
   // Entrega / fulfillment
@@ -114,7 +118,11 @@ const MaterialOrderSchema = new Schema<IMaterialOrder>(
       paymentTypeId: { type: String },
       lastFourDigits: { type: String },
       installments: { type: Number },
-      dateApproved: { type: Date }
+      dateApproved: { type: Date },
+      pixQrCode: { type: String },
+      pixQrCodeBase64: { type: String },
+      ticketUrl: { type: String },
+      barcode: { type: String }
     },
     metodoPagamento: { type: String },
     entitlement: { type: Schema.Types.ObjectId, ref: 'MaterialEntitlement' },

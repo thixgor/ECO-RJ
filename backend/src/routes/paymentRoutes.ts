@@ -3,6 +3,7 @@ import {
   getPublicConfig,
   getQuote,
   createCheckout,
+  processPayment,
   mercadoPagoWebhook,
   getOrderStatus,
   syncOrderStatus,
@@ -29,6 +30,7 @@ const router = Router();
 router.get('/config', getPublicConfig);
 router.post('/quote', getQuote);
 router.post('/checkout', optionalAuth, createCheckout);
+router.post('/order/:numeroPedido/process', optionalAuth, processPayment);
 router.all('/webhook', mercadoPagoWebhook); // MP pode usar GET ou POST
 router.get('/order/:numeroPedido', getOrderStatus);
 router.post('/order/:numeroPedido/sync', syncOrderStatus);

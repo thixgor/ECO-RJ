@@ -15,13 +15,21 @@ import {
   isMercadoPagoConfigured,
   getPublicKey,
   getWebhookSecret,
-  createPreference,
+  createPayment,
   getPayment
 } from '../services/mercadoPagoService';
 import { fulfillOrder } from '../services/fulfillmentService';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const KEY_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+
+/** Separa "Nome Sobrenome" em first/last name para o Mercado Pago. */
+function splitName(nome: string): { firstName: string; lastName: string } {
+  const parts = nome.trim().split(/\s+/);
+  const firstName = parts.shift() || nome;
+  const lastName = parts.join(' ') || '.';
+  return { firstName, lastName };
+}
 
 function getClientIp(req: Request): string {
   const fwd = req.headers['x-forwarded-for'];
@@ -250,45 +258,158 @@ export const createCheckout = async (req: AuthRequest, res: Response) => {
     }
 
     const order = await Order.create(orderData);
+    const { firstName, lastName } = splitName(nome);
 
-    // Métodos de pagamento excluídos conforme configuração do admin
-    const excluded: string[] = [];
-    if (!config.metodos.pix) excluded.push('bank_transfer');
-    if (!config.metodos.cartaoCredito) excluded.push('credit_card');
-    if (!config.metodos.cartaoDebito) excluded.push('debit_card');
-    if (!config.metodos.boleto) excluded.push('ticket');
-
-    try {
-      const pref = await createPreference({
-        orderId: (order._id as any).toString(),
-        numeroPedido: order.numeroPedido,
-        cursoTitulo: course.titulo,
-        total: breakdown.total,
-        comprador: { nome, email, telefone, cpf: cpfDigitos },
-        excludedPaymentTypes: excluded,
-        parcelasMaximas: config.parcelasMaximas,
-        baseUrl: getBaseUrl(),
-        notificationUrl: `${getBaseUrl()}/api/payments/webhook`
-      });
-
-      order.mercadoPago.preferenceId = pref.preferenceId;
-      await order.save();
-
-      return res.status(201).json({
-        numeroPedido: order.numeroPedido,
-        preferenceId: pref.preferenceId,
-        initPoint: pref.initPoint,
-        redirectUrl: pref.initPoint
-      });
-    } catch (mpError: any) {
-      console.error('Erro Mercado Pago ao criar preferência:', mpError?.message || mpError);
-      order.status = 'cancelado';
-      await order.save();
-      return res.status(502).json({ message: 'Não foi possível iniciar o pagamento. Tente novamente.' });
-    }
+    // Checkout Transparente: o pedido fica pendente e o pagamento é criado na
+    // etapa /process a partir dos dados tokenizados pelo Payment Brick. Aqui só
+    // devolvemos o necessário para renderizar o Brick (o valor é a fonte da
+    // verdade do servidor — o cliente nunca envia o preço).
+    return res.status(201).json({
+      numeroPedido: order.numeroPedido,
+      transparente: true,
+      publicKey: getPublicKey(),
+      amount: breakdown.total,
+      payer: { nome, email, firstName, lastName, cpf: cpfDigitos },
+      metodos: config.metodos,
+      parcelasMaximas: config.parcelasMaximas
+    });
   } catch (error) {
     console.error('Erro ao criar checkout:', error);
     res.status(500).json({ message: 'Erro ao processar checkout' });
+  }
+};
+
+/** Persiste os dados de um pagamento MP no pedido e libera acesso se aprovado. */
+async function applyPaymentToOrder(order: any, payment: {
+  id: string; status: string; statusDetail: string; transactionAmount: number;
+  paymentMethodId?: string; paymentTypeId?: string; lastFourDigits?: string;
+  installments?: number; dateApproved?: string;
+  pixQrCode?: string; pixQrCodeBase64?: string; ticketUrl?: string; barcode?: string;
+}): Promise<OrderStatus> {
+  order.mercadoPago.paymentId = payment.id;
+  order.mercadoPago.status = payment.status;
+  order.mercadoPago.statusDetail = payment.statusDetail;
+  order.mercadoPago.paymentMethodId = payment.paymentMethodId;
+  order.mercadoPago.paymentTypeId = payment.paymentTypeId;
+  order.mercadoPago.lastFourDigits = payment.lastFourDigits;
+  order.mercadoPago.installments = payment.installments;
+  if (payment.dateApproved) order.mercadoPago.dateApproved = new Date(payment.dateApproved);
+  if (payment.pixQrCode !== undefined) order.mercadoPago.pixQrCode = payment.pixQrCode;
+  if (payment.pixQrCodeBase64 !== undefined) order.mercadoPago.pixQrCodeBase64 = payment.pixQrCodeBase64;
+  if (payment.ticketUrl !== undefined) order.mercadoPago.ticketUrl = payment.ticketUrl;
+  if (payment.barcode !== undefined) order.mercadoPago.barcode = payment.barcode;
+  order.metodoPagamento = payment.paymentTypeId || payment.paymentMethodId;
+
+  const novoStatus = mapMpStatus(payment.status);
+  const valorConfere = Math.abs(payment.transactionAmount - order.valores.total) <= 0.02;
+
+  if (novoStatus === 'aprovado' && !valorConfere) {
+    console.error(
+      `ALERTA SEGURANÇA: valor divergente no pedido ${order.numeroPedido}. Pago=${payment.transactionAmount} Esperado=${order.valores.total}`
+    );
+    order.status = 'em_processo';
+    await order.save();
+    return 'em_processo';
+  }
+
+  order.status = novoStatus;
+  await order.save();
+  if (novoStatus === 'aprovado' && valorConfere) {
+    await fulfillOrder((order._id as any).toString());
+  }
+  return novoStatus;
+}
+
+function serializePaymentResponse(order: any) {
+  const mp = order.mercadoPago || {};
+  const isPix = mp.paymentTypeId === 'bank_transfer' || mp.paymentMethodId === 'pix';
+  const isBoleto = mp.paymentTypeId === 'ticket' || !!mp.barcode;
+  return {
+    numeroPedido: order.numeroPedido,
+    status: order.status,
+    statusDetail: mp.statusDetail,
+    metodoPagamento: order.metodoPagamento,
+    pix: isPix && mp.pixQrCode ? {
+      qrCode: mp.pixQrCode,
+      qrCodeBase64: mp.pixQrCodeBase64,
+      ticketUrl: mp.ticketUrl
+    } : undefined,
+    boleto: isBoleto ? { url: mp.ticketUrl, barcode: mp.barcode } : undefined
+  };
+}
+
+// @desc    Processar pagamento (Checkout Transparente — dados do Payment Brick)
+// @route   POST /api/payments/order/:numeroPedido/process
+// @access  Public (optionalAuth)
+export const processPayment = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!isMercadoPagoConfigured()) {
+      return res.status(503).json({ message: 'Pagamentos indisponíveis no momento. Tente novamente mais tarde.' });
+    }
+
+    const order = await Order.findOne({ numeroPedido: req.params.numeroPedido });
+    if (!order) return res.status(404).json({ message: 'Pedido não encontrado' });
+
+    // Já aprovado/entregue — idempotente, não cobra de novo
+    if (order.status === 'aprovado' || order.entregue) {
+      return res.json(serializePaymentResponse(order));
+    }
+
+    const payload = req.body?.payment || req.body || {};
+    const paymentMethodId = String(payload.payment_method_id || '').trim();
+    if (!paymentMethodId) {
+      return res.status(400).json({ message: 'Método de pagamento inválido' });
+    }
+
+    // Valida método contra a configuração do admin
+    const config = await getPaymentConfig();
+    if (!config.vendasAtivas) {
+      return res.status(503).json({ message: 'As vendas estão temporariamente desativadas' });
+    }
+    const token = payload.token ? String(payload.token) : undefined;
+    if (paymentMethodId === 'pix' && !config.metodos.pix) {
+      return res.status(400).json({ message: 'Pagamento via Pix indisponível' });
+    }
+    if (!token && paymentMethodId !== 'pix' && !config.metodos.boleto) {
+      return res.status(400).json({ message: 'Pagamento via boleto indisponível' });
+    }
+
+    // Anti-duplicidade: se já existe um pagamento não recusado, devolve o atual
+    // (não cria nova cobrança em cliques repetidos / reenvio do Brick).
+    if (order.mercadoPago.paymentId) {
+      const existing = await getPayment(order.mercadoPago.paymentId);
+      if (existing) {
+        const st = mapMpStatus(existing.status);
+        if (st !== 'rejeitado' && st !== 'cancelado') {
+          await applyPaymentToOrder(order, existing);
+          return res.json(serializePaymentResponse(order));
+        }
+      }
+    }
+
+    const { firstName, lastName } = splitName(order.compradorDados.nome);
+    const result = await createPayment({
+      transactionAmount: order.valores.total, // SEMPRE do servidor
+      description: `Curso ECO RJ - ${order.cursoTitulo}`,
+      externalReference: (order._id as any).toString(),
+      notificationUrl: `${getBaseUrl()}/api/payments/webhook`,
+      statementDescriptor: 'ECORJ CURSOS',
+      idempotencyKey: `pay-${(order._id as any).toString()}-${Date.now()}`,
+      metadata: { order_id: (order._id as any).toString(), numero_pedido: order.numeroPedido },
+      payer: { email: order.compradorDados.email, firstName, lastName, cpf: order.compradorDados.cpf },
+      paymentMethodId,
+      token,
+      issuerId: payload.issuer_id ? String(payload.issuer_id) : undefined,
+      installments: payload.installments ? Number(payload.installments) : 1,
+      payerAddress: payload.payer?.address || undefined
+    });
+
+    await applyPaymentToOrder(order, result);
+    return res.status(201).json(serializePaymentResponse(order));
+  } catch (error: any) {
+    const mpMsg = error?.cause?.[0]?.description || error?.message;
+    console.error('Erro ao processar pagamento:', mpMsg || error);
+    return res.status(502).json({ message: 'Não foi possível processar o pagamento. Verifique os dados e tente novamente.' });
   }
 };
 
@@ -347,37 +468,8 @@ export const mercadoPagoWebhook = async (req: Request, res: Response) => {
       return res.status(200).json({ received: true, ignored: 'order-not-found' });
     }
 
-    // Atualiza dados do pagamento
-    order.mercadoPago.paymentId = payment.id;
-    order.mercadoPago.status = payment.status;
-    order.mercadoPago.statusDetail = payment.statusDetail;
-    order.mercadoPago.paymentMethodId = payment.paymentMethodId;
-    order.mercadoPago.paymentTypeId = payment.paymentTypeId;
-    order.mercadoPago.lastFourDigits = payment.lastFourDigits;
-    order.mercadoPago.installments = payment.installments;
-    if (payment.dateApproved) order.mercadoPago.dateApproved = new Date(payment.dateApproved);
-    order.metodoPagamento = payment.paymentTypeId || payment.paymentMethodId;
-
-    const novoStatus = mapMpStatus(payment.status);
-
-    // SEGURANÇA: valida se o valor pago corresponde ao total do pedido
-    const valorConfere = Math.abs(payment.transactionAmount - order.valores.total) <= 0.02;
-
-    if (novoStatus === 'aprovado' && !valorConfere) {
-      console.error(
-        `ALERTA SEGURANÇA: valor divergente no pedido ${order.numeroPedido}. Pago=${payment.transactionAmount} Esperado=${order.valores.total}`
-      );
-      order.status = 'em_processo';
-      await order.save();
-      return res.status(200).json({ received: true, warning: 'amount-mismatch' });
-    }
-
-    order.status = novoStatus;
-    await order.save();
-
-    if (novoStatus === 'aprovado' && valorConfere) {
-      await fulfillOrder((order._id as any).toString());
-    }
+    // Atualiza dados do pagamento, confere valor (segurança) e entrega se aprovado
+    await applyPaymentToOrder(order, payment);
 
     return res.status(200).json({ received: true });
   } catch (error) {
@@ -397,6 +489,10 @@ export const getOrderStatus = async (req: Request, res: Response) => {
 
     const isGuest = !order.comprador;
     const aprovado = order.status === 'aprovado';
+    const pendente = order.status === 'pendente' || order.status === 'em_processo';
+    const mp = order.mercadoPago || {};
+    const isPix = mp.paymentTypeId === 'bank_transfer' || mp.paymentMethodId === 'pix';
+    const isBoleto = mp.paymentTypeId === 'ticket' || !!mp.barcode;
 
     res.json({
       numeroPedido: order.numeroPedido,
@@ -408,6 +504,13 @@ export const getOrderStatus = async (req: Request, res: Response) => {
       compradorNome: order.compradorDados.nome,
       createdAt: order.createdAt,
       isGuest,
+      // Pix / boleto pendente — exibidos para o cliente concluir o pagamento
+      pix: pendente && isPix && mp.pixQrCode ? {
+        qrCode: mp.pixQrCode,
+        qrCodeBase64: mp.pixQrCodeBase64,
+        ticketUrl: mp.ticketUrl
+      } : undefined,
+      boleto: pendente && isBoleto ? { url: mp.ticketUrl, barcode: mp.barcode } : undefined,
       // Chave só é exposta a convidados (usuários logados já recebem acesso na conta)
       serialKeyCodigo: aprovado && isGuest ? order.serialKeyCodigo : undefined,
       activationLink: aprovado && isGuest && order.serialKeyCodigo
@@ -427,19 +530,13 @@ export const syncOrderStatus = async (req: Request, res: Response) => {
   try {
     const order = await Order.findOne({ numeroPedido: req.params.numeroPedido });
     if (!order) return res.status(404).json({ message: 'Pedido não encontrado' });
-    if (order.status === 'aprovado' || !order.mercadoPago.preferenceId) {
+    if (order.status === 'aprovado') {
       return res.json({ status: order.status, entregue: order.entregue });
     }
     if (order.mercadoPago.paymentId && isMercadoPagoConfigured()) {
       const payment = await getPayment(order.mercadoPago.paymentId);
       if (payment) {
-        const novoStatus = mapMpStatus(payment.status);
-        const valorConfere = Math.abs(payment.transactionAmount - order.valores.total) <= 0.02;
-        order.status = novoStatus;
-        await order.save();
-        if (novoStatus === 'aprovado' && valorConfere) {
-          await fulfillOrder((order._id as any).toString());
-        }
+        await applyPaymentToOrder(order, payment);
       }
     }
     const updated = await Order.findById(order._id);

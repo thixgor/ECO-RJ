@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import {
-  CheckCircle2, Clock, XCircle, Loader2, Copy, KeyRound, ArrowRight, RefreshCw, Download, MailWarning
+  CheckCircle2, Clock, XCircle, Loader2, Copy, KeyRound, ArrowRight, RefreshCw, Download, MailWarning,
+  QrCode, Barcode, ExternalLink
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { GlassCard, GlassButton } from '../components/ui';
@@ -27,6 +28,8 @@ interface StatusData {
   accessToken?: string;
   accessLink?: string;
   materialLink?: string;
+  pix?: { qrCode?: string; qrCodeBase64?: string; ticketUrl?: string };
+  boleto?: { url?: string; barcode?: string };
 }
 
 const MaterialPaymentStatus: React.FC = () => {
@@ -73,6 +76,13 @@ const MaterialPaymentStatus: React.FC = () => {
     if (order?.serialKeyCodigo) {
       navigator.clipboard.writeText(order.serialKeyCodigo);
       toast.success('Código copiado!');
+    }
+  };
+
+  const copyPix = () => {
+    if (order?.pix?.qrCode) {
+      navigator.clipboard.writeText(order.pix.qrCode);
+      toast.success('Código Pix copiado!');
     }
   };
 
@@ -154,6 +164,56 @@ const MaterialPaymentStatus: React.FC = () => {
           <p>Pedido <strong>{order?.numeroPedido}</strong></p>
           {order?.valores && <p>Total: <strong>{brl(order.valores.total)}</strong></p>}
         </div>
+
+        {/* Pix pendente — QR Code + copia e cola */}
+        {pendente && order?.pix?.qrCode && (
+          <div className="p-5 rounded-xl bg-primary-500/10 border border-primary-500/30 mb-6 text-left">
+            <div className="flex items-center gap-2 mb-3 text-primary-600 dark:text-primary-400 font-semibold">
+              <QrCode className="w-5 h-5" /> Pague com Pix para liberar o acesso
+            </div>
+            {order.pix.qrCodeBase64 && (
+              <img
+                src={`data:image/png;base64,${order.pix.qrCodeBase64}`}
+                alt="QR Code Pix"
+                className="w-48 h-48 mx-auto mb-4 rounded-lg bg-white p-2"
+              />
+            )}
+            <p className="text-xs text-[var(--color-text-muted)] mb-2">Ou copie o código Pix (copia e cola):</p>
+            <div className="flex items-center gap-2 mb-1">
+              <code className="flex-1 text-xs font-mono bg-[var(--glass-bg)] px-3 py-2 rounded-lg break-all max-h-20 overflow-y-auto">
+                {order.pix.qrCode}
+              </code>
+              <GlassButton variant="secondary" size="sm" onClick={copyPix} leftIcon={<Copy className="w-4 h-4" />}>
+                Copiar
+              </GlassButton>
+            </div>
+            <p className="text-xs text-[var(--color-text-muted)] mt-3">
+              Após o pagamento, esta página confirma automaticamente em alguns segundos.
+            </p>
+          </div>
+        )}
+
+        {/* Boleto pendente */}
+        {pendente && order?.boleto?.url && (
+          <div className="p-5 rounded-xl bg-primary-500/10 border border-primary-500/30 mb-6 text-left">
+            <div className="flex items-center gap-2 mb-3 text-primary-600 dark:text-primary-400 font-semibold">
+              <Barcode className="w-5 h-5" /> Boleto gerado
+            </div>
+            {order.boleto.barcode && (
+              <code className="block text-xs font-mono bg-[var(--glass-bg)] px-3 py-2 rounded-lg break-all mb-3">
+                {order.boleto.barcode}
+              </code>
+            )}
+            <a href={order.boleto.url} target="_blank" rel="noopener noreferrer">
+              <GlassButton variant="primary" fullWidth rightIcon={<ExternalLink className="w-4 h-4" />}>
+                Visualizar / imprimir boleto
+              </GlassButton>
+            </a>
+            <p className="text-xs text-[var(--color-text-muted)] mt-3">
+              A confirmação do boleto pode levar até 2 dias úteis. O acesso é liberado após a compensação.
+            </p>
+          </div>
+        )}
 
         {/* Acesso do convidado — salvaguarda anti-perda do produto */}
         {aprovado && order?.isGuest && order?.serialKeyCodigo && (

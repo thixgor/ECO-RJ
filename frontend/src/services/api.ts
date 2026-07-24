@@ -509,6 +509,10 @@ export const paymentService = {
     aceiteTermos: { aceito: boolean };
   }) => api.post('/payments/checkout', data),
 
+  // Checkout Transparente: envia os dados tokenizados pelo Payment Brick
+  process: (numeroPedido: string, payment: any) =>
+    api.post(`/payments/order/${numeroPedido}/process`, { payment }),
+
   getOrderStatus: (numeroPedido: string) =>
     api.get(`/payments/order/${numeroPedido}`),
 
@@ -583,6 +587,9 @@ export const materialService = {
     comprador: { nome: string; email: string; telefone: string; cpf: string };
     aceiteTermos: { aceito: boolean };
   }) => api.post('/materials/checkout', data),
+
+  process: (numeroPedido: string, payment: any) =>
+    api.post(`/materials/order/${numeroPedido}/process`, { payment }),
 
   getOrderStatus: (numeroPedido: string) =>
     api.get(`/materials/order/${numeroPedido}`),

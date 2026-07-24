@@ -1,12 +1,16 @@
-# 💳 Sistema de Pagamentos — ECO RJ (Mercado Pago)
+# 💳 Sistema de Pagamentos — ECO RJ (Mercado Pago · Checkout Transparente)
 
 Documentação completa do sistema de pagamentos implementado para a plataforma
 **ECO RJ — Centro de Treinamento em Ecocardiografia**.
 
-Permite a **compra de cursos** com entrega automática de acesso, tanto para
-usuários **logados** quanto para **convidados** (sem conta), com **máxima
-segurança**, cupons, lotes de desconto, desconto ativado, taxa operacional,
-CPF obrigatório, aceite de termos e registro completo de compras.
+A integração usa o **Checkout Transparente** do Mercado Pago (Payment Brick): o
+cliente paga **dentro da própria plataforma**, sem redirecionamento para o site
+do Mercado Pago. Aceita **cartão de crédito/débito, Pix e boleto**.
+
+Permite a **compra de cursos e materiais** com entrega automática de acesso,
+tanto para usuários **logados** quanto para **convidados** (sem conta), com
+**máxima segurança**, cupons, lotes de desconto, desconto ativado, taxa
+operacional, CPF obrigatório, aceite de termos e registro completo de compras.
 
 ---
 
@@ -61,7 +65,7 @@ toda a infraestrutura de serial keys já existente na plataforma.
 
 **Serviços**
 - `services/pricingService.ts` — **fonte única da verdade** do cálculo de preço (lote → desconto ativado → cupom → taxa operacional). Validação de cupom e lote vigente.
-- `services/mercadoPagoService.ts` — integração com o Checkout Pro (criação de preferência, consulta de pagamento). Credenciais **apenas** via env.
+- `services/mercadoPagoService.ts` — integração com o Mercado Pago: **`createPayment`** (Checkout Transparente — cartão via token do Brick, Pix e boleto) e consulta de pagamento (fonte da verdade). Mantém `createPreference` (Checkout Pro) como fallback. Credenciais **apenas** via env.
 - `services/emailService.ts` — e-mail transacional (nodemailer) com comprovante HTML + serial key + link de ativação. Degrada graciosamente sem SMTP.
 - `services/fulfillmentService.ts` — **entrega** do pedido (gera serial key, libera acesso, contabiliza cupom/lote, envia e-mail) — idempotente e com **claim atômico** anti-duplicação.
 
@@ -81,8 +85,10 @@ toda a infraestrutura de serial keys já existente na plataforma.
 
 ### Frontend (`frontend/src`)
 
-- `pages/Checkout.tsx` — `/comprar/:cursoId` — formulário de compra, cupom, resumo de valores, aceite de termos.
-- `pages/PaymentStatus.tsx` — `/compra/status?pedido=...` — retorno do pagamento (polling), serial key para convidados.
+- `components/MercadoPagoBrick.tsx` — **componente reutilizável do Payment Brick** (Checkout Transparente): carrega o SDK, renderiza cartão/Pix/boleto tematizados (light/dark), tokeniza o cartão no cliente e envia o `formData` ao backend. Usado por cursos e materiais.
+- `utils/mercadoPago.ts` — carregamento sob demanda do SDK `MercadoPago.js v2`.
+- `pages/Checkout.tsx` — `/comprar/:cursoId` — formulário de compra + **etapa de pagamento embutida** (Payment Brick), cupom, resumo de valores, aceite de termos.
+- `pages/PaymentStatus.tsx` — `/compra/status?pedido=...` — retorno do pagamento (polling), **QR Code do Pix / boleto** quando pendente, serial key para convidados.
 - `pages/Ativar.tsx` — `/ativar?codigo=...` — ativação da serial key (logado ou após login/registro).
 - `pages/admin/AdminPayments.tsx` — `/admin/pagamentos` — abas: Pedidos, Preços, Cupons, Lotes, Configurações.
 - `pages/Profile.tsx` — **nova aba "Minhas Compras"** com comprovante imprimível.
@@ -100,7 +106,7 @@ Adicione ao `backend/.env` (ver `backend/.env.example`):
 ```env
 # Mercado Pago
 MP_ACCESS_TOKEN=APP_USR-xxxxxxxx      # Token privado (produção) ou TEST-... (sandbox)
-MP_PUBLIC_KEY=APP_USR-xxxxxxxx        # Chave pública
+MP_PUBLIC_KEY=APP_USR-xxxxxxxx        # Chave pública — OBRIGATÓRIA (usada pelo Payment Brick no front-end)
 MP_WEBHOOK_SECRET=xxxxxxxx            # Segredo de assinatura do webhook
 
 # URL pública da aplicação (back_urls, webhook e links de ativação)
@@ -116,6 +122,7 @@ SMTP_FROM=ECO RJ <contato@cursodeecocardiografia.com>
 ```
 
 > ⚠️ **Sem `MP_ACCESS_TOKEN`** o checkout retorna "pagamentos indisponíveis" (nenhuma cobrança é feita).
+> ⚠️ **Sem `MP_PUBLIC_KEY`** o Payment Brick não renderiza no front-end (o Checkout Transparente exige a chave pública).
 > **Sem SMTP** as compras funcionam, mas o e-mail é apenas registrado no log (não enviado). Configure o SMTP para produção.
 
 No **Vercel**, cadastre essas variáveis em *Project → Settings → Environment Variables*.
@@ -128,15 +135,15 @@ No **Vercel**, cadastre essas variáveis em *Project → Settings → Environmen
 1. Na página do curso, clica em **"Comprar Curso"** → `/comprar/:cursoId`.
 2. Dados (nome, e-mail, CPF) já vêm preenchidos; informa telefone e aceita os termos.
 3. Opcionalmente aplica um **cupom**.
-4. Clica em **Pagar** → é redirecionado ao **Checkout Pro do Mercado Pago**.
-5. Após o pagamento, o **webhook** confirma e o sistema **libera o acesso automaticamente**:
-   - Promove para `Aluno` (se era Visitante), inscreve no curso, autoriza acesso e marca a serial key como usada.
-6. Recebe **e-mail com comprovante**. O curso aparece no **Dashboard** e a compra no **/perfil → Minhas Compras**.
+4. Clica em **Pagar** → o pedido é criado (pendente) e o **Payment Brick** aparece **na própria página** (sem redirecionamento).
+5. Escolhe cartão / Pix / boleto e paga. O `formData` (com o **token do cartão**, gerado no navegador) vai para `POST /order/:numero/process`, que cria o pagamento no Mercado Pago com o **valor recalculado no servidor**.
+6. Se aprovado, o sistema **libera o acesso automaticamente** (promove para `Aluno`, inscreve no curso, autoriza acesso e marca a serial key como usada); o **webhook** confirma de forma assíncrona (Pix/boleto).
+7. Recebe **e-mail com comprovante**. O curso aparece no **Dashboard** e a compra no **/perfil → Minhas Compras**.
 
 ### B) **Convidado** (sem conta) compra um curso
 1. Acessa `/comprar/:cursoId` (sem login).
 2. Informa **nome, e-mail, telefone e CPF** e aceita os termos.
-3. Paga no Mercado Pago.
+3. Paga **dentro da plataforma** (Payment Brick). Para **Pix**, o QR Code e o "copia e cola" aparecem na página de status; para **boleto**, o link do boleto.
 4. Após aprovação, recebe **e-mail** com:
    - **Serial key** de ativação,
    - **Link de ativação** (`/ativar?codigo=...`),
@@ -185,7 +192,7 @@ Ordem determinística (calculada **sempre no servidor**, nunca no cliente):
 - **Serial key de uso único** (infra existente) — não transferível e some ao ser deletada.
 - **Anti-abuso**: limite de pedidos pendentes por e-mail em janela curta; incremento de uso de cupom/lote **atômico** e idempotente.
 - **Credenciais do Mercado Pago apenas em variáveis de ambiente** — nunca no banco, nunca no front-end.
-- **PCI**: os dados do cartão são digitados **no ambiente do Mercado Pago** (Checkout Pro) — a plataforma nunca recebe dados sensíveis do cartão.
+- **PCI**: no Checkout Transparente os dados do cartão são digitados nos campos seguros do **Payment Brick** e **tokenizados no navegador pelo SDK do Mercado Pago** — o backend recebe apenas o **token**, nunca o número do cartão/CVV (mantém o nível **PCI SAQ-A**).
 - Serial key só é exposta na página pública de status para **convidados** (usuários logados recebem acesso direto na conta).
 
 ---
@@ -218,7 +225,8 @@ Nova aba **"Minhas Compras"**:
 |--------|------|-----------|
 | GET | `/api/payments/config` | Config pública (métodos, taxa, termos, vendas ativas) |
 | POST | `/api/payments/quote` | Cotação de preço (com cupom) |
-| POST | `/api/payments/checkout` | Cria pedido + preferência MP (optionalAuth) |
+| POST | `/api/payments/checkout` | Cria o pedido (pendente) e devolve dados do Payment Brick (optionalAuth) |
+| POST | `/api/payments/order/:numeroPedido/process` | **Processa o pagamento** com o `formData` do Brick — Checkout Transparente (optionalAuth) |
 | ALL | `/api/payments/webhook` | Webhook do Mercado Pago |
 | GET | `/api/payments/order/:numeroPedido` | Status público do pedido |
 | POST | `/api/payments/order/:numeroPedido/sync` | Reconsulta o pagamento (fallback) |
@@ -247,8 +255,8 @@ Nova aba **"Minhas Compras"**:
 ## ⚙️ Configuração do Mercado Pago (passo a passo)
 
 1. Crie/entre em uma conta no [Mercado Pago Developers](https://www.mercadopago.com.br/developers).
-2. Crie uma **aplicação** (Checkout Pro).
-3. Copie **Access Token** e **Public Key** (use as credenciais de **teste** para sandbox).
+2. Crie uma **aplicação** escolhendo **Checkout Transparente** (produto "Pagamentos on-line" / integração via API + Payment Brick).
+3. Copie **Access Token** e **Public Key** (use as credenciais de **teste** para sandbox). A **Public Key é obrigatória** para o Payment Brick.
 4. Configure as **variáveis de ambiente** (ver acima).
 5. Em **Webhooks/Notificações**, cadastre a URL:
    `https://SEU_DOMINIO/api/payments/webhook` e selecione o evento **Pagamentos**.

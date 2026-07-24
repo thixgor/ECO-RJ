@@ -133,6 +133,102 @@ export interface MpPaymentInfo {
   dateApproved?: string;
 }
 
+/**
+ * Parâmetros para criar um pagamento diretamente (Checkout Transparente).
+ * O valor (transactionAmount) é SEMPRE calculado no servidor a partir do pedido —
+ * nunca vem do cliente.
+ */
+export interface CreatePaymentParams {
+  transactionAmount: number;
+  description: string;
+  externalReference: string;   // order._id
+  notificationUrl: string;
+  statementDescriptor?: string;
+  metadata?: Record<string, unknown>;
+  idempotencyKey: string;
+  payer: {
+    email: string;
+    firstName?: string;
+    lastName?: string;
+    cpf: string;
+  };
+  paymentMethodId: string;     // 'pix' | 'bolbradesco' | 'master' | 'visa' | ...
+  // Dados vindos do Payment Brick (apenas para cartão)
+  token?: string;
+  issuerId?: string;
+  installments?: number;
+  // Endereço do pagador (necessário para boleto) — repassado do Brick
+  payerAddress?: Record<string, unknown>;
+}
+
+/** Resultado do pagamento (inclui dados de Pix/boleto quando aplicável). */
+export interface CreatePaymentResult extends MpPaymentInfo {
+  pixQrCode?: string;          // "copia e cola" do Pix
+  pixQrCodeBase64?: string;    // imagem base64 do QR Code
+  ticketUrl?: string;          // link do boleto / comprovante Pix
+  barcode?: string;            // linha digitável do boleto
+}
+
+/**
+ * Cria um pagamento no Mercado Pago (Checkout Transparente).
+ * Suporta cartão (com token do Brick), Pix e boleto.
+ */
+export async function createPayment(params: CreatePaymentParams): Promise<CreatePaymentResult> {
+  const config = buildConfig(params.idempotencyKey);
+  const paymentClient = new Payment(config);
+
+  const isCard = !!params.token;
+
+  const body: any = {
+    transaction_amount: params.transactionAmount,
+    description: params.description.substring(0, 250),
+    payment_method_id: params.paymentMethodId,
+    external_reference: params.externalReference,
+    notification_url: params.notificationUrl,
+    statement_descriptor: params.statementDescriptor || 'ECORJ',
+    metadata: params.metadata || {},
+    payer: {
+      email: params.payer.email,
+      first_name: params.payer.firstName,
+      last_name: params.payer.lastName,
+      identification: {
+        type: 'CPF',
+        number: params.payer.cpf
+      },
+      ...(params.payerAddress ? { address: params.payerAddress } : {})
+    }
+  };
+
+  if (isCard) {
+    body.token = params.token;
+    body.installments = Math.max(1, params.installments || 1);
+    if (params.issuerId) body.issuer_id = params.issuerId;
+  }
+
+  const p: any = await paymentClient.create({ body });
+  if (!p || !p.id) {
+    throw new Error('Falha ao criar pagamento no Mercado Pago');
+  }
+
+  const txData = p.point_of_interaction?.transaction_data;
+  return {
+    id: String(p.id),
+    status: p.status,
+    statusDetail: p.status_detail,
+    transactionAmount: Number(p.transaction_amount || 0),
+    externalReference: p.external_reference,
+    paymentMethodId: p.payment_method_id,
+    paymentTypeId: p.payment_type_id,
+    lastFourDigits: p.card?.last_four_digits,
+    installments: p.installments,
+    dateApproved: p.date_approved,
+    pixQrCode: txData?.qr_code,
+    pixQrCodeBase64: txData?.qr_code_base64,
+    ticketUrl: txData?.ticket_url || p.transaction_details?.external_resource_url,
+    barcode: p.barcode?.content
+  };
+}
+
 /** Busca um pagamento pelo ID diretamente na API do Mercado Pago (fonte da verdade). */
 export async function getPayment(paymentId: string): Promise<MpPaymentInfo | null> {
   const config = buildConfig();
