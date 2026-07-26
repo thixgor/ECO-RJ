@@ -22,9 +22,27 @@ import {
 import { getSignedUrl } from '../services/blobStorageService';
 import { fulfillMaterialOrder } from '../services/materialFulfillmentService';
 import { sendMaterialPurchaseEmail } from '../services/emailService';
+import {
+  watermarkPdfBuffer,
+  hasWatermarkIdentity,
+  type WatermarkIdentity
+} from '../services/pdfWatermarkService';
+import {
+  DOWNLOAD_TERMS_VERSION,
+  DOWNLOAD_TERMS_TITLE,
+  DOWNLOAD_TERMS_SECTIONS,
+  DOWNLOAD_TERMS_CONFIRMATION
+} from '../config/downloadTerms';
+import User from '../models/User';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const KEY_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+
+/** Garante que o nome do arquivo de PDF termine em .pdf. */
+function ensurePdfName(name: string): string {
+  const base = (name || 'material').trim() || 'material';
+  return /\.pdf$/i.test(base) ? base : `${base}.pdf`;
+}
 
 /** Separa "Nome Sobrenome" em first/last name para o Mercado Pago. */
 function splitName(nome: string): { firstName: string; lastName: string } {
@@ -185,7 +203,8 @@ export const listMaterials = async (req: AuthRequest, res: Response) => {
         totalConteudos: m.conteudos.length,
         avaliacaoMedia: m.avaliacaoMedia,
         avaliacaoTotal: m.avaliacaoTotal,
-        vendasTotais: m.vendasTotais,
+        // Prova social opcional: só vai para o cliente se o admin habilitou.
+        vendasTotais: m.exibirVendas === false ? undefined : m.vendasTotais,
         adquirido: ownedIds.has((m._id as any).toString())
       };
     });
@@ -231,7 +250,8 @@ export const getMaterialById = async (req: AuthRequest, res: Response) => {
         totalConteudos: material.conteudos.length,
         avaliacaoMedia: material.avaliacaoMedia,
         avaliacaoTotal: material.avaliacaoTotal,
-        vendasTotais: material.vendasTotais,
+        // Prova social opcional: só vai para o cliente se o admin habilitou.
+        vendasTotais: material.exibirVendas === false ? undefined : material.vendasTotais,
         // Conteúdo liberado somente para quem tem acesso; senão apenas metadados.
         conteudos: temAcesso && entitlement
           ? serializeConteudosForAccess(material, entitlement.accessToken)
@@ -260,7 +280,8 @@ export const quoteMaterial = async (req: Request, res: Response) => {
 
     const material = await Material.findById(materialId);
     if (!material) return res.status(404).json({ message: 'Material não encontrado' });
-    if (!material.ativo || !material.disponivel || !(material.preco > 0)) {
+    // Preço 0 é válido: significa material GRATUITO (o usuário adere sem pagar).
+    if (!material.ativo || !material.disponivel) {
       return res.status(400).json({ message: 'Material não está disponível para compra' });
     }
 
@@ -300,9 +321,8 @@ export const createMaterialCheckout = async (req: AuthRequest, res: Response) =>
     if (!config.vendasAtivas) {
       return res.status(503).json({ message: 'As vendas estão temporariamente desativadas' });
     }
-    if (!isMercadoPagoConfigured()) {
-      return res.status(503).json({ message: 'Pagamentos indisponíveis no momento. Tente novamente mais tarde.' });
-    }
+    // A verificação do Mercado Pago acontece só depois de calcular o total: pedidos
+    // gratuitos (material com preço 0 ou cupom de 100%) não passam pelo gateway.
     if (!materialId) return res.status(400).json({ message: 'Material é obrigatório' });
     if (!comprador || typeof comprador !== 'object') {
       return res.status(400).json({ message: 'Dados do comprador são obrigatórios' });
@@ -323,7 +343,8 @@ export const createMaterialCheckout = async (req: AuthRequest, res: Response) =>
 
     const material = await Material.findById(materialId);
     if (!material) return res.status(404).json({ message: 'Material não encontrado' });
-    if (!material.ativo || !material.disponivel || !(material.preco > 0)) {
+    // Preço 0 é válido: significa material GRATUITO (o usuário adere sem pagar).
+    if (!material.ativo || !material.disponivel) {
       return res.status(400).json({ message: 'Material não está disponível para compra' });
     }
 
@@ -373,7 +394,7 @@ export const createMaterialCheckout = async (req: AuthRequest, res: Response) =>
       ipCompra: ip
     };
 
-    // Compra gratuita (cupom 100%) — não passa pelo Mercado Pago
+    // Adesão gratuita (material com preço 0 ou cupom de 100%) — não passa pelo Mercado Pago
     if (breakdown.total <= 0) {
       orderData.status = 'aprovado';
       orderData.metodoPagamento = 'cortesia';
@@ -384,6 +405,11 @@ export const createMaterialCheckout = async (req: AuthRequest, res: Response) =>
         gratuito: true,
         redirectUrl: `${getBaseUrl()}/materiais/compra/status?pedido=${order.numeroPedido}`
       });
+    }
+
+    // A partir daqui há valor a cobrar: o gateway é obrigatório.
+    if (!isMercadoPagoConfigured()) {
+      return res.status(503).json({ message: 'Pagamentos indisponíveis no momento. Tente novamente mais tarde.' });
     }
 
     const order = await MaterialOrder.create(orderData);
@@ -775,7 +801,43 @@ export const getAccessByToken = async (req: Request, res: Response) => {
   }
 };
 
-// @desc    Download de um conteúdo via token (convidado)
+/** Dados do titular de um entitlement, para a marca d'água do PDF. */
+async function resolveEntitlementIdentity(ent: any): Promise<WatermarkIdentity> {
+  let nome = '';
+  let cpf = '';
+  const email = ent.email || '';
+
+  if (ent.order) {
+    const order = await MaterialOrder.findById(ent.order).select('compradorDados');
+    if (order?.compradorDados) {
+      nome = order.compradorDados.nome || '';
+      cpf = order.compradorDados.cpf || '';
+    }
+  }
+  // Acessos de cortesia/admin não têm pedido: cai para os dados da conta vinculada.
+  if ((!nome || !cpf) && ent.user) {
+    const user = await User.findById(ent.user).select('nomeCompleto cpf email');
+    if (user) {
+      nome = nome || user.nomeCompleto || '';
+      cpf = cpf || user.cpf || '';
+    }
+  }
+  return { nome, cpf, email };
+}
+
+// @desc    Termos de download (direitos autorais) exibidos antes de baixar
+// @route   GET /api/materials/download-terms
+// @access  Public
+export const getDownloadTerms = (_req: Request, res: Response) => {
+  res.json({
+    versao: DOWNLOAD_TERMS_VERSION,
+    titulo: DOWNLOAD_TERMS_TITLE,
+    secoes: DOWNLOAD_TERMS_SECTIONS,
+    confirmacao: DOWNLOAD_TERMS_CONFIRMATION
+  });
+};
+
+// @desc    Download de um conteúdo via token (convidado ou usuário logado)
 // @route   GET /api/materials/access/:token/download/:index
 // @access  Public (token é a autenticação)
 export const downloadByToken = async (req: Request, res: Response) => {
@@ -798,32 +860,64 @@ export const downloadByToken = async (req: Request, res: Response) => {
     if (!url) {
       return res.status(404).json({ message: 'Arquivo ainda não disponível. Contate o suporte.' });
     }
-    await MaterialEntitlement.updateOne({ _id: ent._id }, { $inc: { totalDownloads: 1 }, $set: { ultimoAcesso: new Date() } });
 
-    // Modo RAW (?raw=1): transmite os bytes pela NOSSA API (mesma origem).
-    // Necessário para a marca d'água client-side conseguir LER o arquivo sem
-    // esbarrar em CORS ao buscar o Blob diretamente do navegador.
-    if (String(req.query.raw || '') === '1') {
+    // Registro do aceite dos termos de download (evidência de direitos autorais).
+    const update: any = { $inc: { totalDownloads: 1 }, $set: { ultimoAcesso: new Date() } };
+    if (String(req.query.aceite || '') === '1') {
+      update.$set.aceiteTermosDownload = {
+        versao: DOWNLOAD_TERMS_VERSION,
+        data: new Date(),
+        ip: getClientIp(req)
+      };
+    }
+    await MaterialEntitlement.updateOne({ _id: ent._id }, update);
+
+    const nomeArquivo = conteudo.nomeArquivo
+      || `${(conteudo.titulo || 'material').replace(/[^\w.-]+/g, '_')}`;
+
+    // PDFs saem daqui já com marca d'água aplicada NO SERVIDOR. Fazer isso no
+    // navegador travava máquinas lentas e quebrava no iOS (blob: + <a download>).
+    const isPdf = conteudo.tipo === 'pdf'
+      || conteudo.mimeType === 'application/pdf'
+      || /\.pdf$/i.test(nomeArquivo);
+
+    if (isPdf) {
       try {
+        const identity = await resolveEntitlementIdentity(ent);
         const upstream = await fetch(url);
-        if (!upstream.ok || !upstream.body) {
-          return res.redirect(302, url); // fallback: deixa o navegador buscar direto
-        }
-        const arrayBuf = await upstream.arrayBuffer();
-        const buffer = Buffer.from(arrayBuf);
-        const nome = conteudo.nomeArquivo || `${(conteudo.titulo || 'material').replace(/[^\w.-]+/g, '_')}`;
-        res.setHeader('Content-Type', conteudo.mimeType || upstream.headers.get('content-type') || 'application/octet-stream');
-        res.setHeader('Content-Disposition', `attachment; filename="${nome.replace(/"/g, '')}"`);
+        if (!upstream.ok) throw new Error(`upstream HTTP ${upstream.status}`);
+        const original = Buffer.from(await upstream.arrayBuffer());
+        const buffer = hasWatermarkIdentity(identity)
+          ? await watermarkPdfBuffer(original, identity)
+          : original;
+
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="${ensurePdfName(nomeArquivo).replace(/"/g, '')}"`);
         res.setHeader('Content-Length', String(buffer.length));
-        res.setHeader('Cache-Control', 'no-store');
+        res.setHeader('Cache-Control', 'private, no-store');
         return res.status(200).send(buffer);
       } catch (e) {
-        console.error('Erro no proxy RAW de download (fallback p/ redirect):', e);
+        // Nunca deixa o comprador sem o arquivo: cai para o download direto.
+        console.error('Erro ao gerar PDF com marca d\'água (fallback p/ redirect):', e);
         return res.redirect(302, url);
       }
     }
 
-    return res.redirect(302, url);
+    // Arquivos não-PDF: transmitidos pela nossa API como anexo (mesma origem),
+    // o que também evita o comportamento errático do Safari com URLs assinadas.
+    try {
+      const upstream = await fetch(url);
+      if (!upstream.ok) throw new Error(`upstream HTTP ${upstream.status}`);
+      const buffer = Buffer.from(await upstream.arrayBuffer());
+      res.setHeader('Content-Type', conteudo.mimeType || upstream.headers.get('content-type') || 'application/octet-stream');
+      res.setHeader('Content-Disposition', `attachment; filename="${nomeArquivo.replace(/"/g, '')}"`);
+      res.setHeader('Content-Length', String(buffer.length));
+      res.setHeader('Cache-Control', 'private, no-store');
+      return res.status(200).send(buffer);
+    } catch (e) {
+      console.error('Erro no proxy de download (fallback p/ redirect):', e);
+      return res.redirect(302, url);
+    }
   } catch (error) {
     console.error('Erro no download por token:', error);
     res.status(500).json({ message: 'Erro ao baixar arquivo' });

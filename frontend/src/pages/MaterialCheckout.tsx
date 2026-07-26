@@ -2,12 +2,13 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
-  ShoppingCart, Tag, ShieldCheck, Loader2, ArrowLeft, CheckCircle2, Lock, PackageX, Mail
+  ShoppingCart, Tag, ShieldCheck, Loader2, ArrowLeft, CheckCircle2, Lock, PackageX, Mail, Gift
 } from 'lucide-react';
 import { GlassCard, GlassButton, GlassInput, GlassModal } from '../components/ui';
 import MercadoPagoBrick from '../components/MercadoPagoBrick';
 import { materialService, paymentService } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { brl, formatPreco, isGratuito } from '../utils/price';
 import type { MaterialDetalhe, OrderValores, PaymentConfig } from '../types';
 
 interface CheckoutData {
@@ -18,8 +19,6 @@ interface CheckoutData {
   metodos: { pix: boolean; cartaoCredito: boolean; cartaoDebito: boolean; boleto: boolean };
   parcelasMaximas: number;
 }
-
-const brl = (v: number) => `R$ ${Number(v || 0).toFixed(2).replace('.', ',')}`;
 
 const maskCPF = (v: string) =>
   v.replace(/\D/g, '').slice(0, 11)
@@ -97,12 +96,16 @@ const MaterialCheckout: React.FC = () => {
           setIndisponivelMotivo('Você já possui este material. Acesse-o na página do produto ou em "Meus Materiais".');
           return;
         }
-        if (!configRes.data.vendasAtivas) {
-          setIndisponivelMotivo('As vendas estão temporariamente indisponíveis. Por favor, tente novamente mais tarde.');
+        if (!m.disponivel) {
+          setIndisponivelMotivo('Este material não está disponível no momento.');
           return;
         }
-        if (!m.disponivel || !(m.preco > 0)) {
-          setIndisponivelMotivo('Este material não está disponível para compra no momento.');
+        // Material gratuito não depende do gateway de pagamento estar configurado.
+        const liberado = isGratuito(m.preco)
+          ? (configRes.data.adesaoGratuitaAtiva ?? configRes.data.vendasAtivas)
+          : configRes.data.vendasAtivas;
+        if (!liberado) {
+          setIndisponivelMotivo('As inscrições estão temporariamente indisponíveis. Por favor, tente novamente mais tarde.');
           return;
         }
 
@@ -159,7 +162,7 @@ const MaterialCheckout: React.FC = () => {
       });
       const data = res.data;
       if (data.gratuito) {
-        toast.success('Compra concluída!');
+        toast.success('Acesso liberado! Aproveite o material.');
         navigate(`/materiais/compra/status?pedido=${data.numeroPedido}`);
         return;
       }
@@ -231,7 +234,11 @@ const MaterialCheckout: React.FC = () => {
     );
   }
 
-  const vendasIndisponiveis = !config?.vendasAtivas;
+  // Total 0 = adesão gratuita: sem gateway, sem etapa de pagamento.
+  const gratuito = valores ? isGratuito(valores.total) : isGratuito(material.preco);
+  const vendasIndisponiveis = gratuito
+    ? !(config?.adesaoGratuitaAtiva ?? config?.vendasAtivas)
+    : !config?.vendasAtivas;
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
@@ -245,12 +252,16 @@ const MaterialCheckout: React.FC = () => {
             {!checkoutData ? (
             <>
             <h1 className="text-2xl font-heading font-bold mb-1 flex items-center gap-2">
-              <ShoppingCart className="w-6 h-6 text-primary-500" /> Finalizar Compra
+              {gratuito
+                ? <><Gift className="w-6 h-6 text-emerald-500" /> Obter Material Gratuito</>
+                : <><ShoppingCart className="w-6 h-6 text-primary-500" /> Finalizar Compra</>}
             </h1>
             <p className="text-[var(--color-text-muted)] text-sm mb-6">
-              {isAuthenticated
-                ? 'O material será liberado automaticamente na sua conta após o pagamento.'
-                : 'Você pode comprar sem login — enviaremos o acesso, o código e o comprovante para o seu e-mail.'}
+              {gratuito
+                ? 'Este material é gratuito. Confirme seus dados e o acesso é liberado na hora — sem pagamento.'
+                : isAuthenticated
+                  ? 'O material será liberado automaticamente na sua conta após o pagamento.'
+                  : 'Você pode comprar sem login — enviaremos o acesso, o código e o comprovante para o seu e-mail.'}
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -304,13 +315,20 @@ const MaterialCheckout: React.FC = () => {
                 size="lg"
                 isLoading={submitting}
                 disabled={submitting || vendasIndisponiveis || !aceite}
-                leftIcon={<Lock className="w-5 h-5" />}
+                leftIcon={gratuito ? <Gift className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
               >
-                {vendasIndisponiveis ? 'Vendas indisponíveis' : `Pagar ${valores ? brl(valores.total) : ''}`}
+                {vendasIndisponiveis
+                  ? 'Indisponível no momento'
+                  : gratuito
+                    ? 'Liberar meu acesso gratuito'
+                    : `Pagar ${valores ? brl(valores.total) : ''}`}
               </GlassButton>
 
               <div className="flex items-center justify-center gap-2 text-xs text-[var(--color-text-muted)]">
-                <ShieldCheck className="w-4 h-4 text-emerald-500" /> Pagamento processado com segurança pelo Mercado Pago
+                <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                {gratuito
+                  ? 'Nenhuma cobrança será feita — material 100% gratuito'
+                  : 'Pagamento processado com segurança pelo Mercado Pago'}
               </div>
             </form>
             </>
@@ -381,19 +399,22 @@ const MaterialCheckout: React.FC = () => {
                   <span className="text-[var(--color-text-muted)]">Subtotal</span>
                   <span>{brl(valores.subtotal)}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-[var(--color-text-muted)]">Taxa operacional ({valores.taxaOperacionalPercentual}%)</span>
-                  <span>{brl(valores.taxaOperacional)}</span>
-                </div>
+                {valores.taxaOperacional > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-[var(--color-text-muted)]">Taxa operacional ({valores.taxaOperacionalPercentual}%)</span>
+                    <span>{brl(valores.taxaOperacional)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between pt-3 mt-1 border-t border-[var(--glass-border)] text-lg font-bold">
                   <span>Total</span>
-                  <span className="text-primary-500">{brl(valores.total)}</span>
+                  <span className={gratuito ? 'text-emerald-500' : 'text-primary-500'}>{formatPreco(valores.total)}</span>
                 </div>
               </div>
             )}
 
             <div className="mt-4 flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
-              <CheckCircle2 className="w-4 h-4 text-emerald-500" /> Acesso liberado após confirmação do pagamento
+              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+              {gratuito ? 'Acesso liberado imediatamente' : 'Acesso liberado após confirmação do pagamento'}
             </div>
           </GlassCard>
         </div>

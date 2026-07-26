@@ -3,8 +3,15 @@ import { Video, FileText, File, Download, PlayCircle, Loader2, ShieldCheck } fro
 import toast from 'react-hot-toast';
 import { extractYouTubeId, extractVimeoId } from '../../utils/videoUtils';
 import { renderBold } from '../../utils/richText';
-import { downloadWatermarkedPdf, hasWatermarkIdentity, type WatermarkIdentity } from '../../utils/pdfWatermark';
+import DownloadTermsModal from './DownloadTermsModal';
 import type { MaterialConteudo } from '../../types';
+
+/** Dados do titular exibidos no termo (a marca d'água é aplicada no servidor). */
+export interface MaterialIdentity {
+  nome?: string | null;
+  cpf?: string | null;
+  email?: string | null;
+}
 
 /** Converte um embed/URL em uma src de iframe utilizável (YouTube/Vimeo/URL direta). */
 function buildEmbedSrc(embed?: string): string | null {
@@ -26,27 +33,45 @@ const iconFor = (tipo: string) => {
 
 interface Props {
   conteudos: MaterialConteudo[];
-  /** Dados do titular para marca d'água nos PDFs baixados (nome, CPF, e-mail). */
-  identity?: WatermarkIdentity;
+  /** Dados do titular exibidos no termo de download. */
+  identity?: MaterialIdentity;
 }
 
 const MaterialContentViewer: React.FC<Props> = ({ conteudos, identity }) => {
-  const [baixando, setBaixando] = useState<number | null>(null);
-  const podeMarcar = hasWatermarkIdentity(identity);
+  // Conteúdo aguardando aceite do termo de download.
+  const [pendente, setPendente] = useState<MaterialConteudo | null>(null);
+  const [baixando, setBaixando] = useState(false);
 
-  const handleDownloadPdf = async (c: MaterialConteudo, i: number) => {
+  /**
+   * Entrega o arquivo.
+   *
+   * O servidor já devolve o PDF com marca d'água e `Content-Disposition:
+   * attachment`, então basta navegar até a URL. Não usamos `blob:` nem
+   * `pdf-lib` no navegador — era isso que travava computadores lentos e
+   * quebrava no iOS/Safari ("WebKitBlobResource error 1").
+   */
+  const entregarArquivo = (c: MaterialConteudo) => {
     if (!c.downloadUrl) return;
-    setBaixando(i);
+    setBaixando(true);
     try {
-      await downloadWatermarkedPdf(c.downloadUrl, identity || {}, c.nomeArquivo || c.titulo);
-      toast.success('Arquivo pronto com sua marca d\'água pessoal (nome, CPF e e-mail).');
+      const sep = c.downloadUrl.includes('?') ? '&' : '?';
+      const url = `${c.downloadUrl}${sep}aceite=1`;
+      const a = document.createElement('a');
+      a.href = url;
+      // Mesma origem + Content-Disposition: attachment → o navegador baixa
+      // sem sair da página, inclusive no Safari iOS.
+      a.rel = 'noopener';
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      toast.success('Download iniciado. O arquivo leva sua marca d\'água pessoal.');
+      setPendente(null);
     } catch (err) {
-      console.error('Falha ao aplicar marca d\'água — abrindo arquivo original:', err);
-      toast.error('Não foi possível personalizar o arquivo; abrindo o download original.');
-      // Fallback: abre o download original para não deixar o comprador sem o arquivo.
-      window.open(c.downloadUrl, '_blank', 'noopener,noreferrer');
+      console.error('Falha ao iniciar o download:', err);
+      toast.error('Não foi possível iniciar o download. Tente novamente.');
     } finally {
-      setBaixando(null);
+      setBaixando(false);
     }
   };
 
@@ -57,77 +82,85 @@ const MaterialContentViewer: React.FC<Props> = ({ conteudos, identity }) => {
   }
 
   return (
-    <div className="space-y-5">
-      {conteudos.map((c, i) => {
-        const embedSrc = c.tipo === 'aula' ? buildEmbedSrc(c.embedVideo) : null;
-        const isPdf = c.tipo === 'pdf';
-        return (
-          <div key={c._id || i} className="rounded-xl border border-[var(--glass-border)] bg-[var(--glass-bg)] overflow-hidden">
-            <div className="flex items-center gap-2 px-4 py-3 border-b border-[var(--glass-border)]">
-              <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full bg-primary-500/10 text-primary-600 dark:text-primary-400">
-                {iconFor(c.tipo)}
-                {c.tipo === 'aula' ? 'Aula' : c.tipo === 'pdf' ? 'PDF' : 'Arquivo'}
-              </span>
-              <h4 className="font-semibold text-[var(--color-text-primary)] text-sm flex-1 truncate">{c.titulo}</h4>
-              {typeof c.duracao === 'number' && c.duracao > 0 && (
-                <span className="text-xs text-[var(--color-text-muted)]">{c.duracao} min</span>
-              )}
-            </div>
+    <>
+      <div className="space-y-5">
+        {conteudos.map((c, i) => {
+          const embedSrc = c.tipo === 'aula' ? buildEmbedSrc(c.embedVideo) : null;
+          const isArquivo = c.tipo === 'pdf' || c.tipo === 'arquivo';
+          const isPdf = c.tipo === 'pdf';
+          return (
+            <div key={c._id || i} className="rounded-xl border border-[var(--glass-border)] bg-[var(--glass-bg)] overflow-hidden">
+              <div className="flex items-center gap-2 px-4 py-3 border-b border-[var(--glass-border)]">
+                <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full bg-primary-500/10 text-primary-600 dark:text-primary-400">
+                  {iconFor(c.tipo)}
+                  {c.tipo === 'aula' ? 'Aula' : c.tipo === 'pdf' ? 'PDF' : 'Arquivo'}
+                </span>
+                <h4 className="font-semibold text-[var(--color-text-primary)] text-sm flex-1 truncate">{c.titulo}</h4>
+                {typeof c.duracao === 'number' && c.duracao > 0 && (
+                  <span className="text-xs text-[var(--color-text-muted)]">{c.duracao} min</span>
+                )}
+              </div>
 
-            <div className="p-4">
-              {c.descricao && (
-                <p className="text-sm text-[var(--color-text-secondary)] mb-3">{renderBold(c.descricao)}</p>
-              )}
+              <div className="p-4">
+                {c.descricao && (
+                  <p className="text-sm text-[var(--color-text-secondary)] mb-3">{renderBold(c.descricao)}</p>
+                )}
 
-              {c.tipo === 'aula' ? (
-                embedSrc ? (
-                  <div className="relative w-full rounded-lg overflow-hidden bg-black" style={{ paddingTop: '56.25%' }}>
-                    <iframe
-                      src={embedSrc}
-                      title={c.titulo}
-                      className="absolute inset-0 w-full h-full"
-                      frameBorder={0}
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                    />
-                  </div>
+                {c.tipo === 'aula' ? (
+                  embedSrc ? (
+                    <div className="relative w-full rounded-lg overflow-hidden bg-black" style={{ paddingTop: '56.25%' }}>
+                      <iframe
+                        src={embedSrc}
+                        title={c.titulo}
+                        className="absolute inset-0 w-full h-full"
+                        frameBorder={0}
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 text-sm text-[var(--color-text-muted)]">
+                      <PlayCircle className="w-4 h-4" /> Vídeo indisponível no momento.
+                    </div>
+                  )
                 ) : (
-                  <div className="flex items-center gap-2 text-sm text-[var(--color-text-muted)]">
-                    <PlayCircle className="w-4 h-4" /> Vídeo indisponível no momento.
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => setPendente(c)}
+                      disabled={!c.downloadUrl || (baixando && pendente === c)}
+                      className="glass-btn-primary inline-flex items-center gap-2 !py-2.5 disabled:opacity-60"
+                    >
+                      {baixando && pendente === c
+                        ? <Loader2 className="w-4 h-4 animate-spin" />
+                        : <Download className="w-4 h-4" />}
+                      Baixar {c.nomeArquivo || c.titulo}
+                    </button>
+                    {isArquivo && (
+                      <p className="mt-2 flex items-center gap-1.5 text-xs text-[var(--color-text-muted)]">
+                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+                        {isPdf
+                          ? 'Cópia individual: o PDF é gerado com seu nome, CPF e e-mail em marca d\'água.'
+                          : 'Uso pessoal e exclusivo — o download é registrado no seu acesso.'}
+                      </p>
+                    )}
                   </div>
-                )
-              ) : isPdf && c.downloadUrl && podeMarcar ? (
-                <div>
-                  <button
-                    type="button"
-                    onClick={() => handleDownloadPdf(c, i)}
-                    disabled={baixando === i}
-                    className="glass-btn-primary inline-flex items-center gap-2 !py-2.5 disabled:opacity-60"
-                  >
-                    {baixando === i ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                    {baixando === i ? 'Preparando arquivo…' : `Baixar ${c.nomeArquivo || c.titulo}`}
-                  </button>
-                  <p className="mt-2 flex items-center gap-1.5 text-xs text-[var(--color-text-muted)]">
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-                    Este PDF é personalizado com seu nome, CPF e e-mail (marca d'água).
-                  </p>
-                </div>
-              ) : (
-                <a
-                  href={c.downloadUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`glass-btn-primary inline-flex items-center gap-2 !py-2.5 ${!c.downloadUrl ? 'pointer-events-none opacity-50' : ''}`}
-                >
-                  <Download className="w-4 h-4" />
-                  Baixar {c.nomeArquivo || c.titulo}
-                </a>
-              )}
+                )}
+              </div>
             </div>
-          </div>
-        );
-      })}
-    </div>
+          );
+        })}
+      </div>
+
+      <DownloadTermsModal
+        isOpen={!!pendente}
+        onClose={() => { if (!baixando) setPendente(null); }}
+        onAccept={() => pendente && entregarArquivo(pendente)}
+        nomeArquivo={pendente?.nomeArquivo || pendente?.titulo}
+        titular={identity}
+        baixando={baixando}
+      />
+    </>
   );
 };
 

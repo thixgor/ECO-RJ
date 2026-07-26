@@ -1,15 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Package, Plus, Pencil, Trash2, Loader2, Star, X, Video, FileText, File, Info, Gift, TrendingUp, UploadCloud, Lock
+  Package, Plus, Pencil, Trash2, Loader2, Star, X, Video, FileText, File, Info, Gift, TrendingUp, UploadCloud, Lock,
+  Users, EyeOff
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { GlassCard, GlassButton, GlassInput, GlassTextarea, GlassSelect, GlassModal } from '../../components/ui';
 import { materialService } from '../../services/api';
 import { uploadToBlob } from '../../services/blobUpload';
+import { formatPreco, isGratuito } from '../../utils/price';
 import type { MaterialAdmin, MaterialConteudo, ConteudoTipo, MaterialTipo } from '../../types';
-
-const brl = (v: number) => `R$ ${Number(v || 0).toFixed(2).replace('.', ',')}`;
 
 const formatBytes = (bytes?: number) => {
   if (!bytes || bytes <= 0) return '';
@@ -76,7 +76,8 @@ const emptyConteudo = (): MaterialConteudo => ({ tipo: 'pdf', titulo: '', descri
 const emptyForm = (): Partial<MaterialAdmin> => ({
   titulo: '', descricao: '', descricaoCurta: '', tipo: 'material', capa: '',
   conteudos: [], disponivel: true, ativo: true, destaque: false, ordem: 0,
-  preco: 0, descontoAtivado: { ativo: false, tipo: 'percentual', valor: 0 }, validadeAcessoDias: 0
+  preco: 0, descontoAtivado: { ativo: false, tipo: 'percentual', valor: 0 }, validadeAcessoDias: 0,
+  exibirVendas: true
 });
 
 const AdminMaterials: React.FC = () => {
@@ -138,7 +139,8 @@ const AdminMaterials: React.FC = () => {
         ...form,
         preco: Number(form.preco) || 0,
         ordem: Number(form.ordem) || 0,
-        validadeAcessoDias: Number(form.validadeAcessoDias) || 0
+        validadeAcessoDias: Number(form.validadeAcessoDias) || 0,
+        exibirVendas: form.exibirVendas !== false
       };
       if (editing) {
         await materialService.admin.update(editing._id, payload);
@@ -245,10 +247,17 @@ const AdminMaterials: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-3 text-xs text-[var(--color-text-muted)] mt-1 flex-wrap">
                     <span className="capitalize">{m.tipo}</span>
-                    <span>{brl(m.preco)}</span>
+                    <span className={isGratuito(m.preco) ? 'text-emerald-600 dark:text-emerald-400 font-medium' : undefined}>
+                      {formatPreco(m.preco)}
+                    </span>
                     <span>{m.conteudos?.length || 0} conteúdos</span>
                     <span className="flex items-center gap-1"><Star className="w-3 h-3 text-amber-400 fill-amber-400" /> {m.avaliacaoMedia?.toFixed(1) || '0.0'} ({m.avaliacaoTotal || 0})</span>
                     <span>{m.vendasTotais || 0} vendas</span>
+                    {m.exibirVendas === false && (
+                      <span className="flex items-center gap-1" title="O total de compradores não é exibido para os usuários">
+                        <EyeOff className="w-3 h-3" /> contador oculto
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
@@ -266,8 +275,19 @@ const AdminMaterials: React.FC = () => {
       )}
 
       {/* Modal formulário material */}
-      <GlassModal isOpen={showForm} onClose={() => setShowForm(false)} title={editing ? 'Editar material' : 'Novo material'} size="full">
-        <div className="max-h-[70vh] overflow-y-auto pr-1 space-y-4">
+      <GlassModal
+        isOpen={showForm}
+        onClose={() => setShowForm(false)}
+        title={editing ? 'Editar material' : 'Novo material'}
+        size="full"
+        footer={
+          <div className="flex justify-end gap-2">
+            <GlassButton variant="secondary" onClick={() => setShowForm(false)}>Cancelar</GlassButton>
+            <GlassButton variant="primary" onClick={handleSave} isLoading={saving} disabled={saving}>{editing ? 'Salvar' : 'Criar'}</GlassButton>
+          </div>
+        }
+      >
+        <div className="space-y-4">
           <GlassInput label="Título *" value={form.titulo || ''} onChange={(e) => setF({ titulo: e.target.value })} />
           <GlassTextarea label="Descrição *" rows={4} value={form.descricao || ''} onChange={(e) => setF({ descricao: e.target.value })} />
           <GlassInput label="Descrição curta (card)" value={form.descricaoCurta || ''} onChange={(e) => setF({ descricaoCurta: e.target.value })} />
@@ -296,7 +316,15 @@ const AdminMaterials: React.FC = () => {
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <GlassInput label="Preço (R$)" type="number" min={0} step="0.01" value={String(form.preco ?? 0)} onChange={(e) => setF({ preco: Number(e.target.value) })} />
+            <GlassInput
+              label="Preço (R$) — 0 = gratuito"
+              type="number"
+              min={0}
+              step="0.01"
+              value={String(form.preco ?? 0)}
+              onChange={(e) => setF({ preco: Number(e.target.value) })}
+              helperText={isGratuito(form.preco) ? 'Material gratuito: o usuário adere sem pagar.' : undefined}
+            />
             <GlassInput label="Validade do acesso (dias, 0 = vitalício)" type="number" min={0} value={String(form.validadeAcessoDias ?? 0)} onChange={(e) => setF({ validadeAcessoDias: Number(e.target.value) })} />
             <GlassInput label="Ordem" type="number" value={String(form.ordem ?? 0)} onChange={(e) => setF({ ordem: Number(e.target.value) })} />
           </div>
@@ -326,6 +354,26 @@ const AdminMaterials: React.FC = () => {
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="w-4 h-4 accent-primary-500" checked={form.ativo !== false} onChange={(e) => setF({ ativo: e.target.checked })} /> Ativo</label>
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="w-4 h-4 accent-primary-500" checked={!!form.destaque} onChange={(e) => setF({ destaque: e.target.checked })} /> Destaque</label>
           </div>
+
+          {/* Prova social */}
+          <label className="flex items-start gap-3 p-4 rounded-xl bg-[var(--glass-bg)] border border-[var(--glass-border)] cursor-pointer">
+            <input
+              type="checkbox"
+              className="mt-0.5 w-4 h-4 accent-primary-500 flex-shrink-0"
+              checked={form.exibirVendas !== false}
+              onChange={(e) => setF({ exibirVendas: e.target.checked })}
+            />
+            <span className="min-w-0">
+              <span className="flex items-center gap-1.5 text-sm font-medium text-[var(--color-text-primary)]">
+                <Users className="w-4 h-4 text-primary-500" />
+                Exibir quantidade de compradores
+              </span>
+              <span className="block text-xs text-[var(--color-text-muted)] mt-0.5">
+                Quando ativado, a vitrine e a página do material mostram "🔥 N alunos já garantiram".
+                Desative para não divulgar o volume de vendas.
+              </span>
+            </span>
+          </label>
 
           {/* Conteúdos */}
           <div>
@@ -411,23 +459,25 @@ const AdminMaterials: React.FC = () => {
             </div>
           </div>
         </div>
-
-        <div className="mt-4 flex justify-end gap-2 border-t border-[var(--glass-border)] pt-4">
-          <GlassButton variant="secondary" onClick={() => setShowForm(false)}>Cancelar</GlassButton>
-          <GlassButton variant="primary" onClick={handleSave} isLoading={saving} disabled={saving}>{editing ? 'Salvar' : 'Criar'}</GlassButton>
-        </div>
       </GlassModal>
 
       {/* Modal conceder acesso */}
-      <GlassModal isOpen={!!grantFor} onClose={() => setGrantFor(null)} title="Conceder acesso (cortesia)" size="md">
+      <GlassModal
+        isOpen={!!grantFor}
+        onClose={() => setGrantFor(null)}
+        title="Conceder acesso (cortesia)"
+        size="md"
+        footer={
+          <div className="flex justify-end gap-2">
+            <GlassButton variant="secondary" onClick={() => setGrantFor(null)}>Cancelar</GlassButton>
+            <GlassButton variant="primary" onClick={handleGrant} isLoading={granting} disabled={granting} leftIcon={<Gift className="w-4 h-4" />}>Conceder</GlassButton>
+          </div>
+        }
+      >
         <p className="text-sm text-[var(--color-text-secondary)] mb-4">
           Concede acesso ao material <strong>{grantFor?.titulo}</strong> para um e-mail. Um link de acesso será gerado e copiado.
         </p>
         <GlassInput label="E-mail" type="email" value={grantEmail} onChange={(e) => setGrantEmail(e.target.value)} placeholder="pessoa@email.com" />
-        <div className="mt-4 flex justify-end gap-2">
-          <GlassButton variant="secondary" onClick={() => setGrantFor(null)}>Cancelar</GlassButton>
-          <GlassButton variant="primary" onClick={handleGrant} isLoading={granting} disabled={granting} leftIcon={<Gift className="w-4 h-4" />}>Conceder</GlassButton>
-        </div>
       </GlassModal>
     </div>
   );

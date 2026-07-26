@@ -3,8 +3,45 @@ import { Plus, Edit, Trash2, BookOpen, Lock, Users, Calendar, Clock, ChevronUp, 
 import { courseService, userService, courseTopicService, courseSubtopicService } from '../../services/api';
 import { Course, User, CourseTopic, CourseSubtopic } from '../../types';
 import Loading from '../../components/common/Loading';
+import { GlassModal } from '../../components/ui';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
+
+/** O formulário do curso fica no corpo rolável e o botão Salvar no rodapé fixo do modal. */
+const COURSE_FORM_ID = 'admin-course-form';
+
+const toneClasses = {
+  amber: 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/30 accent-amber-500',
+  emerald: 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30 accent-emerald-500',
+  teal: 'bg-teal-50 dark:bg-teal-500/10 border-teal-200 dark:border-teal-500/30 accent-teal-500'
+} as const;
+
+/** Cartão de opção booleana do formulário de curso. */
+const CourseToggle: React.FC<{
+  id: string;
+  titulo: string;
+  descricao: string;
+  checked: boolean;
+  onChange: (value: boolean) => void;
+  tone: keyof typeof toneClasses;
+}> = ({ id, titulo, descricao, checked, onChange, tone }) => (
+  <label
+    htmlFor={id}
+    className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-colors ${toneClasses[tone]}`}
+  >
+    <input
+      type="checkbox"
+      id={id}
+      checked={checked}
+      onChange={(e) => onChange(e.target.checked)}
+      className="mt-0.5 w-4 h-4 flex-shrink-0 rounded"
+    />
+    <span className="min-w-0">
+      <span className="block font-medium text-sm text-[var(--color-text-primary)]">{titulo}</span>
+      <span className="block text-xs text-[var(--color-text-muted)] mt-0.5">{descricao}</span>
+    </span>
+  </label>
+);
 
 const AdminCourses: React.FC = () => {
   const [courses, setCourses] = useState<Course[]>([]);
@@ -209,6 +246,13 @@ const AdminCourses: React.FC = () => {
     setShowTopicsModal(true);
     setTopicFormData({ titulo: '', descricao: '' });
     setEditingTopic(null);
+    setSelectedTopic(null);
+  };
+
+  const closeTopicsModal = () => {
+    setShowTopicsModal(false);
+    setEditingTopic(null);
+    setTopicFormData({ titulo: '', descricao: '' });
   };
 
   const handleSaveTopic = async (e: React.FormEvent) => {
@@ -496,283 +540,242 @@ const AdminCourses: React.FC = () => {
         )}
       </div>
 
-      {/* Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="modal-content !max-w-lg">
-            <div className="p-6 border-b border-[var(--glass-border)]">
-              <h2 className="font-heading text-xl font-semibold text-[var(--color-text-primary)]">
-                {editingCourse ? 'Editar Curso' : 'Novo Curso'}
-              </h2>
-            </div>
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div>
-                <label className="label">Título *</label>
-                <input
-                  type="text"
-                  value={formData.titulo}
-                  onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
-                  className="input"
-                  required
-                />
-              </div>
-              <div>
-                <label className="label">Descrição *</label>
-                <textarea
-                  value={formData.descricao}
-                  onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
-                  className="input min-h-[100px]"
-                  required
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="label">Data de Início *</label>
-                  <input
-                    type="date"
-                    value={formData.dataInicio}
-                    onChange={(e) => setFormData({ ...formData, dataInicio: e.target.value })}
-                    className="input"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="label">Tipo do Curso *</label>
-                  <select
-                    value={formData.tipo}
-                    onChange={(e) => setFormData({ ...formData, tipo: e.target.value as 'online' | 'presencial' })}
-                    className="input"
-                  >
-                    <option value="online">Online</option>
-                    <option value="presencial">Presencial</option>
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="label">URL da Imagem de Capa</label>
-                <input
-                  type="url"
-                  value={formData.imagemCapa}
-                  onChange={(e) => setFormData({ ...formData, imagemCapa: e.target.value })}
-                  className="input"
-                  placeholder="https://..."
-                />
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="label">Data Limite de Inscrição</label>
-                  <input
-                    type="date"
-                    value={formData.dataLimiteInscricao}
-                    onChange={(e) => setFormData({ ...formData, dataLimiteInscricao: e.target.value })}
-                    className="input"
-                  />
-                  <p className="text-xs text-[var(--color-text-muted)] mt-1">Em branco = inscrições sem prazo</p>
-                </div>
-                <div>
-                  <label className="label">Data de Término</label>
-                  <input
-                    type="date"
-                    value={formData.dataTermino}
-                    onChange={(e) => setFormData({ ...formData, dataTermino: e.target.value })}
-                    className="input"
-                    min={formData.dataInicio || undefined}
-                  />
-                  <p className="text-xs text-[var(--color-text-muted)] mt-1">
-                    Ao chegar esta data, o acesso dos alunos é encerrado e um e-mail é enviado. Em branco = sem término.
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 p-4 bg-yellow-50 dark:bg-amber-500/10 rounded-lg">
-                <input
-                  type="checkbox"
-                  id="acessoRestrito"
-                  checked={formData.acessoRestrito}
-                  onChange={(e) => setFormData({ ...formData, acessoRestrito: e.target.checked })}
-                  className="w-4 h-4 rounded border-gray-300 text-primary-500 focus:ring-primary-500"
-                />
-                <div>
-                  <label htmlFor="acessoRestrito" className="font-medium text-[var(--color-text-primary)] cursor-pointer">
-                    Acesso Restrito ao Conteúdo
-                  </label>
-                  <p className="text-xs text-[var(--color-text-muted)]">
-                    Todos podem ver o curso, mas apenas alunos autorizados poderão acessar as aulas e conteúdos
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 p-4 bg-emerald-50 dark:bg-emerald-500/10 rounded-lg">
-                <input
-                  type="checkbox"
-                  id="exibirDuracao"
-                  checked={formData.exibirDuracao}
-                  onChange={(e) => setFormData({ ...formData, exibirDuracao: e.target.checked })}
-                  className="w-4 h-4 rounded border-gray-300 text-primary-500 focus:ring-primary-500"
-                />
-                <div>
-                  <label htmlFor="exibirDuracao" className="font-medium text-[var(--color-text-primary)] cursor-pointer">
-                    Exibir Tempo de Conteudo
-                  </label>
-                  <p className="text-xs text-[var(--color-text-muted)]">
-                    Mostra "Xh e Ymin de conteudo" na pagina do curso e listagem
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 p-4 bg-teal-50 dark:bg-teal-500/10 rounded-lg">
-                <input
-                  type="checkbox"
-                  id="certificadoDisponivel"
-                  checked={formData.certificadoDisponivel}
-                  onChange={(e) => setFormData({ ...formData, certificadoDisponivel: e.target.checked })}
-                  className="w-4 h-4 rounded border-gray-300 text-teal-500 focus:ring-teal-500"
-                />
-                <div>
-                  <label htmlFor="certificadoDisponivel" className="font-medium text-[var(--color-text-primary)] cursor-pointer">
-                    Certificado Disponivel
-                  </label>
-                  <p className="text-xs text-[var(--color-text-muted)]">
-                    Quando ativado, exibe badge "CERTIFICADO" no curso e permite emissao de certificado ao concluir
-                  </p>
-                </div>
-              </div>
-              {formData.certificadoDisponivel && (
-                <div className="flex items-center gap-3 p-4 bg-amber-50 dark:bg-amber-500/10 rounded-lg ml-4 border-l-2 border-amber-500">
-                  <input
-                    type="checkbox"
-                    id="emissaoCertificadoImediata"
-                    checked={formData.emissaoCertificadoImediata}
-                    onChange={(e) => setFormData({ ...formData, emissaoCertificadoImediata: e.target.checked })}
-                    className="w-4 h-4 rounded border-gray-300 text-amber-500 focus:ring-amber-500"
-                  />
-                  <div>
-                    <label htmlFor="emissaoCertificadoImediata" className="font-medium text-[var(--color-text-primary)] cursor-pointer">
-                      Emissao Imediata de Certificado
-                    </label>
-                    <p className="text-xs text-[var(--color-text-muted)]">
-                      Quando ativado, o aluno recebe o certificado automaticamente ao concluir 100% do curso (sem necessidade de aprovacao)
-                    </p>
-                  </div>
-                </div>
-              )}
-              <div className="flex gap-3 pt-4">
-                <button type="submit" disabled={isSaving} className="btn btn-primary flex-1">
-                  {isSaving ? 'Salvando...' : 'Salvar'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="btn btn-outline flex-1"
-                >
-                  Cancelar
-                </button>
-              </div>
-            </form>
+      {/* Modal de criar/editar curso */}
+      <GlassModal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        title={editingCourse ? 'Editar Curso' : 'Novo Curso'}
+        description={editingCourse ? editingCourse.titulo : 'Preencha os dados básicos do curso'}
+        size="2xl"
+        footer={
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button
+              type="submit"
+              form={COURSE_FORM_ID}
+              disabled={isSaving}
+              className="btn btn-primary flex-1"
+            >
+              {isSaving ? 'Salvando...' : 'Salvar'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowModal(false)}
+              className="btn btn-outline flex-1"
+            >
+              Cancelar
+            </button>
           </div>
-        </div>
-      )}
+        }
+      >
+        <form id={COURSE_FORM_ID} onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="label">Título *</label>
+            <input
+              type="text"
+              value={formData.titulo}
+              onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
+              className="input"
+              required
+            />
+          </div>
+          <div>
+            <label className="label">Descrição *</label>
+            <textarea
+              value={formData.descricao}
+              onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
+              className="input min-h-[100px]"
+              required
+            />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="label">Data de Início *</label>
+              <input
+                type="date"
+                value={formData.dataInicio}
+                onChange={(e) => setFormData({ ...formData, dataInicio: e.target.value })}
+                className="input"
+                required
+              />
+            </div>
+            <div>
+              <label className="label">Tipo do Curso *</label>
+              <select
+                value={formData.tipo}
+                onChange={(e) => setFormData({ ...formData, tipo: e.target.value as 'online' | 'presencial' })}
+                className="input"
+              >
+                <option value="online">Online</option>
+                <option value="presencial">Presencial</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="label">URL da Imagem de Capa</label>
+            <input
+              type="url"
+              value={formData.imagemCapa}
+              onChange={(e) => setFormData({ ...formData, imagemCapa: e.target.value })}
+              className="input"
+              placeholder="https://..."
+            />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="label">Data Limite de Inscrição</label>
+              <input
+                type="date"
+                value={formData.dataLimiteInscricao}
+                onChange={(e) => setFormData({ ...formData, dataLimiteInscricao: e.target.value })}
+                className="input"
+              />
+              <p className="text-xs text-[var(--color-text-muted)] mt-1">Em branco = inscrições sem prazo</p>
+            </div>
+            <div>
+              <label className="label">Data de Término</label>
+              <input
+                type="date"
+                value={formData.dataTermino}
+                onChange={(e) => setFormData({ ...formData, dataTermino: e.target.value })}
+                className="input"
+                min={formData.dataInicio || undefined}
+              />
+              <p className="text-xs text-[var(--color-text-muted)] mt-1">
+                Ao chegar esta data, o acesso dos alunos é encerrado e um e-mail é enviado. Em branco = sem término.
+              </p>
+            </div>
+          </div>
+
+          {/* Opções — 2 colunas no desktop para o formulário não ficar quilométrico */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            <CourseToggle
+              id="acessoRestrito"
+              tone="amber"
+              checked={formData.acessoRestrito}
+              onChange={(v) => setFormData({ ...formData, acessoRestrito: v })}
+              titulo="Acesso Restrito ao Conteúdo"
+              descricao="Todos podem ver o curso, mas apenas alunos autorizados acessam as aulas e conteúdos"
+            />
+            <CourseToggle
+              id="exibirDuracao"
+              tone="emerald"
+              checked={formData.exibirDuracao}
+              onChange={(v) => setFormData({ ...formData, exibirDuracao: v })}
+              titulo="Exibir Tempo de Conteúdo"
+              descricao='Mostra "Xh e Ymin de conteúdo" na página do curso e na listagem'
+            />
+            <CourseToggle
+              id="certificadoDisponivel"
+              tone="teal"
+              checked={formData.certificadoDisponivel}
+              onChange={(v) => setFormData({ ...formData, certificadoDisponivel: v })}
+              titulo="Certificado Disponível"
+              descricao='Exibe o badge "CERTIFICADO" e permite emissão de certificado ao concluir'
+            />
+            {formData.certificadoDisponivel && (
+              <CourseToggle
+                id="emissaoCertificadoImediata"
+                tone="amber"
+                checked={formData.emissaoCertificadoImediata}
+                onChange={(v) => setFormData({ ...formData, emissaoCertificadoImediata: v })}
+                titulo="Emissão Imediata de Certificado"
+                descricao="O aluno recebe o certificado automaticamente ao concluir 100% do curso, sem aprovação"
+              />
+            )}
+          </div>
+        </form>
+      </GlassModal>
 
       {/* Modal de Alunos Autorizados */}
-      {showAuthorizedModal && selectedCourse && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="modal-content !max-w-2xl !max-h-[90vh] overflow-hidden flex flex-col p-0">
-            <div className="p-6 border-b border-[var(--glass-border)]">
-              <h2 className="font-heading text-xl font-semibold text-[var(--color-text-primary)]">
-                Alunos Autorizados - {selectedCourse.titulo}
-              </h2>
-              <p className="text-sm text-[var(--color-text-muted)]">
-                Gerencie quem pode acessar este curso restrito
-              </p>
-            </div>
-
-            <div className="p-6 flex-1 overflow-y-auto">
-              {/* Buscar e adicionar aluno */}
-              <div className="mb-6">
-                <label className="label">Adicionar Aluno</label>
-                <input
-                  type="text"
-                  value={searchUser}
-                  onChange={(e) => setSearchUser(e.target.value)}
-                  className="input mb-2"
-                  placeholder="Buscar por nome ou email..."
-                />
-                {searchUser && filteredUsers.length > 0 && (
-                  <div className="border rounded-lg max-h-40 overflow-y-auto">
-                    {filteredUsers.slice(0, 10).map((user) => (
-                      <button
-                        key={user._id}
-                        onClick={() => {
-                          addAuthorizedUser(user._id);
-                          setSearchUser('');
-                        }}
-                        className="w-full p-3 text-left hover:bg-gray-50 flex items-center justify-between"
-                      >
-                        <div>
-                          <p className="font-medium text-[var(--color-text-primary)]">{user.nomeCompleto}</p>
-                          <p className="text-sm text-[var(--color-text-muted)]">{user.email}</p>
-                        </div>
-                        <Plus className="w-4 h-4 text-primary-500" />
-                      </button>
-                    ))}
+      <GlassModal
+        isOpen={showAuthorizedModal && !!selectedCourse}
+        onClose={() => setShowAuthorizedModal(false)}
+        title="Alunos Autorizados"
+        description={selectedCourse ? `${selectedCourse.titulo} — quem pode acessar este curso restrito` : undefined}
+        size="2xl"
+        footer={
+          <button onClick={() => setShowAuthorizedModal(false)} className="btn btn-outline w-full">
+            Fechar
+          </button>
+        }
+      >
+        {/* Buscar e adicionar aluno */}
+        <div className="mb-6">
+          <label className="label">Adicionar Aluno</label>
+          <input
+            type="text"
+            value={searchUser}
+            onChange={(e) => setSearchUser(e.target.value)}
+            className="input mb-2"
+            placeholder="Buscar por nome ou email..."
+          />
+          {searchUser && filteredUsers.length > 0 && (
+            <div className="border border-[var(--glass-border)] rounded-lg max-h-40 overflow-y-auto divide-y divide-[var(--glass-border)]">
+              {filteredUsers.slice(0, 10).map((user) => (
+                <button
+                  key={user._id}
+                  onClick={() => {
+                    addAuthorizedUser(user._id);
+                    setSearchUser('');
+                  }}
+                  className="w-full p-3 text-left hover:bg-gray-50 dark:hover:bg-white/5 flex items-center justify-between gap-3"
+                >
+                  <div className="min-w-0">
+                    <p className="font-medium text-[var(--color-text-primary)] truncate">{user.nomeCompleto}</p>
+                    <p className="text-sm text-[var(--color-text-muted)] truncate">{user.email}</p>
                   </div>
-                )}
-              </div>
-
-              {/* Lista de autorizados */}
-              <div>
-                <label className="label">Alunos Autorizados ({authorizedUsers.length})</label>
-                {authorizedUsers.length > 0 ? (
-                  <div className="space-y-2">
-                    {authorizedUsers.map((user) => (
-                      <div
-                        key={user._id}
-                        className="flex items-center justify-between p-3 bg-gray-50 dark:bg-white/5 rounded-lg"
-                      >
-                        <div>
-                          <p className="font-medium text-[var(--color-text-primary)]">{user.nomeCompleto}</p>
-                          <p className="text-sm text-[var(--color-text-muted)]">{user.email}</p>
-                        </div>
-                        <button
-                          onClick={() => removeAuthorizedUser(user._id)}
-                          className="p-2 text-red-500 hover:bg-red-50 rounded"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-gray-500 text-center py-4">
-                    Nenhum aluno autorizado ainda
-                  </p>
-                )}
-              </div>
+                  <Plus className="w-4 h-4 text-primary-500 flex-shrink-0" />
+                </button>
+              ))}
             </div>
-
-            <div className="p-6 border-t border-[var(--glass-border)]">
-              <button
-                onClick={() => setShowAuthorizedModal(false)}
-                className="btn btn-outline w-full"
-              >
-                Fechar
-              </button>
-            </div>
-          </div>
+          )}
         </div>
-      )}
+
+        {/* Lista de autorizados */}
+        <div>
+          <label className="label">Alunos Autorizados ({authorizedUsers.length})</label>
+          {authorizedUsers.length > 0 ? (
+            <div className="space-y-2">
+              {authorizedUsers.map((user) => (
+                <div
+                  key={user._id}
+                  className="flex items-center justify-between gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-lg"
+                >
+                  <div className="min-w-0">
+                    <p className="font-medium text-[var(--color-text-primary)] truncate">{user.nomeCompleto}</p>
+                    <p className="text-sm text-[var(--color-text-muted)] truncate">{user.email}</p>
+                  </div>
+                  <button
+                    onClick={() => removeAuthorizedUser(user._id)}
+                    className="p-2 text-red-500 hover:bg-red-500/10 rounded flex-shrink-0"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-[var(--color-text-muted)] text-center py-4">
+              Nenhum aluno autorizado ainda
+            </p>
+          )}
+        </div>
+      </GlassModal>
 
       {/* Modal de Tópicos */}
-      {showTopicsModal && selectedCourse && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="modal-content !max-w-2xl !max-h-[90vh] overflow-hidden flex flex-col p-0">
-            <div className="p-6 border-b border-[var(--glass-border)]">
-              <h2 className="font-heading text-xl font-semibold text-[var(--color-text-primary)]">
-                Tópicos - {selectedCourse.titulo}
-              </h2>
-              <p className="text-sm text-[var(--color-text-muted)]">
-                Organize as aulas em tópicos para melhor navegação
-              </p>
-            </div>
-
-            <div className="p-6 flex-1 overflow-y-auto">
+      <GlassModal
+        isOpen={showTopicsModal && !!selectedCourse}
+        onClose={closeTopicsModal}
+        title="Tópicos"
+        description={selectedCourse ? `${selectedCourse.titulo} — organize as aulas em tópicos` : undefined}
+        size="full"
+        footer={
+          <button onClick={closeTopicsModal} className="btn btn-outline w-full">
+            Fechar
+          </button>
+        }
+      >
+        <div>
               {/* Formulário de novo tópico */}
               <form onSubmit={handleSaveTopic} className="mb-6 p-4 bg-gray-50 dark:bg-white/5 rounded-lg">
                 <h3 className="font-medium text-[var(--color-text-primary)] mb-3">
@@ -1005,30 +1008,15 @@ const AdminCourses: React.FC = () => {
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <FolderOpen className="w-10 h-10 mx-auto mb-2 text-gray-300" />
+                  <div className="text-center py-8 text-[var(--color-text-muted)]">
+                    <FolderOpen className="w-10 h-10 mx-auto mb-2 opacity-40" />
                     <p>Nenhum tópico criado ainda</p>
                     <p className="text-sm">Crie tópicos para organizar as aulas deste curso</p>
                   </div>
                 )}
               </div>
-            </div>
-
-            <div className="p-6 border-t border-[var(--glass-border)]">
-              <button
-                onClick={() => {
-                  setShowTopicsModal(false);
-                  setEditingTopic(null);
-                  setTopicFormData({ titulo: '', descricao: '' });
-                }}
-                className="btn btn-outline w-full"
-              >
-                Fechar
-              </button>
-            </div>
-          </div>
         </div>
-      )}
+      </GlassModal>
     </div>
   );
 };

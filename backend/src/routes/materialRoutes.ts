@@ -11,6 +11,7 @@ import {
   recoverMaterialAccess,
   getAccessByToken,
   downloadByToken,
+  getDownloadTerms,
   getMyMaterials,
   getMaterialContent,
   claimMaterialAccess
@@ -41,6 +42,9 @@ const router = Router();
 
 // ---- Webhook (deve vir antes de qualquer rota com parâmetro) ----
 router.all('/webhook', materialWebhook);
+
+// ---- Termos de download (direitos autorais) ----
+router.get('/download-terms', getDownloadTerms);
 
 // ---- Público / Checkout ----
 router.post('/quote', quoteMaterial);

@@ -5,6 +5,45 @@ import Lesson from '../models/Lesson';
 import User from '../models/User';
 import { AuthRequest } from '../middleware/auth';
 
+/**
+ * Verifica se o usuário pode responder um exercício: cargo permitido e, quando
+ * o exercício pertence a uma aula de curso restrito, autorização no curso.
+ * Devolve a mensagem de erro quando barrado, ou null quando liberado.
+ *
+ * O exercício precisa vir com `aulaId` populado (com `cursoId` populado).
+ */
+function checkExerciseAccess(
+  exercise: any,
+  userCargo: string,
+  userId?: any
+): string | null {
+  if (userCargo === 'Administrador') return null;
+
+  if (!exercise.cargosPermitidos.includes(userCargo)) {
+    return 'Você não tem permissão para acessar este exercício';
+  }
+
+  const curso = (exercise.aulaId as any)?.cursoId;
+  if (curso && curso.acessoRestrito) {
+    const alunosAutorizados = curso.alunosAutorizados || [];
+    const isAuthorized = alunosAutorizados.some(
+      (alunoId: any) => alunoId.toString() === userId?.toString()
+    );
+    if (!isAuthorized) {
+      return 'Você não tem acesso a este exercício. Este exercício pertence a um curso com acesso restrito.';
+    }
+  }
+  return null;
+}
+
+/** Compara a resposta do aluno com o gabarito, tolerando number vs. string. */
+function isAnswerCorrect(resposta: any, respostaCorreta: any): boolean {
+  if (resposta === undefined || resposta === null) return false;
+  if (resposta === respostaCorreta) return true;
+  // Questões antigas podem ter o gabarito salvo como string ("2" em vez de 2).
+  return String(resposta) === String(respostaCorreta);
+}
+
 // @desc    Listar exercícios de uma aula
 // @route   GET /api/exercises/lesson/:lessonId
 // @access  Private
@@ -76,32 +115,10 @@ export const getExerciseById = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: 'Exercício não encontrado' });
     }
 
-    // Verificar permissão de cargo
+    // Verificar permissão de cargo e acesso ao curso restrito
     const userCargo = req.user?.cargo || 'Visitante';
-    const userId = req.user?._id;
-
-    if (!exercise.cargosPermitidos.includes(userCargo) && userCargo !== 'Administrador') {
-      return res.status(403).json({ message: 'Você não tem permissão para acessar este exercício' });
-    }
-
-    // Para não-admins, verificar acesso ao curso restrito
-    if (userCargo !== 'Administrador' && exercise.aulaId) {
-      const aula = exercise.aulaId as any;
-      const curso = aula?.cursoId;
-
-      if (curso && curso.acessoRestrito) {
-        const alunosAutorizados = curso.alunosAutorizados || [];
-        const isAuthorized = alunosAutorizados.some((alunoId: any) =>
-          alunoId.toString() === userId?.toString()
-        );
-
-        if (!isAuthorized) {
-          return res.status(403).json({
-            message: 'Você não tem acesso a este exercício. Este exercício pertence a um curso com acesso restrito.'
-          });
-        }
-      }
-    }
+    const erroAcesso = checkExerciseAccess(exercise, userCargo, req.user?._id);
+    if (erroAcesso) return res.status(403).json({ message: erroAcesso });
 
     // Para não-admins, remover respostas corretas e comentadas
     if (userCargo !== 'Administrador') {
@@ -271,30 +288,10 @@ export const answerExercise = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: 'Exercício não encontrado' });
     }
 
-    // Verificar permissão de cargo
+    // Verificar permissão de cargo e acesso ao curso restrito
     const userCargo = req.user?.cargo || 'Visitante';
-    if (!exercise.cargosPermitidos.includes(userCargo) && userCargo !== 'Administrador') {
-      return res.status(403).json({ message: 'Você não tem permissão para responder este exercício' });
-    }
-
-    // Verificar acesso ao curso restrito
-    if (userCargo !== 'Administrador' && exercise.aulaId) {
-      const aula = exercise.aulaId as any;
-      const curso = aula?.cursoId;
-
-      if (curso && curso.acessoRestrito) {
-        const alunosAutorizados = curso.alunosAutorizados || [];
-        const isAuthorized = alunosAutorizados.some((alunoId: any) =>
-          alunoId.toString() === userId?.toString()
-        );
-
-        if (!isAuthorized) {
-          return res.status(403).json({
-            message: 'Você não tem acesso a este exercício. Este exercício pertence a um curso com acesso restrito.'
-          });
-        }
-      }
-    }
+    const erroAcesso = checkExerciseAccess(exercise, userCargo, userId);
+    if (erroAcesso) return res.status(403).json({ message: erroAcesso });
 
     // Verificar número de tentativas
     const tentativasAnteriores = await ExerciseAnswer.countDocuments({
@@ -317,7 +314,7 @@ export const answerExercise = async (req: AuthRequest, res: Response) => {
 
     exercise.questoes.forEach((questao, index) => {
       pontosTotais += questao.pontos;
-      if (respostas[index] !== undefined && respostas[index] === questao.respostaCorreta) {
+      if (isAnswerCorrect(respostas[index], questao.respostaCorreta)) {
         pontosObtidos += questao.pontos;
       }
     });
@@ -347,9 +344,10 @@ export const answerExercise = async (req: AuthRequest, res: Response) => {
       tentativasRestantes: exercise.tentativasPermitidas - tentativasAnteriores - 1,
       questoes: exercise.questoes.map((q, i) => ({
         pergunta: q.pergunta,
+        opcoes: q.opcoes,
         suaResposta: respostas[i],
         respostaCorreta: q.respostaCorreta,
-        correto: respostas[i] === q.respostaCorreta,
+        correto: isAnswerCorrect(respostas[i], q.respostaCorreta),
         imagem: q.imagem,
         respostaComentada: q.respostaComentada,
         fonteBibliografica: q.fonteBibliografica
@@ -360,6 +358,95 @@ export const answerExercise = async (req: AuthRequest, res: Response) => {
   } catch (error) {
     console.error('Erro ao responder exercício:', error);
     res.status(500).json({ message: 'Erro ao responder exercício' });
+  }
+};
+
+// @desc    Corrigir UMA questão na hora (modo estudo — gabarito imediato)
+// @route   POST /api/exercises/:id/check
+// @access  Private
+export const checkQuestion = async (req: AuthRequest, res: Response) => {
+  try {
+    const { questaoIndex, resposta } = req.body;
+    const index = Number(questaoIndex);
+
+    if (!Number.isInteger(index) || index < 0) {
+      return res.status(400).json({ message: 'Índice da questão inválido' });
+    }
+
+    const exercise = await Exercise.findById(req.params.id).populate({
+      path: 'aulaId',
+      select: 'cursoId',
+      populate: { path: 'cursoId', select: 'acessoRestrito alunosAutorizados' }
+    });
+
+    if (!exercise) {
+      return res.status(404).json({ message: 'Exercício não encontrado' });
+    }
+
+    const userCargo = req.user?.cargo || 'Visitante';
+    const erroAcesso = checkExerciseAccess(exercise, userCargo, req.user?._id);
+    if (erroAcesso) return res.status(403).json({ message: erroAcesso });
+
+    // O admin do exercício decide se o gabarito pode ser revelado durante a
+    // resolução. Com `mostrarRespostas: false` o aluno só vê a correção no fim.
+    if (exercise.mostrarRespostas === false) {
+      return res.status(403).json({
+        message: 'Este exercício não libera o gabarito durante a resolução.',
+        modoProva: true
+      });
+    }
+
+    const questao = exercise.questoes[index];
+    if (!questao) {
+      return res.status(404).json({ message: 'Questão não encontrada' });
+    }
+
+    res.json({
+      questaoIndex: index,
+      correto: isAnswerCorrect(resposta, questao.respostaCorreta),
+      respostaCorreta: questao.respostaCorreta,
+      respostaComentada: questao.respostaComentada,
+      fonteBibliografica: questao.fonteBibliografica,
+      pontos: questao.pontos
+    });
+  } catch (error) {
+    console.error('Erro ao corrigir questão:', error);
+    res.status(500).json({ message: 'Erro ao corrigir questão' });
+  }
+};
+
+// @desc    Meu progresso em todos os exercícios (tentativas e melhor nota)
+// @route   GET /api/exercises/my-progress
+// @access  Private
+export const getMyProgress = async (req: AuthRequest, res: Response) => {
+  try {
+    // `user.exerciciosRespondidos` guarda ids de RESPOSTAS, não de exercícios —
+    // por isso o progresso é calculado a partir do próprio ExerciseAnswer.
+    const rows = await ExerciseAnswer.aggregate([
+      { $match: { usuarioId: req.user?._id } },
+      {
+        $group: {
+          _id: '$exercicioId',
+          tentativas: { $sum: 1 },
+          melhorNota: { $max: '$nota' },
+          ultimaData: { $max: '$createdAt' }
+        }
+      }
+    ]);
+
+    const progresso: Record<string, { tentativas: number; melhorNota: number; ultimaData: Date }> = {};
+    rows.forEach((r: any) => {
+      progresso[String(r._id)] = {
+        tentativas: r.tentativas,
+        melhorNota: r.melhorNota ?? 0,
+        ultimaData: r.ultimaData
+      };
+    });
+
+    res.json({ progresso });
+  } catch (error) {
+    console.error('Erro ao obter progresso de exercícios:', error);
+    res.status(500).json({ message: 'Erro ao obter progresso' });
   }
 };
 

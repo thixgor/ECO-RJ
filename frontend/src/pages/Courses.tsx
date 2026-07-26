@@ -8,18 +8,18 @@ import { CoursesGridSkeleton } from '../components/common/Loading';
 import { formatDuration } from '../utils/formatDuration';
 import { GlassTabs, ContextMenu, ContextMenuItem } from '../components/ui';
 import { renderBold } from '../utils/richText';
+import { brl, formatPreco, isGratuito } from '../utils/price';
 import toast from 'react-hot-toast';
 
-const brl = (v: number) => `R$ ${Number(v || 0).toFixed(2).replace('.', ',')}`;
-
-// Calcula o preço final de um curso aplicando o desconto ativado (percentual/fixo)
+// Calcula o preço final de um curso aplicando o desconto ativado (percentual/fixo).
+// Preço 0 com venda habilitada = curso GRATUITO (aparece como "Gratuito", não é oculto).
 const getCoursePricing = (course: Course) => {
   const venda = course.venda;
-  const disponivel = !!venda?.disponivel && Number(venda?.preco || 0) > 0;
+  const disponivel = !!venda?.disponivel;
   if (!disponivel) {
     return { disponivel: false, precoBase: 0, precoFinal: 0, economia: 0, temDesconto: false };
   }
-  const precoBase = Number(venda!.preco);
+  const precoBase = Math.max(0, Number(venda!.preco || 0));
   let precoFinal = precoBase;
   const desc = venda!.descontoAtivado;
   if (desc?.ativo && Number(desc.valor) > 0) {
@@ -323,10 +323,12 @@ const Courses: React.FC = () => {
                         <div className="flex items-end justify-between">
                           <div className="leading-tight">
                             <span className="text-[11px] text-[var(--color-text-muted)] block">
-                              {isEnrolled ? 'Você já está inscrito' : 'Garanta sua vaga por'}
+                              {isEnrolled
+                                ? 'Você já está inscrito'
+                                : isGratuito(pricing.precoFinal) ? 'Inscrição gratuita' : 'Garanta sua vaga por'}
                             </span>
-                            <span className="text-2xl font-extrabold text-primary-500">
-                              {brl(pricing.precoFinal)}
+                            <span className={`text-2xl font-extrabold ${isGratuito(pricing.precoFinal) ? 'text-emerald-500' : 'text-primary-500'}`}>
+                              {formatPreco(pricing.precoFinal)}
                             </span>
                             {pricing.temDesconto && (
                               <span className="block text-xs font-semibold text-emerald-600 dark:text-emerald-400">
@@ -335,7 +337,9 @@ const Courses: React.FC = () => {
                             )}
                           </div>
                           <span className="text-sm font-semibold text-primary-500 whitespace-nowrap">
-                            {isEnrolled ? 'Acessar →' : 'Quero me inscrever →'}
+                            {isEnrolled
+                              ? 'Acessar →'
+                              : isGratuito(pricing.precoFinal) ? 'Inscrever-se grátis →' : 'Quero me inscrever →'}
                           </span>
                         </div>
                       </div>

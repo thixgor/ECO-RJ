@@ -701,6 +701,19 @@
     min-height: var(--touch-target-min);
   }
 
+  /* Variante densa: usada no menu de Administração, que tem muitos itens.
+     No desktop reduz a altura para caber a lista inteira; no mobile mantém o
+     alvo de toque mínimo. */
+  .nav-link-compact {
+    @apply gap-2.5 px-4 py-2 text-sm;
+  }
+
+  @media (min-width: 1024px) {
+    .nav-link-compact {
+      min-height: 0;
+    }
+  }
+
   .nav-link-glass::before {
     content: '';
     position: absolute;
@@ -1533,3 +1546,101 @@
   display: none !important;
 }
 */
+
+/* ==========================================
+   TRANSIÇÃO ELETROCARDIOGRÁFICA (EXERCÍCIOS)
+   Usada entre uma questão e a próxima — ver
+   components/exercises/EcgTransition.tsx
+   ========================================== */
+.ecg-transition {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg-primary);
+  animation: ecgFade 0.7s ease-out forwards;
+  pointer-events: none;
+}
+
+.ecg-transition__inner {
+  position: relative;
+  width: min(420px, 80%);
+}
+
+.ecg-transition__svg {
+  display: block;
+  width: 100%;
+  height: 80px;
+  overflow: visible;
+  filter: drop-shadow(0 0 6px rgba(30, 144, 255, 0.45));
+}
+
+/* O traçado é "escrito" da esquerda para a direita.
+   1000 cobre com folga o comprimento do path do viewBox. */
+.ecg-transition__trace {
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+  animation: ecgDraw 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Ponto luminoso acompanhando a ponta da linha */
+.ecg-transition__blip {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  border-radius: 9999px;
+  box-shadow: 0 0 12px 4px rgba(30, 144, 255, 0.55);
+  animation: ecgBlip 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.ecg-transition__label {
+  margin-top: 0.5rem;
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  animation: ecgLabel 0.7s ease-out forwards;
+}
+
+@keyframes ecgDraw {
+  from { stroke-dashoffset: 1000; }
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes ecgBlip {
+  from { left: 0; opacity: 0; }
+  10% { opacity: 1; }
+  85% { opacity: 1; }
+  to { left: 100%; opacity: 0; }
+}
+
+@keyframes ecgFade {
+  0% { opacity: 1; }
+  75% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes ecgLabel {
+  0% { opacity: 0; transform: translateY(4px); }
+  35% { opacity: 1; transform: translateY(0); }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Quem pediu menos movimento vê apenas um fade rápido, sem o traçado. */
+@media (prefers-reduced-motion: reduce) {
+  .ecg-transition__trace,
+  .ecg-transition__blip {
+    animation: none;
+  }
+  .ecg-transition__trace { stroke-dashoffset: 0; }
+  .ecg-transition__blip { display: none; }
+  .ecg-transition { animation-duration: 0.25s; }
+}

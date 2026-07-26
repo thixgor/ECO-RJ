@@ -6,6 +6,8 @@ import {
   updateExercise,
   deleteExercise,
   answerExercise,
+  checkQuestion,
+  getMyProgress,
   getMyAnswers,
   getExerciseAnswers,
   getAllExercises,
@@ -17,8 +19,10 @@ const router = Router();
 
 // Rotas autenticadas - rotas específicas devem vir ANTES de /:id
 router.get('/lesson/:lessonId', protect, getExercisesByLesson);
+router.get('/my-progress', protect, getMyProgress);
 router.get('/', protect, getAllExercises);
 router.post('/:id/answer', protect, answerExercise);
+router.post('/:id/check', protect, checkQuestion);
 router.get('/:id/my-answers', protect, getMyAnswers);
 router.get('/:id', protect, getExerciseById);
 

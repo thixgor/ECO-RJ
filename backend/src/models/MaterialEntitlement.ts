@@ -27,6 +27,12 @@ export interface IMaterialEntitlement extends Document {
   podeAvaliar: boolean;                 // habilita avaliação (compra confirmada)
   ultimoAcesso?: Date;
   totalDownloads: number;
+  /** Último aceite dos termos de download / direitos autorais (evidência). */
+  aceiteTermosDownload?: {
+    versao: string;
+    data: Date;
+    ip?: string;
+  };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -46,7 +52,12 @@ const MaterialEntitlementSchema = new Schema<IMaterialEntitlement>(
     revogado: { type: Boolean, default: false },
     podeAvaliar: { type: Boolean, default: true },
     ultimoAcesso: { type: Date },
-    totalDownloads: { type: Number, default: 0 }
+    totalDownloads: { type: Number, default: 0 },
+    aceiteTermosDownload: {
+      versao: { type: String },
+      data: { type: Date },
+      ip: { type: String }
+    }
   },
   { timestamps: true }
 );

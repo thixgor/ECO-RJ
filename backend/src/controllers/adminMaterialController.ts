@@ -92,6 +92,7 @@ export const createMaterial = async (req: AuthRequest, res: Response) => {
       preco: Math.max(0, Number(b.preco) || 0),
       descontoAtivado: sanitizeDesconto(b.descontoAtivado),
       validadeAcessoDias: Math.max(0, Number(b.validadeAcessoDias) || 0),
+      exibirVendas: b.exibirVendas !== undefined ? !!b.exibirVendas : true,
       createdBy: req.user?._id
     });
 
@@ -139,6 +140,7 @@ export const updateMaterial = async (req: AuthRequest, res: Response) => {
       material.markModified('descontoAtivado');
     }
     if (b.validadeAcessoDias !== undefined) material.validadeAcessoDias = Math.max(0, Number(b.validadeAcessoDias) || 0);
+    if (b.exibirVendas !== undefined) material.exibirVendas = !!b.exibirVendas;
 
     await material.save();
     res.json({ message: 'Material atualizado com sucesso', material });

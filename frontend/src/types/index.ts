@@ -153,6 +153,8 @@ export interface PaymentConfig {
   termosVersao: string;
   termosCompra: string;
   vendasAtivas: boolean;
+  /** Adesão a cursos/materiais gratuitos — não depende do gateway de pagamento. */
+  adesaoGratuitaAtiva?: boolean;
 }
 
 // ==========================================================================
@@ -199,7 +201,8 @@ export interface MaterialListItem {
   totalConteudos: number;
   avaliacaoMedia: number;
   avaliacaoTotal: number;
-  vendasTotais: number;
+  /** Ausente quando o admin desabilitou a exibição do total de compradores. */
+  vendasTotais?: number;
   adquirido: boolean;
 }
 
@@ -219,7 +222,8 @@ export interface MaterialDetalhe {
   totalConteudos: number;
   avaliacaoMedia: number;
   avaliacaoTotal: number;
-  vendasTotais: number;
+  /** Ausente quando o admin desabilitou a exibição do total de compradores. */
+  vendasTotais?: number;
   conteudos: MaterialConteudo[];
 }
 
@@ -242,6 +246,8 @@ export interface MaterialAdmin {
   avaliacaoMedia: number;
   avaliacaoTotal: number;
   vendasTotais: number;
+  /** Exibir "N alunos já garantiram" na vitrine e na página do material. */
+  exibirVendas: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -360,12 +366,26 @@ export interface Question {
 export interface Exercise {
   _id: string;
   titulo: string;
+  descricao?: string;
   aulaId?: string | Lesson; // Opcional - exercício pode existir sem aula vinculada
   tipo: 'multipla_escolha' | 'verdadeiro_falso' | 'dissertativo';
   questoes: Question[];
   cargosPermitidos: string[];
   tentativasPermitidas: number;
+  /** Quando false, o gabarito só aparece no fim (não há modo estudo). */
+  mostrarRespostas?: boolean;
+  notaMinima?: number;
   createdAt: string;
+}
+
+/** Correção de uma única questão (modo estudo — gabarito imediato). */
+export interface QuestionCheck {
+  questaoIndex: number;
+  correto: boolean;
+  respostaCorreta: string | number;
+  respostaComentada?: string;
+  fonteBibliografica?: string;
+  pontos: number;
 }
 
 export interface ExerciseAnswer {

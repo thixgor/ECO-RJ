@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   ShoppingCart, Star, Loader2, ArrowLeft, Video, FileText, File, Package,
-  CheckCircle2, ShieldCheck, Clock, Lock, MessageSquare
+  CheckCircle2, ShieldCheck, Clock, Lock, MessageSquare, Gift
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { GlassCard, GlassButton, GlassTextarea } from '../components/ui';
@@ -11,8 +11,7 @@ import { renderBold } from '../utils/richText';
 import { materialService } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import type { MaterialDetalhe, MaterialReview, MaterialTipo } from '../types';
-
-const brl = (v: number) => `R$ ${Number(v || 0).toFixed(2).replace('.', ',')}`;
+import { brl, formatPreco, isGratuito } from '../utils/price';
 
 const tipoIcon: Record<MaterialTipo, React.ReactNode> = {
   aula: <Video className="w-4 h-4" />,
@@ -120,6 +119,8 @@ const MaterialDetail: React.FC = () => {
     );
   }
   if (!material) return null;
+
+  const gratuito = isGratuito(material.preco);
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
@@ -259,7 +260,9 @@ const MaterialDetail: React.FC = () => {
                   {material.temDesconto && material.precoOriginal && (
                     <span className="block text-sm text-[var(--color-text-muted)] line-through">{brl(material.precoOriginal)}</span>
                   )}
-                  <span className="text-3xl font-bold text-primary-500">{brl(material.preco)}</span>
+                  <span className={`text-3xl font-bold ${gratuito ? 'text-emerald-500' : 'text-primary-500'}`}>
+                    {formatPreco(material.preco)}
+                  </span>
                   {material.validadeAcessoDias > 0 ? (
                     <p className="text-xs text-[var(--color-text-muted)] mt-1">Acesso por {material.validadeAcessoDias} dias</p>
                   ) : (
@@ -268,15 +271,31 @@ const MaterialDetail: React.FC = () => {
                 </div>
 
                 <Link to={`/materiais/comprar/${material._id}`}>
-                  <GlassButton variant="primary" fullWidth size="lg" leftIcon={<ShoppingCart className="w-5 h-5" />}>
-                    Comprar agora
+                  <GlassButton
+                    variant="primary"
+                    fullWidth
+                    size="lg"
+                    leftIcon={gratuito ? <Gift className="w-5 h-5" /> : <ShoppingCart className="w-5 h-5" />}
+                  >
+                    {gratuito ? 'Obter grátis' : 'Comprar agora'}
                   </GlassButton>
                 </Link>
 
+                {/* Prova social — exibida somente se o admin habilitou no material */}
+                {!!material.vendasTotais && material.vendasTotais > 0 && (
+                  <p className="mt-3 text-xs text-center text-[var(--color-text-muted)]">
+                    🔥 {material.vendasTotais} {material.vendasTotais === 1 ? 'aluno já garantiu' : 'alunos já garantiram'} este material
+                  </p>
+                )}
+
                 <ul className="mt-5 space-y-2 text-sm text-[var(--color-text-secondary)]">
-                  <li className="flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-emerald-500" /> Pagamento seguro via Mercado Pago</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> Acesso imediato após aprovação</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> Compre com ou sem conta</li>
+                  {gratuito ? (
+                    <li className="flex items-center gap-2"><Gift className="w-4 h-4 text-emerald-500" /> Material gratuito — nenhum pagamento necessário</li>
+                  ) : (
+                    <li className="flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-emerald-500" /> Pagamento seguro via Mercado Pago</li>
+                  )}
+                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> {gratuito ? 'Acesso imediato' : 'Acesso imediato após aprovação'}</li>
+                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> {gratuito ? 'Disponível com ou sem conta' : 'Compre com ou sem conta'}</li>
                 </ul>
               </>
             )}

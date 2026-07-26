@@ -38,6 +38,56 @@ interface SidebarProps {
   onToggleVisible?: () => void;
 }
 
+/**
+ * Menu de administração, agrupado por área. Todos os itens são sempre
+ * renderizados — os grupos servem apenas para dar hierarquia visual e deixar a
+ * lista compacta o bastante para caber sem esconder abas (Pagamentos,
+ * Materiais, etc. ficavam fora da área visível antes).
+ */
+const ADMIN_GROUPS: Array<{
+  titulo: string;
+  itens: Array<{ to: string; label: string; icon: React.ComponentType<{ className?: string }>; end?: boolean }>;
+}> = [
+  {
+    titulo: 'Visão geral',
+    itens: [
+      { to: '/admin', label: 'Estatísticas', icon: BarChart3, end: true },
+      { to: '/admin/usuarios', label: 'Usuários', icon: Users }
+    ]
+  },
+  {
+    titulo: 'Conteúdo',
+    itens: [
+      { to: '/admin/cursos', label: 'Gerenciar Cursos', icon: BookOpen },
+      { to: '/admin/aulas', label: 'Gerenciar Aulas', icon: FileText },
+      { to: '/admin/exercicios', label: 'Gerenciar Exercícios', icon: ClipboardList }
+    ]
+  },
+  {
+    titulo: 'Comercial',
+    itens: [
+      { to: '/admin/pagamentos', label: 'Pagamentos', icon: CreditCard },
+      { to: '/admin/materiais', label: 'Materiais', icon: Package },
+      { to: '/admin/serial-keys', label: 'Serial Keys', icon: Key }
+    ]
+  },
+  {
+    titulo: 'Certificação',
+    itens: [
+      { to: '/admin/certificados', label: 'Certificados', icon: Award },
+      { to: '/admin/solicitacoes-certificado', label: 'Solicitações', icon: FileCheck }
+    ]
+  },
+  {
+    titulo: 'Sistema',
+    itens: [
+      { to: '/admin/avisos', label: 'Avisos', icon: Bell },
+      { to: '/admin/logs', label: 'Logs de Acesso', icon: Activity },
+      { to: '/admin/configuracoes', label: 'Configurações', icon: Settings }
+    ]
+  }
+];
+
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isVisible = true }) => {
   const { isAdmin, user } = useAuth();
   const { isDark } = useTheme();
@@ -63,6 +113,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isVisible = true }) 
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
     `nav-link-glass ${isActive ? 'active' : ''}`;
 
+  const compactNavLinkClass = ({ isActive }: { isActive: boolean }) =>
+    `nav-link-glass nav-link-compact ${isActive ? 'active' : ''}`;
+
   return (
     <>
       {/* Overlay for mobile - Higher z-index and better touch handling */}
@@ -77,10 +130,16 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isVisible = true }) 
         />
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar
+          IMPORTANTE: no desktop a altura NÃO pode ser 100vh. O <aside> vive dentro de
+          um container com `overflow-hidden` que começa abaixo do header (64px) e acima
+          do footer — com `h-screen` a base do menu (últimos itens de Administração e o
+          seletor de tema) era cortada e ficava inalcançável. Deixamos o flex esticar o
+          aside até a altura real do container e o <nav> rola internamente. */}
       <aside
         className={`
-          fixed lg:sticky inset-y-0 lg:top-0 lg:h-screen left-0 z-50
+          fixed lg:sticky inset-y-0 lg:top-0 lg:inset-y-auto left-0 z-50
+          lg:h-auto lg:self-stretch lg:max-h-[calc(100vh-4rem)]
           glass-sidebar
           transform transition-all duration-300 ease-out
           lg:transform-none
@@ -155,8 +214,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isVisible = true }) 
             </div>
           )}
 
-          {/* Navigation */}
-          <nav className="flex-1 p-3 sm:p-4 space-y-1 overflow-y-auto scroll-container-y">
+          {/* Navigation — o wrapper relativo permite o degradê que sinaliza "há mais itens abaixo" */}
+          <div className="relative flex-1 min-h-0">
+          <nav className="h-full p-3 sm:p-4 space-y-1 overflow-y-auto overscroll-contain scroll-container-y">
             {/* Main Section */}
             <div className="mb-4">
               <p className="px-4 mb-2 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">
@@ -215,9 +275,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isVisible = true }) 
               </NavLink>
             </div>
 
-            {/* Admin Section */}
+            {/* Admin Section — todos os itens ficam sempre visíveis (nada é escondido
+                atrás de menus colapsáveis); os grupos apenas organizam a leitura. */}
             {isAdmin && (
-              <div className="mb-4">
+              <div className="mb-2">
                 <div className="flex items-center gap-2 px-4 mb-2">
                   <Shield className="w-3.5 h-3.5 text-primary-500" />
                   <p className="text-xs font-semibold text-primary-500 uppercase tracking-wider">
@@ -225,73 +286,32 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isVisible = true }) 
                   </p>
                 </div>
 
-                <NavLink to="/admin" end className={navLinkClass} onClick={onClose}>
-                  <BarChart3 className="w-5 h-5 flex-shrink-0" />
-                  <span>Estatísticas</span>
-                </NavLink>
-
-                <NavLink to="/admin/usuarios" className={navLinkClass} onClick={onClose}>
-                  <Users className="w-5 h-5 flex-shrink-0" />
-                  <span>Usuários</span>
-                </NavLink>
-
-                <NavLink to="/admin/cursos" className={navLinkClass} onClick={onClose}>
-                  <BookOpen className="w-5 h-5 flex-shrink-0" />
-                  <span>Gerenciar Cursos</span>
-                </NavLink>
-
-                <NavLink to="/admin/aulas" className={navLinkClass} onClick={onClose}>
-                  <FileText className="w-5 h-5 flex-shrink-0" />
-                  <span>Gerenciar Aulas</span>
-                </NavLink>
-
-                <NavLink to="/admin/exercicios" className={navLinkClass} onClick={onClose}>
-                  <ClipboardList className="w-5 h-5 flex-shrink-0" />
-                  <span>Gerenciar Exercícios</span>
-                </NavLink>
-
-                <NavLink to="/admin/serial-keys" className={navLinkClass} onClick={onClose}>
-                  <Key className="w-5 h-5 flex-shrink-0" />
-                  <span>Serial Keys</span>
-                </NavLink>
-
-                <NavLink to="/admin/pagamentos" className={navLinkClass} onClick={onClose}>
-                  <CreditCard className="w-5 h-5 flex-shrink-0" />
-                  <span>Pagamentos</span>
-                </NavLink>
-
-                <NavLink to="/admin/materiais" className={navLinkClass} onClick={onClose}>
-                  <Package className="w-5 h-5 flex-shrink-0" />
-                  <span>Materiais</span>
-                </NavLink>
-
-                <NavLink to="/admin/avisos" className={navLinkClass} onClick={onClose}>
-                  <Bell className="w-5 h-5 flex-shrink-0" />
-                  <span>Avisos</span>
-                </NavLink>
-
-                <NavLink to="/admin/certificados" className={navLinkClass} onClick={onClose}>
-                  <Award className="w-5 h-5 flex-shrink-0" />
-                  <span>Certificados</span>
-                </NavLink>
-
-                <NavLink to="/admin/solicitacoes-certificado" className={navLinkClass} onClick={onClose}>
-                  <FileCheck className="w-5 h-5 flex-shrink-0" />
-                  <span>Solicitacoes</span>
-                </NavLink>
-
-                <NavLink to="/admin/logs" className={navLinkClass} onClick={onClose}>
-                  <Activity className="w-5 h-5 flex-shrink-0" />
-                  <span>Logs de Acesso</span>
-                </NavLink>
-
-                <NavLink to="/admin/configuracoes" className={navLinkClass} onClick={onClose}>
-                  <Settings className="w-5 h-5 flex-shrink-0" />
-                  <span>Configurações</span>
-                </NavLink>
+                {ADMIN_GROUPS.map((group) => (
+                  <div key={group.titulo} className="mb-3 last:mb-0">
+                    <p className="px-4 mb-1 text-[10px] font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">
+                      {group.titulo}
+                    </p>
+                    {group.itens.map((item) => (
+                      <NavLink
+                        key={item.to}
+                        to={item.to}
+                        end={item.end}
+                        className={compactNavLinkClass}
+                        onClick={onClose}
+                      >
+                        <item.icon className="w-4 h-4 flex-shrink-0" />
+                        <span>{item.label}</span>
+                      </NavLink>
+                    ))}
+                  </div>
+                ))}
               </div>
             )}
           </nav>
+
+          {/* Degradê inferior: indica que a lista continua rolando */}
+          <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-[var(--color-bg-primary)] to-transparent opacity-80" />
+          </div>
 
           {/* Footer with Theme Switch */}
           <div className="p-4 border-t border-[var(--glass-border)] safe-area-bottom">

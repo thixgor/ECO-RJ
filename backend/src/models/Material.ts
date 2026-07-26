@@ -68,6 +68,7 @@ export interface IMaterial extends Document {
   avaliacaoMedia: number;    // 0-5
   avaliacaoTotal: number;    // nº de avaliações
   vendasTotais: number;
+  exibirVendas: boolean;     // exibir "N alunos já garantiram" na vitrine/detalhe
   createdBy?: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
@@ -118,6 +119,8 @@ const MaterialSchema = new Schema<IMaterial>(
     avaliacaoMedia: { type: Number, default: 0, min: 0, max: 5 },
     avaliacaoTotal: { type: Number, default: 0, min: 0 },
     vendasTotais: { type: Number, default: 0, min: 0 },
+    // Prova social opcional: o admin decide se o total de compradores aparece.
+    exibirVendas: { type: Boolean, default: true },
     createdBy: { type: Schema.Types.ObjectId, ref: 'User' }
   },
   { timestamps: true }

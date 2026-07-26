@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { BookOpen, Calendar, User, PlayCircle, Clock, Lock, CheckCircle, ArrowLeft, FolderOpen, ChevronDown, FileText, Video, Layers, Award, Loader2, ExternalLink, Copy, Share2, ShoppingCart } from 'lucide-react';
+import { BookOpen, Calendar, User, PlayCircle, Clock, Lock, CheckCircle, ArrowLeft, FolderOpen, ChevronDown, FileText, Video, Layers, Award, Loader2, ExternalLink, Copy, Share2, ShoppingCart, Gift } from 'lucide-react';
 import { courseService, lessonService, courseTopicService, courseSubtopicService, certificateRequestService, paymentService } from '../services/api';
 import { Course, Lesson, User as UserType, CourseTopic, CourseSubtopic } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { CourseDetailSkeleton } from '../components/common/Loading';
 import { formatDuration } from '../utils/formatDuration';
 import { ContextMenu, ContextMenuItem } from '../components/ui';
+import { brl, formatPreco, isGratuito } from '../utils/price';
 import toast from 'react-hot-toast';
 
 const CourseDetail: React.FC = () => {
@@ -112,9 +113,10 @@ const CourseDetail: React.FC = () => {
       const lessonsData = lessonsResponse.data || [];
       setLessons(lessonsData);
 
-      // Se o curso está à venda, busca o preço real com descontos (lote + desconto ativado)
+      // Se o curso está à venda, busca o preço real com descontos (lote + desconto ativado).
+      // Preço 0 também entra aqui: é um curso gratuito com adesão pelo mesmo fluxo.
       const vendaCurso = courseResponse.data?.venda;
-      if (vendaCurso?.disponivel && (vendaCurso?.preco || 0) > 0) {
+      if (vendaCurso?.disponivel) {
         paymentService.quote({ cursoId: id! })
           .then((qRes) => {
             setSaleQuote({
@@ -125,7 +127,11 @@ const CourseDetail: React.FC = () => {
           })
           .catch(() => setSaleQuote(null));
         paymentService.getConfig()
-          .then((cfg) => setVendasAtivas(!!cfg.data.vendasAtivas))
+          .then((cfg) => setVendasAtivas(
+            (vendaCurso?.preco || 0) > 0
+              ? !!cfg.data.vendasAtivas
+              : !!(cfg.data.adesaoGratuitaAtiva ?? cfg.data.vendasAtivas)
+          ))
           .catch(() => setVendasAtivas(true));
       }
       setTopics(topicsResponse.data || []);
@@ -255,6 +261,9 @@ const CourseDetail: React.FC = () => {
   }
 
   const instrutor = course.instrutor as UserType;
+
+  // Curso com venda habilitada e preço 0 = adesão gratuita (mesmo fluxo, sem cobrança).
+  const cursoGratuito = isGratuito(saleQuote ? saleQuote.subtotal : course.venda?.preco);
 
   // Organize lessons by topics and subtopics
   const lessonsWithoutTopic = lessons.filter(l => !(l as any).topicoId);
@@ -654,32 +663,32 @@ const CourseDetail: React.FC = () => {
                 Cancelar Inscricao
               </button>
             </div>
-          ) : (course.venda?.disponivel && (course.venda?.preco || 0) > 0) ? (
+          ) : course.venda?.disponivel ? (
             (() => {
-              const precoBase = saleQuote ? saleQuote.precoBase : Number(course.venda!.preco);
-              const precoFinal = saleQuote ? saleQuote.subtotal : Number(course.venda!.preco);
+              const precoBase = saleQuote ? saleQuote.precoBase : Number(course.venda!.preco || 0);
+              const precoFinal = saleQuote ? saleQuote.subtotal : Number(course.venda!.preco || 0);
               const economia = Math.max(0, precoBase - precoFinal);
               const temDesconto = economia > 0.001;
-              const fmt = (v: number) => `R$ ${Number(v).toFixed(2).replace('.', ',')}`;
+              const gratuito = isGratuito(precoFinal);
               return (
                 <div className="space-y-3">
                   <div className="text-center">
                     {temDesconto && (
                       <div className="flex items-center justify-center gap-2 mb-1">
                         <span className="text-base text-[var(--color-text-muted)] line-through">
-                          {fmt(precoBase)}
+                          {brl(precoBase)}
                         </span>
                         <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400">
                           -{Math.round((economia / precoBase) * 100)}%
                         </span>
                       </div>
                     )}
-                    <div className="text-3xl font-bold text-primary-500">
-                      {fmt(precoFinal)}
+                    <div className={`text-3xl font-bold ${gratuito ? 'text-emerald-500' : 'text-primary-500'}`}>
+                      {formatPreco(precoFinal)}
                     </div>
                     {temDesconto && (
                       <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 mt-1">
-                        Economize {fmt(economia)}
+                        Economize {brl(economia)}
                       </p>
                     )}
                     {saleQuote?.loteNome && (
@@ -692,13 +701,15 @@ const CourseDetail: React.FC = () => {
                     onClick={() => navigate(`/comprar/${course._id}`)}
                     className="btn btn-primary w-full flex items-center justify-center gap-2 animate-pulse-glow"
                   >
-                    <ShoppingCart className="w-5 h-5" />
-                    Comprar Curso
+                    {gratuito ? <Gift className="w-5 h-5" /> : <ShoppingCart className="w-5 h-5" />}
+                    {gratuito ? 'Inscrever-se grátis' : 'Comprar Curso'}
                   </button>
                   <p className="text-xs text-center text-[var(--color-text-muted)]">
-                    {vendasAtivas
-                      ? 'Acesso liberado automaticamente após o pagamento'
-                      : 'Vendas temporariamente indisponíveis'}
+                    {!vendasAtivas
+                      ? 'Inscrições temporariamente indisponíveis'
+                      : gratuito
+                        ? 'Curso gratuito — acesso liberado na hora'
+                        : 'Acesso liberado automaticamente após o pagamento'}
                   </p>
                 </div>
               );
@@ -866,29 +877,33 @@ const CourseDetail: React.FC = () => {
 
           {/* Tutorial Section */}
           <div className="grid md:grid-cols-2 gap-6">
-            {(course.venda?.disponivel && (course.venda?.preco || 0) > 0) ? (
-              /* Curso à venda online */
+            {course.venda?.disponivel ? (
+              /* Curso com adesão online (pago ou gratuito) */
               <div className="p-6 rounded-2xl bg-white dark:bg-white/5 border border-[var(--glass-border)] hover:border-primary-500/30 transition-all duration-300">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-10 h-10 rounded-xl bg-primary-500/10 flex items-center justify-center text-primary-500">
-                    <ShoppingCart className="w-5 h-5" />
+                    {cursoGratuito ? <Gift className="w-5 h-5" /> : <ShoppingCart className="w-5 h-5" />}
                   </div>
                   <h3 className="font-heading font-bold text-[var(--color-text-primary)]">Como adquirir o curso?</h3>
                 </div>
                 <div className="space-y-4">
                   <p className="text-[var(--color-text-secondary)] text-sm leading-relaxed">
-                    A compra é 100% online e o acesso é liberado automaticamente após a confirmação do pagamento.
-                    {!isAuthenticated && ' Você pode comprar mesmo sem ter uma conta.'}
+                    {cursoGratuito
+                      ? 'Este curso é gratuito: basta confirmar seus dados e o acesso é liberado na hora.'
+                      : 'A compra é 100% online e o acesso é liberado automaticamente após a confirmação do pagamento.'}
+                    {!isAuthenticated && (cursoGratuito ? ' Você pode se inscrever mesmo sem ter uma conta.' : ' Você pode comprar mesmo sem ter uma conta.')}
                   </p>
                   <button
                     onClick={() => navigate(`/comprar/${course._id}`)}
                     className="btn btn-primary w-full flex items-center justify-center gap-2"
                   >
-                    <ShoppingCart className="w-5 h-5" />
-                    Comprar Curso
+                    {cursoGratuito ? <Gift className="w-5 h-5" /> : <ShoppingCart className="w-5 h-5" />}
+                    {cursoGratuito ? 'Inscrever-se grátis' : 'Comprar Curso'}
                   </button>
                   <p className="text-[var(--color-text-muted)] text-xs leading-relaxed italic">
-                    Pagamento seguro via Mercado Pago (Pix, cartão e mais).
+                    {cursoGratuito
+                      ? 'Nenhuma cobrança será feita.'
+                      : 'Pagamento seguro via Mercado Pago (Pix, cartão e mais).'}
                   </p>
                 </div>
               </div>
@@ -926,7 +941,7 @@ const CourseDetail: React.FC = () => {
               </div>
               <div className="space-y-4">
                 <p className="text-[var(--color-text-secondary)] text-sm leading-relaxed">
-                  {(course.venda?.disponivel && (course.venda?.preco || 0) > 0)
+                  {course.venda?.disponivel && !cursoGratuito
                     ? 'Ao comprar, você recebe uma chave de licença exclusiva (caso a compra seja sem login):'
                     : 'Após a confirmação da inscrição, você receberá uma chave de licença exclusiva:'}
                 </p>

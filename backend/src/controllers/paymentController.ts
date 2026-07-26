@@ -101,6 +101,8 @@ export const getPublicConfig = async (_req: Request, res: Response) => {
     const config = await getPaymentConfig();
     res.json({
       vendasAtivas: config.vendasAtivas && isMercadoPagoConfigured(),
+      // Adesão a itens gratuitos não depende do gateway de pagamento.
+      adesaoGratuitaAtiva: config.vendasAtivas,
       mercadoPagoConfigurado: isMercadoPagoConfigured(),
       publicKey: getPublicKey(),
       taxaOperacionalPercentual: config.taxaOperacionalPercentual,
@@ -125,7 +127,8 @@ export const getQuote = async (req: Request, res: Response) => {
 
     const course = await Course.findById(cursoId);
     if (!course) return res.status(404).json({ message: 'Curso não encontrado' });
-    if (!course.ativo || !course.venda?.disponivel || !(course.venda?.preco > 0)) {
+    // Preço 0 é válido: significa curso GRATUITO (o aluno adere sem pagar).
+    if (!course.ativo || !course.venda?.disponivel) {
       return res.status(400).json({ message: 'Curso não está disponível para compra' });
     }
 
@@ -173,9 +176,8 @@ export const createCheckout = async (req: AuthRequest, res: Response) => {
     if (!config.vendasAtivas) {
       return res.status(503).json({ message: 'As vendas estão temporariamente desativadas' });
     }
-    if (!isMercadoPagoConfigured()) {
-      return res.status(503).json({ message: 'Pagamentos indisponíveis no momento. Tente novamente mais tarde.' });
-    }
+    // A verificação do Mercado Pago acontece só depois de calcular o total: pedidos
+    // gratuitos (curso com preço 0 ou cupom de 100%) não passam pelo gateway.
 
     if (!cursoId) return res.status(400).json({ message: 'Curso é obrigatório' });
     if (!comprador || typeof comprador !== 'object') {
@@ -201,7 +203,8 @@ export const createCheckout = async (req: AuthRequest, res: Response) => {
     // Curso
     const course = await Course.findById(cursoId);
     if (!course) return res.status(404).json({ message: 'Curso não encontrado' });
-    if (!course.ativo || !course.venda?.disponivel || !(course.venda?.preco > 0)) {
+    // Preço 0 é válido: significa curso GRATUITO (o aluno adere sem pagar).
+    if (!course.ativo || !course.venda?.disponivel) {
       return res.status(400).json({ message: 'Curso não está disponível para compra' });
     }
 
@@ -261,7 +264,7 @@ export const createCheckout = async (req: AuthRequest, res: Response) => {
       ipCompra: ip
     };
 
-    // Compra gratuita (cortesia via cupom 100%) — não passa pelo Mercado Pago
+    // Adesão gratuita (curso com preço 0 ou cupom de 100%) — não passa pelo Mercado Pago
     if (breakdown.total <= 0) {
       orderData.status = 'aprovado';
       orderData.metodoPagamento = 'cortesia';
@@ -272,6 +275,11 @@ export const createCheckout = async (req: AuthRequest, res: Response) => {
         gratuito: true,
         redirectUrl: `${getBaseUrl()}/compra/status?pedido=${order.numeroPedido}`
       });
+    }
+
+    // A partir daqui há valor a cobrar: o gateway é obrigatório.
+    if (!isMercadoPagoConfigured()) {
+      return res.status(503).json({ message: 'Pagamentos indisponíveis no momento. Tente novamente mais tarde.' });
     }
 
     const order = await Order.create(orderData);

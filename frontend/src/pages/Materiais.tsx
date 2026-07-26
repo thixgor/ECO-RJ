@@ -8,8 +8,7 @@ import { materialService } from '../services/api';
 import type { MaterialListItem, MaterialTipo } from '../types';
 import { GlassButton, GlassInput, GlassModal } from '../components/ui';
 import { renderBold } from '../utils/richText';
-
-const brl = (v: number) => `R$ ${Number(v || 0).toFixed(2).replace('.', ',')}`;
+import { brl, formatPreco, isGratuito } from '../utils/price';
 
 const tipoMeta: Record<MaterialTipo, { label: string; icon: React.ReactNode }> = {
   aula: { label: 'Aulas', icon: <Video className="w-4 h-4" /> },
@@ -225,9 +224,11 @@ const Materiais: React.FC = () => {
                   <div className="flex items-end justify-between">
                     <div className="leading-tight">
                       <span className="text-[11px] text-[var(--color-text-muted)] block">
-                        {m.adquirido ? 'Você já tem acesso' : 'Por apenas'}
+                        {m.adquirido ? 'Você já tem acesso' : isGratuito(m.preco) ? 'Acesso liberado' : 'Por apenas'}
                       </span>
-                      <span className="text-2xl font-extrabold text-primary-500">{brl(m.preco)}</span>
+                      <span className={`text-2xl font-extrabold ${isGratuito(m.preco) ? 'text-emerald-500' : 'text-primary-500'}`}>
+                        {formatPreco(m.preco)}
+                      </span>
                       {m.temDesconto && m.precoOriginal && m.precoOriginal > m.preco && (
                         <span className="block text-xs font-semibold text-emerald-600 dark:text-emerald-400">
                           Economize {brl(m.precoOriginal - m.preco)}
@@ -235,10 +236,10 @@ const Materiais: React.FC = () => {
                       )}
                     </div>
                     <span className="text-sm font-semibold text-primary-500 whitespace-nowrap">
-                      {m.adquirido ? 'Acessar →' : 'Quero este →'}
+                      {m.adquirido ? 'Acessar →' : isGratuito(m.preco) ? 'Pegar grátis →' : 'Quero este →'}
                     </span>
                   </div>
-                  {m.vendasTotais > 0 && !m.adquirido && (
+                  {!!m.vendasTotais && m.vendasTotais > 0 && !m.adquirido && (
                     <p className="mt-2 text-[11px] text-[var(--color-text-muted)]">
                       🔥 {m.vendasTotais} {m.vendasTotais === 1 ? 'aluno já garantiu' : 'alunos já garantiram'}
                     </p>

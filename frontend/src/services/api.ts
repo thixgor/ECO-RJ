@@ -296,6 +296,13 @@ export const exerciseService = {
   answer: (id: string, respostas: any[]) =>
     api.post(`/exercises/${id}/answer`, { respostas }),
 
+  /** Correção imediata de uma questão (modo estudo). */
+  check: (id: string, questaoIndex: number, resposta: any) =>
+    api.post(`/exercises/${id}/check`, { questaoIndex, resposta }),
+
+  /** Tentativas e melhor nota do usuário em cada exercício. */
+  getMyProgress: () => api.get('/exercises/my-progress'),
+
   getMyAnswers: (id: string) => api.get(`/exercises/${id}/my-answers`),
 
   getAnswers: (id: string) => api.get(`/exercises/${id}/answers`)
@@ -598,6 +605,9 @@ export const materialService = {
     api.post(`/materials/order/${numeroPedido}/sync`),
 
   recover: (email: string) => api.post('/materials/recover', { email }),
+
+  // Termos de download (direitos autorais) — exibidos antes de baixar
+  getDownloadTerms: () => api.get('/materials/download-terms'),
 
   // Acesso por token (convidado)
   getAccess: (token: string) => api.get(`/materials/access/${token}`),
