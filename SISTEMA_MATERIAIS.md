@@ -67,7 +67,8 @@ Salvaguardas em camadas (o acesso **nunca** depende do e‑mail):
 - `pages/MaterialCheckout.tsx` — `/materiais/comprar/:id`.
 - `pages/MaterialPaymentStatus.tsx` — `/materiais/compra/status`.
 - `pages/MaterialAccess.tsx` — `/materiais/acesso?token=...` (acesso do convidado).
-- `pages/admin/AdminMaterials.tsx` — `/admin/materiais` (catálogo de produtos: CRUD + conceder acesso). **As vendas e a receita ficam unificadas em `/admin/pagamentos`.**
+- `pages/admin/AdminMaterials.tsx` — `/admin/materiais` (catálogo de produtos: CRUD + gestão de acesso). **As vendas e a receita ficam unificadas em `/admin/pagamentos`.**
+- `components/materials/MaterialAccessManager.tsx` — painel de **gestão de acesso** de um material (ver abaixo).
 - `components/materials/MaterialContentViewer.tsx` — player/downloads do conteúdo.
 - `Profile.tsx` — aba **Meus Materiais**.
 - Links no `Header`, `Sidebar` e rotas em `App.tsx`. `materialService` em `services/api.ts`.
@@ -113,10 +114,46 @@ Nenhuma outra parte do código precisa mudar.
 | POST | `/claim` | Usuário logado |
 | GET | `/:id/content` | Usuário logado (com acesso) |
 | GET/POST/DELETE | `/:id/reviews` | Público / logado com compra |
-| `/admin/*` | — | Admin (CRUD, vendas, stats, refulfill, grant) |
+| `/admin/*` | — | Admin (CRUD, vendas, stats, refulfill, acessos) |
 
 > **Financeiro unificado** (cursos + materiais) em `/api/payments/admin/stats-unified`
 > e `/api/payments/admin/orders-unified` — consumidos pela página `/admin/pagamentos`.
+
+---
+
+## 👥 Gestão de acesso dos usuários (`/admin/materiais`)
+
+Cada material tem um botão **Gerenciar acesso** que abre o painel de acessos
+(*entitlements*) daquele produto — a mesma entidade usada pelas compras, então
+cortesias e vendas aparecem lado a lado.
+
+**O que o admin pode fazer:**
+- **Ver quem tem acesso** — nome/conta vinculada, e‑mail, código de acesso, origem
+  (Compra / Cortesia / Manual), pedido, data, validade e total de downloads.
+- **Adicionar acesso** a um ou vários e‑mails de uma vez (com autocomplete de contas
+  cadastradas), escolhendo a **validade** (padrão do material, vitalício ou N dias) e
+  opcionalmente **avisando por e‑mail** com o link e o código de acesso.
+- **Revogar / reativar** um acesso — o bloqueio é imediato em todas as rotas
+  (link do convidado, download e conteúdo logado passam por `isEntitlementValid`).
+- **Alterar a validade** de um acesso existente (estender ou tornar vitalício).
+- **Remover definitivamente** um acesso. Acessos originados de **compra** exigem
+  confirmação extra (HTTP 409 `requerConfirmacao`) — o recomendado é revogar,
+  preservando o histórico do cliente.
+- **Copiar o link de acesso** para enviar manualmente ao usuário.
+- **Buscar e filtrar** por nome, e‑mail ou código, e por status (ativos, revogados,
+  expirados), com paginação e um resumo por status.
+
+**Endpoints (Admin):**
+| Método | Rota | Função |
+|--------|------|--------|
+| GET | `/admin/:id/entitlements` | Lista os acessos do material (busca, filtro, paginação, resumo) |
+| POST | `/admin/:id/grant` | Concede acesso a `email`/`emails`/`userIds` (`validadeDias`, `enviarEmail`) |
+| PUT | `/admin/entitlements/:id` | Revoga, reativa ou altera `validade`/`validadeDias` |
+| DELETE | `/admin/entitlements/:id` | Remove o acesso (`?force=true` para acessos de compra) |
+
+> A concessão é **idempotente por e‑mail**: conceder de novo ao mesmo e‑mail reativa e
+> atualiza o acesso existente em vez de criar um duplicado. Se houver uma conta com
+> aquele e‑mail, o acesso já nasce vinculado a ela e aparece em **Perfil → Meus Materiais**.
 
 ---
 

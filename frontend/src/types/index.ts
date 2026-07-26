@@ -278,6 +278,36 @@ export interface MaterialEntitlement {
   createdAt: string;
 }
 
+// Acesso de um usuário a um material, na visão do admin (/admin/materiais)
+export interface MaterialEntitlementAdmin {
+  _id: string;
+  material: string;
+  materialTitulo: string;
+  email: string;
+  user?: { _id: string; nomeCompleto: string; email: string; cargo?: string } | null;
+  order?: { _id: string; numeroPedido: string; status: string; valores?: { total?: number } } | null;
+  serialKey: string;
+  accessToken: string;
+  accessLink: string;
+  origem: 'compra' | 'cortesia' | 'admin';
+  validade?: string;
+  ativo: boolean;
+  revogado: boolean;
+  valido: boolean;
+  expirado: boolean;
+  status: 'valido' | 'revogado' | 'expirado';
+  totalDownloads: number;
+  ultimoAcesso?: string;
+  createdAt: string;
+}
+
+export interface MaterialEntitlementResumo {
+  total: number;
+  validos: number;
+  revogados: number;
+  expirados: number;
+}
+
 export interface MaterialOrder {
   _id: string;
   numeroPedido: string;

@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Package, Plus, Pencil, Trash2, Loader2, Star, X, Video, FileText, File, Info, Gift, TrendingUp, UploadCloud, Lock,
-  Users, EyeOff
+  Package, Plus, Pencil, Trash2, Loader2, Star, X, Video, FileText, File, Info, TrendingUp, UploadCloud, Lock,
+  Users, EyeOff, UserCog
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { GlassCard, GlassButton, GlassInput, GlassTextarea, GlassSelect, GlassModal } from '../../components/ui';
+import MaterialAccessManager from '../../components/materials/MaterialAccessManager';
 import { materialService } from '../../services/api';
 import { uploadToBlob } from '../../services/blobUpload';
 import { formatPreco, isGratuito } from '../../utils/price';
@@ -88,10 +89,8 @@ const AdminMaterials: React.FC = () => {
   const [form, setForm] = useState<Partial<MaterialAdmin>>(emptyForm());
   const [saving, setSaving] = useState(false);
 
-  // Conceder acesso (cortesia / suporte)
-  const [grantFor, setGrantFor] = useState<MaterialAdmin | null>(null);
-  const [grantEmail, setGrantEmail] = useState('');
-  const [granting, setGranting] = useState(false);
+  // Gestão de acesso dos usuários ao material (conceder, revogar, remover)
+  const [accessFor, setAccessFor] = useState<MaterialAdmin | null>(null);
 
   const loadMaterials = async () => {
     setLoading(true);
@@ -178,26 +177,6 @@ const AdminMaterials: React.FC = () => {
     }
   };
 
-  const handleGrant = async () => {
-    if (!grantFor) return;
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(grantEmail)) return toast.error('E-mail inválido');
-    setGranting(true);
-    try {
-      const res = await materialService.admin.grant(grantFor._id, grantEmail.trim());
-      toast.success('Acesso concedido');
-      if (res.data.accessLink) {
-        navigator.clipboard?.writeText(res.data.accessLink).catch(() => {});
-        toast.success('Link de acesso copiado para a área de transferência');
-      }
-      setGrantFor(null);
-      setGrantEmail('');
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Erro ao conceder acesso');
-    } finally {
-      setGranting(false);
-    }
-  };
-
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
@@ -264,7 +243,7 @@ const AdminMaterials: React.FC = () => {
                   <button onClick={() => toggleField(m, 'disponivel')} className={`text-xs px-3 py-1.5 rounded-lg font-medium ${m.disponivel ? 'bg-emerald-500/15 text-emerald-600' : 'bg-gray-500/15 text-gray-500'}`}>
                     {m.disponivel ? 'À venda' : 'Fora da loja'}
                   </button>
-                  <button onClick={() => { setGrantFor(m); setGrantEmail(''); }} className="p-2 rounded-lg hover:bg-[var(--glass-bg)] text-emerald-500" title="Conceder acesso"><Gift className="w-4 h-4" /></button>
+                  <button onClick={() => setAccessFor(m)} className="p-2 rounded-lg hover:bg-[var(--glass-bg)] text-emerald-500" title="Gerenciar acesso dos usuários"><UserCog className="w-4 h-4" /></button>
                   <button onClick={() => openEdit(m)} className="p-2 rounded-lg hover:bg-[var(--glass-bg)] text-primary-500" title="Editar"><Pencil className="w-4 h-4" /></button>
                   <button onClick={() => handleDelete(m)} className="p-2 rounded-lg hover:bg-red-500/10 text-red-500" title="Excluir"><Trash2 className="w-4 h-4" /></button>
                 </div>
@@ -461,24 +440,8 @@ const AdminMaterials: React.FC = () => {
         </div>
       </GlassModal>
 
-      {/* Modal conceder acesso */}
-      <GlassModal
-        isOpen={!!grantFor}
-        onClose={() => setGrantFor(null)}
-        title="Conceder acesso (cortesia)"
-        size="md"
-        footer={
-          <div className="flex justify-end gap-2">
-            <GlassButton variant="secondary" onClick={() => setGrantFor(null)}>Cancelar</GlassButton>
-            <GlassButton variant="primary" onClick={handleGrant} isLoading={granting} disabled={granting} leftIcon={<Gift className="w-4 h-4" />}>Conceder</GlassButton>
-          </div>
-        }
-      >
-        <p className="text-sm text-[var(--color-text-secondary)] mb-4">
-          Concede acesso ao material <strong>{grantFor?.titulo}</strong> para um e-mail. Um link de acesso será gerado e copiado.
-        </p>
-        <GlassInput label="E-mail" type="email" value={grantEmail} onChange={(e) => setGrantEmail(e.target.value)} placeholder="pessoa@email.com" />
-      </GlassModal>
+      {/* Gestão de acesso dos usuários ao material */}
+      <MaterialAccessManager material={accessFor} onClose={() => setAccessFor(null)} />
     </div>
   );
 };

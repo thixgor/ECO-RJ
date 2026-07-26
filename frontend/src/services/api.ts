@@ -636,10 +636,26 @@ export const materialService = {
     getOrderById: (id: string) => api.get(`/materials/admin/orders/${id}`),
     getStats: () => api.get('/materials/admin/stats'),
     refulfill: (id: string) => api.post(`/materials/admin/orders/${id}/refulfill`),
-    grant: (id: string, email: string) => api.post(`/materials/admin/${id}/grant`, { email }),
     deleteReview: (reviewId: string) => api.delete(`/materials/admin/reviews/${reviewId}`),
-    updateEntitlement: (id: string, data: { revogado?: boolean; ativo?: boolean }) =>
-      api.put(`/materials/admin/entitlements/${id}`, data)
+
+    // Acessos (quem pode ver o material)
+    grant: (
+      id: string,
+      data: string | { emails?: string[] | string; email?: string; userIds?: string[]; validadeDias?: number; enviarEmail?: boolean; origem?: 'cortesia' | 'admin' }
+    ) => api.post(`/materials/admin/${id}/grant`, typeof data === 'string' ? { email: data } : data),
+
+    listEntitlements: (
+      id: string,
+      params?: { search?: string; status?: 'valido' | 'revogado' | 'expirado'; origem?: string; page?: number; limit?: number }
+    ) => api.get(`/materials/admin/${id}/entitlements`, { params }),
+
+    updateEntitlement: (
+      id: string,
+      data: { revogado?: boolean; ativo?: boolean; podeAvaliar?: boolean; validade?: string | null; validadeDias?: number }
+    ) => api.put(`/materials/admin/entitlements/${id}`, data),
+
+    deleteEntitlement: (id: string, force = false) =>
+      api.delete(`/materials/admin/entitlements/${id}`, { params: force ? { force: 'true' } : undefined })
   }
 };
 

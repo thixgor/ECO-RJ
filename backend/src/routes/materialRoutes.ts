@@ -33,7 +33,9 @@ import {
   getMaterialStats,
   refulfillMaterialOrder,
   grantMaterialAccess,
-  updateEntitlement
+  listMaterialEntitlements,
+  updateEntitlement,
+  deleteEntitlement
 } from '../controllers/adminMaterialController';
 import { handleBlobUpload } from '../controllers/blobUploadController';
 import { protect, adminOnly, optionalAuth } from '../middleware/auth';
@@ -75,10 +77,12 @@ router.get('/admin/orders/:id', protect, adminOnly, getMaterialOrderAdmin);
 router.post('/admin/orders/:id/refulfill', protect, adminOnly, refulfillMaterialOrder);
 router.delete('/admin/reviews/:reviewId', protect, adminOnly, adminDeleteReview);
 router.put('/admin/entitlements/:id', protect, adminOnly, updateEntitlement);
+router.delete('/admin/entitlements/:id', protect, adminOnly, deleteEntitlement);
 router.post('/admin', protect, adminOnly, createMaterial);
 router.get('/admin/:id', protect, adminOnly, getMaterialAdmin);
 router.put('/admin/:id', protect, adminOnly, updateMaterial);
 router.delete('/admin/:id', protect, adminOnly, deleteMaterial);
+router.get('/admin/:id/entitlements', protect, adminOnly, listMaterialEntitlements);
 router.post('/admin/:id/grant', protect, adminOnly, grantMaterialAccess);
 
 // ---- Avaliações ----

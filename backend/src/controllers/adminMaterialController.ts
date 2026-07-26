@@ -2,9 +2,11 @@ import { Response } from 'express';
 import crypto from 'crypto';
 import Material, { ConteudoTipo, normalizeMaterialTipo } from '../models/Material';
 import MaterialOrder from '../models/MaterialOrder';
-import MaterialEntitlement from '../models/MaterialEntitlement';
+import MaterialEntitlement, { isEntitlementValid } from '../models/MaterialEntitlement';
+import User from '../models/User';
 import { AuthRequest } from '../middleware/auth';
 import { fulfillMaterialOrder } from '../services/materialFulfillmentService';
+import { sendMaterialGrantEmail } from '../services/emailService';
 
 const TIPOS_CONTEUDO: ConteudoTipo[] = ['aula', 'pdf', 'arquivo'];
 
@@ -295,6 +297,191 @@ export const refulfillMaterialOrder = async (req: AuthRequest, res: Response) =>
   }
 };
 
+// ==========================================================================
+//  ACESSOS (ENTITLEMENTS) — quem pode ver cada material
+// ==========================================================================
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** Base pública da aplicação (para montar os links de acesso). */
+function appBaseUrl(): string {
+  return (process.env.APP_BASE_URL || process.env.FRONTEND_URL || 'https://www.cursodeecocardiografia.com')
+    .replace(/\/+$/, '');
+}
+
+function buildAccessLink(accessToken: string): string {
+  return `${appBaseUrl()}/materiais/acesso?token=${accessToken}`;
+}
+
+/** Gera um código de acesso amigável e único no formato ECO-MAT-AAAAMM-XXXXXX. */
+function generateSerialKey(): string {
+  const now = new Date();
+  const yearMonth = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  const rand = Array.from(crypto.randomBytes(6)).map((n) => chars[n % chars.length]).join('');
+  return `ECO-MAT-${yearMonth}-${rand}`;
+}
+
+/**
+ * Resolve a data de validade de um acesso.
+ * `dias` indefinido → usa a validade padrão do material; `0` → vitalício.
+ */
+function resolveValidade(material: { validadeAcessoDias?: number }, dias?: unknown): Date | undefined {
+  const usarPadrao = dias === undefined || dias === null || dias === '';
+  const n = usarPadrao ? Number(material.validadeAcessoDias || 0) : Math.max(0, Number(dias) || 0);
+  if (!(n > 0)) return undefined;
+  const v = new Date();
+  v.setDate(v.getDate() + n);
+  return v;
+}
+
+/** Serializa um acesso para o painel admin (inclui status calculado e link). */
+function serializeEntitlement(ent: any) {
+  const obj = typeof ent.toObject === 'function' ? ent.toObject() : ent;
+  const valido = isEntitlementValid(obj);
+  const expirado = !obj.revogado && obj.ativo !== false && !!obj.validade && !valido;
+  return {
+    ...obj,
+    valido,
+    expirado,
+    status: obj.revogado || obj.ativo === false ? 'revogado' : expirado ? 'expirado' : 'valido',
+    accessLink: buildAccessLink(obj.accessToken)
+  };
+}
+
+// @desc    Listar acessos de um material (Admin)
+// @route   GET /api/materials/admin/:id/entitlements
+// @access  Private/Admin
+export const listMaterialEntitlements = async (req: AuthRequest, res: Response) => {
+  try {
+    const material = await Material.findById(req.params.id).select('titulo validadeAcessoDias');
+    if (!material) return res.status(404).json({ message: 'Material não encontrado' });
+
+    const { search, status, origem, page = 1, limit = 20 } = req.query;
+    const base: any = { material: material._id };
+    const query: any = { ...base };
+    const now = new Date();
+
+    if (origem && ['compra', 'cortesia', 'admin'].includes(String(origem))) {
+      query.origem = origem;
+    }
+
+    if (status === 'revogado') {
+      query.$and = [{ $or: [{ revogado: true }, { ativo: false }] }];
+    } else if (status === 'expirado') {
+      query.revogado = false;
+      query.ativo = true;
+      query.validade = { $ne: null, $lte: now };
+    } else if (status === 'valido') {
+      query.revogado = false;
+      query.ativo = true;
+      query.$and = [{ $or: [{ validade: { $exists: false } }, { validade: null }, { validade: { $gt: now } }] }];
+    }
+
+    if (search) {
+      const s = String(search).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const rx = { $regex: s, $options: 'i' };
+      // Busca também pelo nome da conta vinculada.
+      const users = await User.find({ $or: [{ nomeCompleto: rx }, { email: rx }] }).select('_id').limit(200);
+      const or: any[] = [{ email: rx }, { serialKey: rx }];
+      if (users.length) or.push({ user: { $in: users.map((u) => u._id) } });
+      query.$and = [...(query.$and || []), { $or: or }];
+    }
+
+    const skip = (Number(page) - 1) * Number(limit);
+    const [docs, total, totalGeral, validos, revogados] = await Promise.all([
+      MaterialEntitlement.find(query)
+        .populate('user', 'nomeCompleto email cargo')
+        .populate('order', 'numeroPedido status valores.total')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(Number(limit)),
+      MaterialEntitlement.countDocuments(query),
+      MaterialEntitlement.countDocuments(base),
+      MaterialEntitlement.countDocuments({
+        ...base,
+        revogado: false,
+        ativo: true,
+        $or: [{ validade: { $exists: false } }, { validade: null }, { validade: { $gt: now } }]
+      }),
+      MaterialEntitlement.countDocuments({ ...base, $or: [{ revogado: true }, { ativo: false }] })
+    ]);
+
+    res.json({
+      material: { _id: material._id, titulo: material.titulo, validadeAcessoDias: material.validadeAcessoDias },
+      entitlements: docs.map(serializeEntitlement),
+      resumo: {
+        total: totalGeral,
+        validos,
+        revogados,
+        expirados: Math.max(0, totalGeral - validos - revogados)
+      },
+      pagination: { total, page: Number(page), pages: Math.ceil(total / Number(limit)) || 1 }
+    });
+  } catch (error) {
+    console.error('Erro ao listar acessos do material:', error);
+    res.status(500).json({ message: 'Erro ao listar acessos' });
+  }
+};
+
+/**
+ * Concede (ou reativa) o acesso de um e-mail a um material.
+ * Idempotente: se já existir um acesso para o mesmo e-mail, ele é reaproveitado
+ * — nunca cria acessos duplicados para a mesma pessoa.
+ */
+async function grantOne(
+  material: any,
+  email: string,
+  opts: { validadeDias?: unknown; origem: 'cortesia' | 'admin'; enviarEmail: boolean }
+) {
+  const existente = await MaterialEntitlement.findOne({ material: material._id, email });
+  const validade = resolveValidade(material, opts.validadeDias);
+  const conta = await User.findOne({ email }).select('_id nomeCompleto');
+
+  let ent = existente;
+  let acao: 'criado' | 'reativado' | 'atualizado';
+
+  if (ent) {
+    const estavaValido = isEntitlementValid(ent);
+    ent.revogado = false;
+    ent.ativo = true;
+    ent.validade = validade;
+    if (conta && !ent.user) ent.user = conta._id as any;
+    await ent.save();
+    acao = estavaValido ? 'atualizado' : 'reativado';
+  } else {
+    ent = await MaterialEntitlement.create({
+      material: material._id,
+      materialTitulo: material.titulo,
+      email,
+      user: conta?._id,
+      serialKey: generateSerialKey(),
+      accessToken: crypto.randomBytes(32).toString('hex'),
+      origem: opts.origem,
+      validade,
+      ativo: true,
+      revogado: false,
+      podeAvaliar: true
+    });
+    acao = 'criado';
+  }
+
+  const accessLink = buildAccessLink(ent!.accessToken);
+  let emailEnviado = false;
+  if (opts.enviarEmail) {
+    emailEnviado = await sendMaterialGrantEmail({
+      to: email,
+      nome: conta?.nomeCompleto,
+      materialTitulo: material.titulo,
+      serialKey: ent!.serialKey,
+      accessLink,
+      validade: ent!.validade
+    });
+  }
+
+  return { email, acao, emailEnviado, accessLink, entitlement: serializeEntitlement(ent) };
+}
+
 // @desc    Conceder acesso manual a um material (cortesia / suporte) (Admin)
 // @route   POST /api/materials/admin/:id/grant
 // @access  Private/Admin
@@ -303,42 +490,63 @@ export const grantMaterialAccess = async (req: AuthRequest, res: Response) => {
     const material = await Material.findById(req.params.id);
     if (!material) return res.status(404).json({ message: 'Material não encontrado' });
 
-    const email = String(req.body?.email || '').trim().toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return res.status(400).json({ message: 'E-mail inválido' });
+    const b = req.body || {};
+
+    // Aceita: email (string), emails (array ou texto separado por vírgula/quebra
+    // de linha) e/ou userIds (contas selecionadas no painel).
+    const brutos: string[] = [];
+    if (typeof b.emails === 'string') brutos.push(...b.emails.split(/[\s,;]+/));
+    else if (Array.isArray(b.emails)) brutos.push(...b.emails.map((e: any) => String(e)));
+    if (b.email) brutos.push(String(b.email));
+
+    if (Array.isArray(b.userIds) && b.userIds.length) {
+      const contas = await User.find({ _id: { $in: b.userIds } }).select('email');
+      brutos.push(...contas.map((u) => u.email));
     }
 
-    const now = new Date();
-    const yearMonth = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}`;
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    const rand = Array.from(crypto.randomBytes(6)).map((n) => chars[n % chars.length]).join('');
-    const serialKey = `ECO-MAT-${yearMonth}-${rand}`;
-    const accessToken = crypto.randomBytes(32).toString('hex');
+    const emails = Array.from(new Set(brutos.map((e) => e.trim().toLowerCase()).filter(Boolean)));
+    if (!emails.length) return res.status(400).json({ message: 'Informe ao menos um e-mail' });
 
-    let validade: Date | undefined;
-    if (material.validadeAcessoDias > 0) {
-      validade = new Date();
-      validade.setDate(validade.getDate() + material.validadeAcessoDias);
+    const invalidos = emails.filter((e) => !EMAIL_REGEX.test(e));
+    if (invalidos.length === emails.length) {
+      return res.status(400).json({ message: `E-mail inválido: ${invalidos[0]}` });
     }
 
-    const ent = await MaterialEntitlement.create({
-      material: material._id,
-      materialTitulo: material.titulo,
-      email,
-      serialKey,
-      accessToken,
-      origem: 'admin',
-      validade,
-      ativo: true,
-      revogado: false,
-      podeAvaliar: true
-    });
+    const validos = emails.filter((e) => EMAIL_REGEX.test(e));
+    const origem: 'cortesia' | 'admin' = b.origem === 'cortesia' ? 'cortesia' : 'admin';
+    const enviarEmail = b.enviarEmail !== undefined ? !!b.enviarEmail : false;
 
-    const base = (process.env.APP_BASE_URL || process.env.FRONTEND_URL || 'https://www.cursodeecocardiografia.com').replace(/\/+$/, '');
-    res.status(201).json({
-      message: 'Acesso concedido com sucesso',
-      entitlement: ent,
-      accessLink: `${base}/materiais/acesso?token=${accessToken}`
+    const resultados: any[] = [];
+    for (const email of validos) {
+      try {
+        resultados.push(await grantOne(material, email, { validadeDias: b.validadeDias, origem, enviarEmail }));
+      } catch (err) {
+        console.error(`Erro ao conceder acesso para ${email}:`, err);
+        resultados.push({ email, acao: 'erro', message: 'Falha ao conceder acesso' });
+      }
+    }
+    for (const email of invalidos) {
+      resultados.push({ email, acao: 'erro', message: 'E-mail inválido' });
+    }
+
+    const criados = resultados.filter((r) => r.acao === 'criado').length;
+    const reativados = resultados.filter((r) => r.acao === 'reativado').length;
+    const atualizados = resultados.filter((r) => r.acao === 'atualizado').length;
+    const erros = resultados.filter((r) => r.acao === 'erro').length;
+
+    const partes: string[] = [];
+    if (criados) partes.push(`${criados} acesso(s) concedido(s)`);
+    if (reativados) partes.push(`${reativados} reativado(s)`);
+    if (atualizados) partes.push(`${atualizados} já tinha(m) acesso (validade atualizada)`);
+    if (erros) partes.push(`${erros} com erro`);
+
+    const primeiro = resultados.find((r) => r.acao !== 'erro');
+    res.status(criados ? 201 : 200).json({
+      message: partes.join(' · ') || 'Nenhum acesso alterado',
+      resultados,
+      // Compatibilidade com o formato antigo (concessão de um único e-mail)
+      entitlement: primeiro?.entitlement,
+      accessLink: primeiro?.accessLink
     });
   } catch (error) {
     console.error('Erro ao conceder acesso de material:', error);
@@ -346,19 +554,73 @@ export const grantMaterialAccess = async (req: AuthRequest, res: Response) => {
   }
 };
 
-// @desc    Revogar/reativar um acesso (Admin)
+// @desc    Revogar/reativar/ajustar validade de um acesso (Admin)
 // @route   PUT /api/materials/admin/entitlements/:id
 // @access  Private/Admin
 export const updateEntitlement = async (req: AuthRequest, res: Response) => {
   try {
     const ent = await MaterialEntitlement.findById(req.params.id);
     if (!ent) return res.status(404).json({ message: 'Acesso não encontrado' });
-    if (req.body?.revogado !== undefined) ent.revogado = !!req.body.revogado;
-    if (req.body?.ativo !== undefined) ent.ativo = !!req.body.ativo;
+    const b = req.body || {};
+
+    if (b.revogado !== undefined) {
+      ent.revogado = !!b.revogado;
+      // Reativar também religa o acesso (evita ficar "ativo: false" invisível).
+      if (!b.revogado) ent.ativo = true;
+    }
+    if (b.ativo !== undefined) ent.ativo = !!b.ativo;
+    if (b.podeAvaliar !== undefined) ent.podeAvaliar = !!b.podeAvaliar;
+
+    // Validade: `null`/0 dias = vitalício; data ISO = data exata; dias = a partir de agora.
+    if (b.validade !== undefined) {
+      if (b.validade === null || b.validade === '') {
+        ent.validade = undefined;
+      } else {
+        const d = new Date(b.validade);
+        if (isNaN(d.getTime())) return res.status(400).json({ message: 'Data de validade inválida' });
+        ent.validade = d;
+      }
+    } else if (b.validadeDias !== undefined) {
+      const dias = Math.max(0, Number(b.validadeDias) || 0);
+      if (dias === 0) {
+        ent.validade = undefined;
+      } else {
+        const d = new Date();
+        d.setDate(d.getDate() + dias);
+        ent.validade = d;
+      }
+    }
+
     await ent.save();
-    res.json({ message: 'Acesso atualizado', entitlement: ent });
+    res.json({ message: 'Acesso atualizado', entitlement: serializeEntitlement(ent) });
   } catch (error) {
     console.error('Erro ao atualizar acesso:', error);
     res.status(500).json({ message: 'Erro ao atualizar acesso' });
+  }
+};
+
+// @desc    Remover definitivamente um acesso (Admin)
+// @route   DELETE /api/materials/admin/entitlements/:id
+// @access  Private/Admin
+export const deleteEntitlement = async (req: AuthRequest, res: Response) => {
+  try {
+    const ent = await MaterialEntitlement.findById(req.params.id);
+    if (!ent) return res.status(404).json({ message: 'Acesso não encontrado' });
+
+    // Salvaguarda: acessos vindos de uma compra aprovada guardam o histórico do
+    // cliente. Exigimos confirmação explícita para apagá-los (o normal é revogar).
+    const force = req.query.force === 'true' || req.body?.force === true;
+    if (ent.origem === 'compra' && !force) {
+      return res.status(409).json({
+        message: 'Este acesso veio de uma compra. Prefira revogar para preservar o histórico — ou confirme a exclusão definitiva.',
+        requerConfirmacao: true
+      });
+    }
+
+    await ent.deleteOne();
+    res.json({ message: 'Acesso removido definitivamente' });
+  } catch (error) {
+    console.error('Erro ao remover acesso:', error);
+    res.status(500).json({ message: 'Erro ao remover acesso' });
   }
 };

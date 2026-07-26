@@ -333,3 +333,70 @@ export async function sendMaterialPurchaseEmail(
   const subject = `ECO RJ · Seu material — Pedido ${order.numeroPedido}`;
   return sendMail(order.compradorDados.email, subject, html, attachments);
 }
+
+/** Gera o HTML do e-mail de acesso concedido manualmente pelo admin (cortesia). */
+export function buildMaterialGrantHtml(opts: {
+  nome?: string;
+  materialTitulo: string;
+  serialKey: string;
+  accessLink: string;
+  validade?: Date | string | null;
+}): string {
+  const primeiroNome = (opts.nome || '').split(' ')[0];
+  const validade = fmtDate(opts.validade);
+
+  return `
+  <div style="max-width:640px;margin:0 auto;font-family:Arial,Helvetica,sans-serif;color:#1e293b;">
+    <div style="text-align:center;padding:24px 0;border-bottom:2px solid #E0F2FE;">
+      <h1 style="margin:0;color:#1D4ED8;font-size:24px;">ECO RJ</h1>
+      <p style="margin:4px 0 0;color:#64748b;font-size:13px;">Centro de Treinamento em Ecocardiografia</p>
+    </div>
+
+    <div style="padding:24px 0;">
+      <h2 style="font-size:20px;margin:0 0 12px;">Você recebeu acesso a um material 🎁</h2>
+      <p style="margin:0 0 16px;font-size:15px;">Olá${primeiroNome ? ` ${primeiroNome}` : ''},</p>
+      <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">
+        Liberamos o seu acesso ao material <strong>${opts.materialTitulo}</strong>.
+        Use o botão abaixo para acessar o conteúdo a qualquer momento.
+      </p>
+
+      <div style="margin:20px 0;padding:16px 20px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:12px;font-size:14px;">
+        <p style="margin:0 0 6px;"><strong>Código de acesso:</strong>
+          <span style="font-family:monospace;font-size:15px;color:#1D4ED8;">${opts.serialKey}</span>
+        </p>
+        <p style="margin:0;color:#64748b;">
+          ${validade ? `Válido até <strong>${validade}</strong>.` : 'Acesso vitalício.'}
+          Guarde este código: com ele você vincula o material à sua conta na plataforma.
+        </p>
+      </div>
+
+      <a href="${opts.accessLink}" style="display:inline-block;padding:12px 24px;background:#1D4ED8;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold;">Acessar o material</a>
+
+      <p style="margin:24px 0 0;font-size:12px;color:#94a3b8;line-height:1.6;">
+        Este material é de uso pessoal e intransferível, protegido por direitos autorais (Lei nº 9.610/98).
+        A reprodução, compartilhamento ou revenda não autorizados sujeitam o infrator às penalidades legais
+        e ao bloqueio imediato do acesso.
+      </p>
+    </div>
+
+    <div style="padding:20px 0;border-top:1px solid #e2e8f0;text-align:center;color:#94a3b8;font-size:12px;">
+      <p style="margin:0 0 4px;">ECO RJ · Centro de Treinamento em Ecocardiografia · CNPJ: 21.847.609/0001-70</p>
+      <p style="margin:0 0 4px;">Av. das Américas 19.019 - Recreio Shopping - Sala 336 - Recreio dos Bandeirantes - RJ</p>
+      <p style="margin:0;">contato@cursodeecocardiografia.com</p>
+    </div>
+  </div>`;
+}
+
+/** Envia o e-mail de acesso concedido manualmente (cortesia/suporte). */
+export async function sendMaterialGrantEmail(opts: {
+  to: string;
+  nome?: string;
+  materialTitulo: string;
+  serialKey: string;
+  accessLink: string;
+  validade?: Date | string | null;
+}): Promise<boolean> {
+  const html = buildMaterialGrantHtml(opts);
+  const subject = `ECO RJ · Seu acesso ao material ${opts.materialTitulo}`;
+  return sendMail(opts.to, subject, html);
+}
