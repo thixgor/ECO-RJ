@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
 interface GlassModalProps {
@@ -88,7 +89,14 @@ export const GlassModal: React.FC<GlassModalProps> = ({
 
   const hasHeader = !!title || showCloseButton;
 
-  return (
+  /*
+   * O modal é renderizado via portal direto no <body>. Sem isso, quando o
+   * modal fica dentro de um `.glass-card` (que usa `backdrop-filter` +
+   * `overflow: hidden`), o `position: fixed` do overlay passa a se ancorar no
+   * card — e não na viewport — ficando "incorporado", recortado e cobrindo
+   * apenas a área do card. Era o caso do termo de download em /materiais.
+   */
+  return createPortal(
     <div
       className="modal-overlay animate-fade-in"
       onClick={handleOverlayClick}
@@ -138,7 +146,8 @@ export const GlassModal: React.FC<GlassModalProps> = ({
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
