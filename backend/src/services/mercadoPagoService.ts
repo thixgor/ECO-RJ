@@ -152,21 +152,34 @@ export interface CreatePaymentParams {
     lastName?: string;
     cpf: string;
   };
-  paymentMethodId: string;     // 'pix' | 'bolbradesco' | 'master' | 'visa' | ...
+  paymentMethodId: string;     // 'pix' | 'bolbradesco' | 'master' | 'visa' | 'debvisa' | ...
   // Dados vindos do Payment Brick (apenas para cartão)
   token?: string;
   issuerId?: string;
   installments?: number;
-  // Endereço do pagador (necessário para boleto) — repassado do Brick
+  // Endereço do pagador (obrigatório para boleto) — repassado do Brick
   payerAddress?: Record<string, unknown>;
+  /**
+   * Autenticação 3-D Secure. Obrigatória na prática para CARTÃO DE DÉBITO no
+   * Brasil (sem ela o emissor recusa a transação) e recomendada no crédito.
+   * 'optional' = o desafio só é solicitado quando o emissor exigir.
+   */
+  threeDSecureMode?: 'not_supported' | 'optional' | 'mandatory';
 }
 
-/** Resultado do pagamento (inclui dados de Pix/boleto quando aplicável). */
+/** Dados do desafio 3-D Secure devolvidos pelo Mercado Pago. */
+export interface ThreeDsChallenge {
+  externalResourceUrl: string;
+  creq: string;
+}
+
+/** Resultado do pagamento (inclui dados de Pix/boleto/3DS quando aplicável). */
 export interface CreatePaymentResult extends MpPaymentInfo {
   pixQrCode?: string;          // "copia e cola" do Pix
   pixQrCodeBase64?: string;    // imagem base64 do QR Code
   ticketUrl?: string;          // link do boleto / comprovante Pix
   barcode?: string;            // linha digitável do boleto
+  threeDs?: ThreeDsChallenge;  // desafio 3DS pendente (cartão de débito/crédito)
 }
 
 /**
@@ -203,6 +216,7 @@ export async function createPayment(params: CreatePaymentParams): Promise<Create
     body.token = params.token;
     body.installments = Math.max(1, params.installments || 1);
     if (params.issuerId) body.issuer_id = params.issuerId;
+    body.three_d_secure_mode = params.threeDSecureMode || 'optional';
   }
 
   const p: any = await paymentClient.create({ body });
@@ -211,6 +225,13 @@ export async function createPayment(params: CreatePaymentParams): Promise<Create
   }
 
   const txData = p.point_of_interaction?.transaction_data;
+  const threeDs = p.three_ds_info?.external_resource_url && p.three_ds_info?.creq
+    ? {
+        externalResourceUrl: String(p.three_ds_info.external_resource_url),
+        creq: String(p.three_ds_info.creq)
+      }
+    : undefined;
+
   return {
     id: String(p.id),
     status: p.status,
@@ -225,8 +246,29 @@ export async function createPayment(params: CreatePaymentParams): Promise<Create
     pixQrCode: txData?.qr_code,
     pixQrCodeBase64: txData?.qr_code_base64,
     ticketUrl: txData?.ticket_url || p.transaction_details?.external_resource_url,
-    barcode: p.barcode?.content
+    barcode: p.barcode?.content,
+    threeDs
   };
+}
+
+/**
+ * Cancela um pagamento ainda não aprovado (pendente/em processo).
+ *
+ * Usado quando o comprador troca de meio de pagamento no mesmo pedido — por
+ * exemplo, gerou um boleto e resolveu pagar no cartão. Sem o cancelamento, o
+ * boleto continuaria pagável e o comprador poderia ser cobrado duas vezes.
+ * Falhas são apenas logadas: o cancelamento é um "melhor esforço".
+ */
+export async function cancelPayment(paymentId: string): Promise<boolean> {
+  try {
+    const config = buildConfig();
+    const paymentClient = new Payment(config);
+    await paymentClient.cancel({ id: paymentId });
+    return true;
+  } catch (err) {
+    console.warn(`Não foi possível cancelar o pagamento ${paymentId} no Mercado Pago:`, err);
+    return false;
+  }
 }
 
 /** Busca um pagamento pelo ID diretamente na API do Mercado Pago (fonte da verdade). */

@@ -602,6 +602,24 @@ const SettingsTab: React.FC = () => {
 
   return (
     <div className="space-y-4">
+      {config.emailConfigurado === false && (
+        <div className="flex items-start gap-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/25 p-4 text-sm text-amber-800 dark:text-amber-300">
+          <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="font-semibold mb-1">Envio de e-mails desativado (SMTP não configurado)</p>
+            <p>
+              A <strong>compra sem login está bloqueada</strong>: sem e-mail não há como entregar
+              a serial key, o material em PDF e o comprovante a quem compra como convidado.
+              Visitantes deslogados são orientados a fazer login antes de comprar. Configure
+              <code className="mx-1 px-1 rounded bg-black/5 dark:bg-white/10">SMTP_HOST</code>,
+              <code className="mx-1 px-1 rounded bg-black/5 dark:bg-white/10">SMTP_USER</code> e
+              <code className="mx-1 px-1 rounded bg-black/5 dark:bg-white/10">SMTP_PASS</code>
+              no servidor para reativar a compra como convidado.
+            </p>
+          </div>
+        </div>
+      )}
+
       <GlassCard className="p-5 space-y-4">
         <label className="flex items-center gap-3 cursor-pointer">
           <input type="checkbox" className="w-5 h-5 accent-primary-500" checked={config.vendasAtivas} onChange={(e) => setConfig({ ...config, vendasAtivas: e.target.checked })} />

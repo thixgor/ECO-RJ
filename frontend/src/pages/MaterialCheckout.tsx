@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
-  ShoppingCart, Tag, ShieldCheck, Loader2, ArrowLeft, CheckCircle2, Lock, PackageX, Mail, Gift
+  ShoppingCart, Tag, ShieldCheck, Loader2, ArrowLeft, CheckCircle2, Lock, PackageX, Mail, Gift,
+  LogIn, UserPlus
 } from 'lucide-react';
 import { GlassCard, GlassButton, GlassInput, GlassModal } from '../components/ui';
 import MercadoPagoBrick from '../components/MercadoPagoBrick';
+import ThreeDSChallenge, { ThreeDsChallengeData } from '../components/ThreeDSChallenge';
 import { materialService, paymentService } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { brl, formatPreco, isGratuito } from '../utils/price';
@@ -34,6 +36,7 @@ const maskPhone = (v: string) =>
 const MaterialCheckout: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, isAuthenticated } = useAuth();
 
   const [material, setMaterial] = useState<MaterialDetalhe | null>(null);
@@ -52,6 +55,7 @@ const MaterialCheckout: React.FC = () => {
   const [aceite, setAceite] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const [indisponivelMotivo, setIndisponivelMotivo] = useState<string | null>(null);
+  const [threeDs, setThreeDs] = useState<ThreeDsChallengeData | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -170,6 +174,10 @@ const MaterialCheckout: React.FC = () => {
       setCheckoutData(data);
       setSubmitting(false);
     } catch (err: any) {
+      // Servidor sem e-mail: convidado precisa entrar antes de comprar.
+      if (err.response?.data?.loginObrigatorio) {
+        setConfig((prev) => (prev ? { ...prev, compraSemLoginPermitida: false, emailConfigurado: false } : prev));
+      }
       toast.error(err.response?.data?.message || 'Não foi possível iniciar o pagamento');
       setSubmitting(false);
     }
@@ -180,6 +188,11 @@ const MaterialCheckout: React.FC = () => {
     try {
       const res = await materialService.process(checkoutData.numeroPedido, formData);
       const d = res.data;
+      // Autenticação 3-D Secure exigida pelo emissor (comum no cartão de débito)
+      if (d.threeDs?.externalResourceUrl && d.threeDs?.creq) {
+        setThreeDs(d.threeDs);
+        return { ok: true };
+      }
       if (d.status === 'aprovado' || d.status === 'em_processo' || d.status === 'pendente') {
         navigate(`/materiais/compra/status?pedido=${checkoutData.numeroPedido}`);
         return { ok: true };
@@ -191,6 +204,18 @@ const MaterialCheckout: React.FC = () => {
       console.error('Falha no pagamento (Mercado Pago):', data || err);
       toast.error(data?.motivo || data?.message || 'Não foi possível processar o pagamento');
       return { ok: false };
+    }
+  };
+
+  /** Consulta o status do pedido durante o desafio 3-D Secure. */
+  const checkOrderStatus = async (): Promise<string | null> => {
+    if (!checkoutData?.numeroPedido) return null;
+    try {
+      await materialService.syncOrder(checkoutData.numeroPedido).catch(() => {});
+      const res = await materialService.getOrderStatus(checkoutData.numeroPedido);
+      return res.data?.status || null;
+    } catch {
+      return null;
     }
   };
 
@@ -228,6 +253,58 @@ const MaterialCheckout: React.FC = () => {
             <Link to="/materiais">
               <GlassButton variant="primary" fullWidth>Ver outros materiais</GlassButton>
             </Link>
+          </div>
+        </GlassCard>
+      </div>
+    );
+  }
+
+  // Compra sem login exige e-mail: é por ele que o convidado recebe o código de
+  // acesso, o PDF e o comprovante. Com o SMTP desativado, pedimos login antes.
+  if (!isAuthenticated && config?.compraSemLoginPermitida === false) {
+    const voltarPara = `${location.pathname}${location.search}`;
+    return (
+      <div className="max-w-lg mx-auto px-4 py-16">
+        <GlassCard className="p-8 text-center">
+          <div className="w-20 h-20 rounded-full bg-primary-500/15 flex items-center justify-center mx-auto mb-5">
+            <LogIn className="w-10 h-10 text-primary-500" />
+          </div>
+          <h1 className="text-2xl font-heading font-bold mb-2">Entre na sua conta para continuar</h1>
+          <p className="text-primary-500 font-medium mb-3">{material.titulo}</p>
+          <p className="text-[var(--color-text-muted)] mb-6">
+            No momento o envio de e-mails está desativado, então não conseguiríamos enviar
+            seu <strong>código de acesso</strong>, o <strong>material em PDF</strong> nem o
+            <strong> comprovante</strong> para quem compra sem conta. Fazendo login, o material
+            é liberado <strong>automaticamente na sua conta</strong> assim que o pagamento for
+            aprovado — sem depender de e-mail.
+          </p>
+
+          <div className="flex flex-col sm:flex-row gap-3 justify-center mb-6">
+            <GlassButton
+              variant="primary"
+              fullWidth
+              leftIcon={<LogIn className="w-4 h-4" />}
+              onClick={() => navigate('/login', { state: { from: { pathname: voltarPara } } })}
+            >
+              Fazer login
+            </GlassButton>
+            <GlassButton
+              variant="secondary"
+              fullWidth
+              leftIcon={<UserPlus className="w-4 h-4" />}
+              onClick={() => navigate('/registro', { state: { from: { pathname: voltarPara } } })}
+            >
+              Criar conta
+            </GlassButton>
+          </div>
+
+          <div className="p-4 rounded-xl bg-[var(--glass-bg)] border border-[var(--glass-border)] text-sm text-[var(--color-text-secondary)]">
+            <p className="flex items-center justify-center gap-2">
+              <Mail className="w-4 h-4 text-primary-500" /> Precisa de ajuda? Fale conosco:
+            </p>
+            <a href="mailto:contato@cursodeecocardiografia.com" className="text-primary-500 font-medium">
+              contato@cursodeecocardiografia.com
+            </a>
           </div>
         </GlassCard>
       </div>
@@ -419,6 +496,23 @@ const MaterialCheckout: React.FC = () => {
           </GlassCard>
         </div>
       </div>
+
+      {/* Desafio 3-D Secure do emissor (cartão de débito/crédito) */}
+      {threeDs && checkoutData && (
+        <ThreeDSChallenge
+          challenge={threeDs}
+          checkStatus={checkOrderStatus}
+          onResolved={() => {
+            setThreeDs(null);
+            navigate(`/materiais/compra/status?pedido=${checkoutData.numeroPedido}`);
+          }}
+          onCancel={() => {
+            setThreeDs(null);
+            toast('Verificação não concluída. Veja o status do pedido para tentar novamente.');
+            navigate(`/materiais/compra/status?pedido=${checkoutData.numeroPedido}`);
+          }}
+        />
+      )}
 
       <GlassModal isOpen={showTerms} onClose={() => setShowTerms(false)} title="Termos e Condições de Compra" size="lg">
         <div className="max-h-[60vh] overflow-y-auto whitespace-pre-wrap text-sm text-[var(--color-text-secondary)] leading-relaxed">

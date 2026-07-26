@@ -24,7 +24,10 @@ interface MercadoPagoBrickProps {
   metodos: BrickMetodos;
   parcelasMaximas?: number;
   /**
-   * Recebe o `formData` gerado pelo Brick (token do cartão / método escolhido).
+   * Recebe o `formData` gerado pelo Brick (token do cartão / método escolhido),
+   * já acrescido de `selected_payment_method` — o tipo escolhido pelo comprador
+   * (`credit_card`, `debit_card`, `ticket`, `bank_transfer`). Sem esse campo o
+   * back-end não consegue distinguir crédito de débito.
    * Deve retornar `{ ok: true }` quando o pagamento foi aceito pelo backend
    * (aprovado ou pendente — ex.: Pix/boleto) ou `{ ok: false }` para que o Brick
    * mantenha o formulário e permita nova tentativa.
@@ -88,9 +91,12 @@ const MercadoPagoBrick: React.FC<MercadoPagoBrickProps> = ({
               console.error('Payment Brick error:', error);
               if (!cancelled) setLoading(false);
             },
-            onSubmit: ({ formData }: any) =>
+            onSubmit: ({ selectedPaymentMethod, formData }: any) =>
               new Promise<void>((resolve, reject) => {
-                onPayRef.current(formData)
+                // `selectedPaymentMethod` é o único lugar em que o Brick informa o
+                // TIPO (crédito x débito x boleto x Pix) — o `formData` só traz o
+                // `payment_method_id` (visa, debvisa, bolbradesco...).
+                onPayRef.current({ ...formData, selected_payment_method: selectedPaymentMethod })
                   .then((r) => (r.ok ? resolve() : reject(new Error(r.message || 'rejeitado'))))
                   .catch((e) => reject(e));
               })

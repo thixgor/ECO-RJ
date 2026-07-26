@@ -16,8 +16,18 @@ import {
   getPublicKey,
   getWebhookSecret,
   createPayment,
-  getPayment
+  cancelPayment,
+  getPayment,
+  ThreeDsChallenge
 } from '../services/mercadoPagoService';
+import {
+  resolveSelectedMethod,
+  checkMethodEnabled,
+  isCardMethod,
+  sanitizePayerAddress,
+  resolveInstallments
+} from '../services/paymentMethodService';
+import { isEmailConfigured } from '../services/emailService';
 import { fulfillOrder } from '../services/fulfillmentService';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -104,6 +114,10 @@ export const getPublicConfig = async (_req: Request, res: Response) => {
       // Adesão a itens gratuitos não depende do gateway de pagamento.
       adesaoGratuitaAtiva: config.vendasAtivas,
       mercadoPagoConfigurado: isMercadoPagoConfigured(),
+      // Sem SMTP não há como entregar a serial key / o comprovante a quem compra
+      // deslogado — o front-end usa isso para exigir login antes da compra.
+      emailConfigurado: isEmailConfigured(),
+      compraSemLoginPermitida: isEmailConfigured(),
       publicKey: getPublicKey(),
       taxaOperacionalPercentual: config.taxaOperacionalPercentual,
       metodos: config.metodos,
@@ -178,6 +192,17 @@ export const createCheckout = async (req: AuthRequest, res: Response) => {
     }
     // A verificação do Mercado Pago acontece só depois de calcular o total: pedidos
     // gratuitos (curso com preço 0 ou cupom de 100%) não passam pelo gateway.
+
+    // Compra sem login depende inteiramente do e-mail: é por ele que o convidado
+    // recebe a serial key, o link de ativação e o comprovante. Com o SMTP
+    // desativado a entrega ficaria órfã — então exigimos login.
+    if (!req.user && !isEmailConfigured()) {
+      return res.status(401).json({
+        message: 'No momento não é possível comprar sem estar logado, pois o envio de e-mails está desativado e não conseguiríamos enviar sua chave de ativação e o comprovante. Faça login (ou crie sua conta) para concluir a compra — o acesso é liberado automaticamente na sua conta.',
+        loginObrigatorio: true,
+        motivo: 'email_desabilitado'
+      });
+    }
 
     if (!cursoId) return res.status(400).json({ message: 'Curso é obrigatório' });
     if (!comprador || typeof comprador !== 'object') {
@@ -345,7 +370,7 @@ async function applyPaymentToOrder(order: any, payment: {
   return novoStatus;
 }
 
-function serializePaymentResponse(order: any) {
+function serializePaymentResponse(order: any, threeDs?: ThreeDsChallenge) {
   const mp = order.mercadoPago || {};
   const isPix = mp.paymentTypeId === 'bank_transfer' || mp.paymentMethodId === 'pix';
   const isBoleto = mp.paymentTypeId === 'ticket' || !!mp.barcode;
@@ -359,8 +384,33 @@ function serializePaymentResponse(order: any) {
       qrCodeBase64: mp.pixQrCodeBase64,
       ticketUrl: mp.ticketUrl
     } : undefined,
-    boleto: isBoleto ? { url: mp.ticketUrl, barcode: mp.barcode } : undefined
+    boleto: isBoleto ? { url: mp.ticketUrl, barcode: mp.barcode } : undefined,
+    // Desafio 3-D Secure (cartão de débito/crédito): o front-end precisa exibir
+    // o challenge do emissor antes de o pagamento ser concluído.
+    threeDs
   };
+}
+
+/**
+ * Um pagamento já existente no pedido pode ser reaproveitado (em vez de criar
+ * uma nova cobrança) quando ainda vale para o método que o comprador escolheu.
+ *
+ * Não é reaproveitável quando:
+ *  - foi recusado/cancelado (o comprador está tentando de novo);
+ *  - é de OUTRO método (ex.: boleto emitido e agora quer pagar no cartão);
+ *  - está travado num desafio 3DS antigo (o `creq` é de uso único).
+ */
+function podeReaproveitarPagamento(
+  existing: { status: string; statusDetail?: string; paymentTypeId?: string },
+  metodoEscolhido: string
+): boolean {
+  const st = mapMpStatus(existing.status);
+  if (st === 'rejeitado' || st === 'cancelado') return false;
+  if (existing.statusDetail === 'pending_challenge') return false;
+  // Aprovado / em análise: sempre reaproveita — nunca cobrar duas vezes.
+  if (st !== 'pendente') return true;
+  // Pendente (boleto/Pix aguardando): só reaproveita se for o mesmo método.
+  return !!existing.paymentTypeId && existing.paymentTypeId === metodoEscolhido;
 }
 
 // @desc    Processar pagamento (Checkout Transparente — dados do Payment Brick)
@@ -386,28 +436,47 @@ export const processPayment = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: 'Método de pagamento inválido' });
     }
 
-    // Valida método contra a configuração do admin
     const config = await getPaymentConfig();
     if (!config.vendasAtivas) {
       return res.status(503).json({ message: 'As vendas estão temporariamente desativadas' });
     }
-    const token = payload.token ? String(payload.token) : undefined;
-    if (paymentMethodId === 'pix' && !config.metodos.pix) {
-      return res.status(400).json({ message: 'Pagamento via Pix indisponível' });
-    }
-    if (!token && paymentMethodId !== 'pix' && !config.metodos.boleto) {
-      return res.status(400).json({ message: 'Pagamento via boleto indisponível' });
+
+    // Cada meio de pagamento é validado individualmente contra a config do admin
+    // (crédito, débito, boleto e Pix têm interruptores próprios).
+    const metodo = resolveSelectedMethod(payload);
+    const metodoBloqueado = checkMethodEnabled(metodo, config);
+    if (metodoBloqueado) {
+      return res.status(400).json({ message: metodoBloqueado });
     }
 
-    // Anti-duplicidade: se já existe um pagamento não recusado, devolve o atual
+    const token = payload.token ? String(payload.token) : undefined;
+
+    // Boleto: o Mercado Pago exige o endereço completo do pagador.
+    let payerAddress: Record<string, string> | undefined;
+    if (metodo === 'ticket') {
+      const address = sanitizePayerAddress(payload.payer?.address);
+      if (!address) {
+        return res.status(400).json({
+          message: 'Para pagar com boleto informe o endereço completo (CEP, rua, número, bairro, cidade e estado).'
+        });
+      }
+      payerAddress = address;
+    }
+
+    // Anti-duplicidade: se já existe um pagamento aproveitável, devolve o atual
     // (não cria nova cobrança em cliques repetidos / reenvio do Brick).
     if (order.mercadoPago.paymentId) {
       const existing = await getPayment(order.mercadoPago.paymentId);
       if (existing) {
-        const st = mapMpStatus(existing.status);
-        if (st !== 'rejeitado' && st !== 'cancelado') {
+        if (podeReaproveitarPagamento(existing, metodo)) {
           await applyPaymentToOrder(order, existing);
           return res.json(serializePaymentResponse(order));
+        }
+        // Trocou de meio de pagamento com uma cobrança ainda em aberto
+        // (ex.: boleto emitido e agora quer cartão): cancela a anterior para
+        // que o comprador não consiga pagar as duas.
+        if (mapMpStatus(existing.status) === 'pendente') {
+          await cancelPayment(existing.id);
         }
       }
     }
@@ -425,12 +494,14 @@ export const processPayment = async (req: AuthRequest, res: Response) => {
       paymentMethodId,
       token,
       issuerId: payload.issuer_id ? String(payload.issuer_id) : undefined,
-      installments: payload.installments ? Number(payload.installments) : 1,
-      payerAddress: payload.payer?.address || undefined
+      // Débito e boleto/Pix são sempre à vista; crédito respeita o teto do admin.
+      installments: resolveInstallments(metodo, payload.installments, config.parcelasMaximas),
+      payerAddress,
+      threeDSecureMode: isCardMethod(metodo) ? 'optional' : undefined
     });
 
     await applyPaymentToOrder(order, result);
-    return res.status(201).json(serializePaymentResponse(order));
+    return res.status(201).json(serializePaymentResponse(order, result.threeDs));
   } catch (error: any) {
     const { motivo, detalhe } = extractMpError(error);
     console.error('Erro ao processar pagamento (MP):', detalhe || error);
@@ -527,6 +598,7 @@ export const getOrderStatus = async (req: Request, res: Response) => {
       numeroPedido: order.numeroPedido,
       cursoTitulo: order.cursoTitulo,
       status: order.status,
+      statusDetail: mp.statusDetail,
       entregue: order.entregue,
       metodoPagamento: order.metodoPagamento,
       valores: order.valores,

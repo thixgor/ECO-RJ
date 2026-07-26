@@ -16,6 +16,7 @@ interface StatusData {
   materialId: string;
   materialTitulo: string;
   status: string;
+  statusDetail?: string;
   entregue: boolean;
   emailEnviado?: boolean;
   metodoPagamento?: string;
@@ -144,9 +145,13 @@ const MaterialPaymentStatus: React.FC = () => {
             <div className="w-16 h-16 rounded-full bg-amber-500/15 flex items-center justify-center mx-auto mb-4">
               <Clock className="w-9 h-9 text-amber-500 animate-pulse" />
             </div>
-            <h1 className="text-2xl font-heading font-bold mb-1">Aguardando pagamento</h1>
+            <h1 className="text-2xl font-heading font-bold mb-1">
+              {order?.statusDetail === 'pending_challenge' ? 'Verificação do cartão pendente' : 'Aguardando pagamento'}
+            </h1>
             <p className="text-[var(--color-text-muted)] mb-6">
-              Assim que o pagamento for confirmado, esta página será atualizada automaticamente.
+              {order?.statusDetail === 'pending_challenge'
+                ? 'Seu banco pediu uma confirmação extra e ela ainda não foi concluída. Finalize a verificação no aplicativo do seu banco ou refaça a compra escolhendo outra forma de pagamento.'
+                : 'Assim que o pagamento for confirmado, esta página será atualizada automaticamente.'}
             </p>
           </>
         )}

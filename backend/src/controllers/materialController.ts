@@ -17,11 +17,20 @@ import {
   getPublicKey,
   getWebhookSecret,
   createPayment,
-  getPayment
+  cancelPayment,
+  getPayment,
+  ThreeDsChallenge
 } from '../services/mercadoPagoService';
+import {
+  resolveSelectedMethod,
+  checkMethodEnabled,
+  isCardMethod,
+  sanitizePayerAddress,
+  resolveInstallments
+} from '../services/paymentMethodService';
 import { getSignedUrl } from '../services/blobStorageService';
 import { fulfillMaterialOrder } from '../services/materialFulfillmentService';
-import { sendMaterialPurchaseEmail } from '../services/emailService';
+import { sendMaterialPurchaseEmail, isEmailConfigured } from '../services/emailService';
 import {
   watermarkPdfBuffer,
   hasWatermarkIdentity,
@@ -323,6 +332,16 @@ export const createMaterialCheckout = async (req: AuthRequest, res: Response) =>
     }
     // A verificação do Mercado Pago acontece só depois de calcular o total: pedidos
     // gratuitos (material com preço 0 ou cupom de 100%) não passam pelo gateway.
+    // Sem SMTP não há como entregar o material ao convidado: o código de acesso,
+    // o link de download e o PDF vão todos por e-mail. Exige login nesse caso.
+    if (!req.user && !isEmailConfigured()) {
+      return res.status(401).json({
+        message: 'No momento não é possível comprar sem estar logado, pois o envio de e-mails está desativado e não conseguiríamos enviar seu código de acesso, o material em PDF e o comprovante. Faça login (ou crie sua conta) para concluir a compra — o material é liberado automaticamente na sua conta.',
+        loginObrigatorio: true,
+        motivo: 'email_desabilitado'
+      });
+    }
+
     if (!materialId) return res.status(400).json({ message: 'Material é obrigatório' });
     if (!comprador || typeof comprador !== 'object') {
       return res.status(400).json({ message: 'Dados do comprador são obrigatórios' });
@@ -473,7 +492,7 @@ async function applyMaterialPayment(order: any, payment: {
   return novoStatus;
 }
 
-function serializeMaterialPaymentResponse(order: any) {
+function serializeMaterialPaymentResponse(order: any, threeDs?: ThreeDsChallenge) {
   const mp = order.mercadoPago || {};
   const isPix = mp.paymentTypeId === 'bank_transfer' || mp.paymentMethodId === 'pix';
   const isBoleto = mp.paymentTypeId === 'ticket' || !!mp.barcode;
@@ -487,8 +506,21 @@ function serializeMaterialPaymentResponse(order: any) {
       qrCodeBase64: mp.pixQrCodeBase64,
       ticketUrl: mp.ticketUrl
     } : undefined,
-    boleto: isBoleto ? { url: mp.ticketUrl, barcode: mp.barcode } : undefined
+    boleto: isBoleto ? { url: mp.ticketUrl, barcode: mp.barcode } : undefined,
+    threeDs
   };
+}
+
+/** Ver `podeReaproveitarPagamento` em paymentController — mesma regra para materiais. */
+function podeReaproveitarPagamentoMaterial(
+  existing: { status: string; statusDetail?: string; paymentTypeId?: string },
+  metodoEscolhido: string
+): boolean {
+  const st = mapMpStatus(existing.status);
+  if (st === 'rejeitado' || st === 'cancelado') return false;
+  if (existing.statusDetail === 'pending_challenge') return false;
+  if (st !== 'pendente') return true;
+  return !!existing.paymentTypeId && existing.paymentTypeId === metodoEscolhido;
 }
 
 // @desc    Processar pagamento de material (Checkout Transparente)
@@ -517,22 +549,38 @@ export const processMaterialPayment = async (req: AuthRequest, res: Response) =>
     if (!config.vendasAtivas) {
       return res.status(503).json({ message: 'As vendas estão temporariamente desativadas' });
     }
-    const token = payload.token ? String(payload.token) : undefined;
-    if (paymentMethodId === 'pix' && !config.metodos.pix) {
-      return res.status(400).json({ message: 'Pagamento via Pix indisponível' });
-    }
-    if (!token && paymentMethodId !== 'pix' && !config.metodos.boleto) {
-      return res.status(400).json({ message: 'Pagamento via boleto indisponível' });
+
+    // Cada meio de pagamento validado individualmente (crédito, débito, boleto, Pix)
+    const metodo = resolveSelectedMethod(payload);
+    const metodoBloqueado = checkMethodEnabled(metodo, config);
+    if (metodoBloqueado) {
+      return res.status(400).json({ message: metodoBloqueado });
     }
 
-    // Anti-duplicidade
+    const token = payload.token ? String(payload.token) : undefined;
+
+    // Boleto: o Mercado Pago exige o endereço completo do pagador.
+    let payerAddress: Record<string, string> | undefined;
+    if (metodo === 'ticket') {
+      const address = sanitizePayerAddress(payload.payer?.address);
+      if (!address) {
+        return res.status(400).json({
+          message: 'Para pagar com boleto informe o endereço completo (CEP, rua, número, bairro, cidade e estado).'
+        });
+      }
+      payerAddress = address;
+    }
+
+    // Anti-duplicidade (e troca de meio de pagamento no mesmo pedido)
     if (order.mercadoPago.paymentId) {
       const existing = await getPayment(order.mercadoPago.paymentId);
       if (existing) {
-        const st = mapMpStatus(existing.status);
-        if (st !== 'rejeitado' && st !== 'cancelado') {
+        if (podeReaproveitarPagamentoMaterial(existing, metodo)) {
           await applyMaterialPayment(order, existing);
           return res.json(serializeMaterialPaymentResponse(order));
+        }
+        if (mapMpStatus(existing.status) === 'pendente') {
+          await cancelPayment(existing.id);
         }
       }
     }
@@ -550,12 +598,13 @@ export const processMaterialPayment = async (req: AuthRequest, res: Response) =>
       paymentMethodId,
       token,
       issuerId: payload.issuer_id ? String(payload.issuer_id) : undefined,
-      installments: payload.installments ? Number(payload.installments) : 1,
-      payerAddress: payload.payer?.address || undefined
+      installments: resolveInstallments(metodo, payload.installments, config.parcelasMaximas),
+      payerAddress,
+      threeDSecureMode: isCardMethod(metodo) ? 'optional' : undefined
     });
 
     await applyMaterialPayment(order, result);
-    return res.status(201).json(serializeMaterialPaymentResponse(order));
+    return res.status(201).json(serializeMaterialPaymentResponse(order, result.threeDs));
   } catch (error: any) {
     const { motivo, detalhe } = extractMpError(error);
     console.error('Erro ao processar pagamento de material (MP):', detalhe || error);
@@ -648,6 +697,7 @@ export const getMaterialOrderStatus = async (req: Request, res: Response) => {
       materialId: order.material,
       materialTitulo: order.materialTitulo,
       status: order.status,
+      statusDetail: mp.statusDetail,
       entregue: order.entregue,
       emailEnviado: order.emailEnviado,
       metodoPagamento: order.metodoPagamento,

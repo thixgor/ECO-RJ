@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
-  ShoppingCart, Tag, ShieldCheck, Loader2, ArrowLeft, CheckCircle2, Lock, Calendar, Clock, PackageX, Mail, Gift
+  ShoppingCart, Tag, ShieldCheck, Loader2, ArrowLeft, CheckCircle2, Lock, Calendar, Clock, PackageX, Mail, Gift,
+  LogIn, UserPlus
 } from 'lucide-react';
 import { GlassCard, GlassButton, GlassInput, GlassModal } from '../components/ui';
 import MercadoPagoBrick from '../components/MercadoPagoBrick';
+import ThreeDSChallenge, { ThreeDsChallengeData } from '../components/ThreeDSChallenge';
 import { courseService, paymentService } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { brl, formatPreco, isGratuito } from '../utils/price';
@@ -34,6 +36,7 @@ const maskPhone = (v: string) =>
 const Checkout: React.FC = () => {
   const { cursoId } = useParams<{ cursoId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, isAuthenticated } = useAuth();
 
   const [course, setCourse] = useState<Course | null>(null);
@@ -54,6 +57,7 @@ const Checkout: React.FC = () => {
   const [showTerms, setShowTerms] = useState(false);
   const [loteNome, setLoteNome] = useState<string | null>(null);
   const [indisponivelMotivo, setIndisponivelMotivo] = useState<string | null>(null);
+  const [threeDs, setThreeDs] = useState<ThreeDsChallengeData | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -172,6 +176,10 @@ const Checkout: React.FC = () => {
       setCheckoutData(data);
       setSubmitting(false);
     } catch (err: any) {
+      // Servidor sem e-mail: convidado precisa entrar antes de comprar.
+      if (err.response?.data?.loginObrigatorio) {
+        setConfig((prev) => (prev ? { ...prev, compraSemLoginPermitida: false, emailConfigurado: false } : prev));
+      }
       toast.error(err.response?.data?.message || 'Não foi possível iniciar o pagamento');
       setSubmitting(false);
     }
@@ -182,6 +190,12 @@ const Checkout: React.FC = () => {
     try {
       const res = await paymentService.process(checkoutData.numeroPedido, formData);
       const d = res.data;
+      // O emissor pediu autenticação 3-D Secure (comum no cartão de débito):
+      // o desafio precisa ser concluído antes de o pagamento ser confirmado.
+      if (d.threeDs?.externalResourceUrl && d.threeDs?.creq) {
+        setThreeDs(d.threeDs);
+        return { ok: true };
+      }
       if (d.status === 'aprovado' || d.status === 'em_processo' || d.status === 'pendente') {
         navigate(`/compra/status?pedido=${checkoutData.numeroPedido}`);
         return { ok: true };
@@ -193,6 +207,18 @@ const Checkout: React.FC = () => {
       console.error('Falha no pagamento (Mercado Pago):', data || err);
       toast.error(data?.motivo || data?.message || 'Não foi possível processar o pagamento');
       return { ok: false };
+    }
+  };
+
+  /** Consulta o status do pedido durante o desafio 3-D Secure. */
+  const checkOrderStatus = async (): Promise<string | null> => {
+    if (!checkoutData?.numeroPedido) return null;
+    try {
+      await paymentService.syncOrder(checkoutData.numeroPedido).catch(() => {});
+      const res = await paymentService.getOrderStatus(checkoutData.numeroPedido);
+      return res.data?.status || null;
+    } catch {
+      return null;
     }
   };
 
@@ -239,6 +265,58 @@ const Checkout: React.FC = () => {
             <Link to="/cursos">
               <GlassButton variant="primary" fullWidth>Ver outros cursos</GlassButton>
             </Link>
+          </div>
+        </GlassCard>
+      </div>
+    );
+  }
+
+  // Compra sem login exige e-mail: é por ele que o convidado recebe a chave de
+  // ativação e o comprovante. Com o SMTP desativado, pedimos login antes.
+  if (!isAuthenticated && config?.compraSemLoginPermitida === false) {
+    const voltarPara = `${location.pathname}${location.search}`;
+    return (
+      <div className="max-w-lg mx-auto px-4 py-16">
+        <GlassCard className="p-8 text-center">
+          <div className="w-20 h-20 rounded-full bg-primary-500/15 flex items-center justify-center mx-auto mb-5">
+            <LogIn className="w-10 h-10 text-primary-500" />
+          </div>
+          <h1 className="text-2xl font-heading font-bold mb-2">Entre na sua conta para continuar</h1>
+          <p className="text-primary-500 font-medium mb-3">{course.titulo}</p>
+          <p className="text-[var(--color-text-muted)] mb-6">
+            No momento o envio de e-mails está desativado, então não conseguiríamos enviar
+            sua <strong>chave de ativação</strong> nem o <strong>comprovante</strong> para
+            quem compra sem conta. Fazendo login, o acesso é liberado <strong>automaticamente
+            na sua conta</strong> assim que o pagamento for aprovado — sem depender de e-mail.
+          </p>
+
+          <div className="flex flex-col sm:flex-row gap-3 justify-center mb-6">
+            <GlassButton
+              variant="primary"
+              fullWidth
+              leftIcon={<LogIn className="w-4 h-4" />}
+              onClick={() => navigate('/login', { state: { from: { pathname: voltarPara } } })}
+            >
+              Fazer login
+            </GlassButton>
+            <GlassButton
+              variant="secondary"
+              fullWidth
+              leftIcon={<UserPlus className="w-4 h-4" />}
+              onClick={() => navigate('/registro', { state: { from: { pathname: voltarPara } } })}
+            >
+              Criar conta
+            </GlassButton>
+          </div>
+
+          <div className="p-4 rounded-xl bg-[var(--glass-bg)] border border-[var(--glass-border)] text-sm text-[var(--color-text-secondary)]">
+            <p className="flex items-center justify-center gap-2">
+              <Mail className="w-4 h-4 text-primary-500" />
+              Precisa de ajuda? Fale com nossa equipe:
+            </p>
+            <a href="mailto:contato@cursodeecocardiografia.com" className="text-primary-500 font-medium">
+              contato@cursodeecocardiografia.com
+            </a>
           </div>
         </GlassCard>
       </div>
@@ -500,6 +578,25 @@ const Checkout: React.FC = () => {
           </GlassCard>
         </div>
       </div>
+
+      {/* Desafio 3-D Secure do emissor (cartão de débito/crédito) */}
+      {threeDs && checkoutData && (
+        <ThreeDSChallenge
+          challenge={threeDs}
+          checkStatus={checkOrderStatus}
+          onResolved={() => {
+            setThreeDs(null);
+            navigate(`/compra/status?pedido=${checkoutData.numeroPedido}`);
+          }}
+          onCancel={() => {
+            setThreeDs(null);
+            toast('Verificação não concluída. Veja o status do pedido para tentar novamente.');
+            // A cobrança já existe (pendente de autenticação): a página de status
+            // explica a situação — o Brick já encerrou o envio e não aceita retry.
+            navigate(`/compra/status?pedido=${checkoutData.numeroPedido}`);
+          }}
+        />
+      )}
 
       {/* Modal de Termos */}
       <GlassModal isOpen={showTerms} onClose={() => setShowTerms(false)} title="Termos e Condições de Compra" size="lg">

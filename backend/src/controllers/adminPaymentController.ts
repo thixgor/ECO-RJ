@@ -6,6 +6,8 @@ import Course from '../models/Course';
 import { AuthRequest } from '../middleware/auth';
 import { getPaymentConfig, setPaymentConfig, PaymentConfig, DEFAULT_PAYMENT_CONFIG } from '../config/paymentConfig';
 import { fulfillOrder } from '../services/fulfillmentService';
+import { isEmailConfigured } from '../services/emailService';
+import { isMercadoPagoConfigured } from '../services/mercadoPagoService';
 
 // @desc    Listar pedidos (Admin)
 // @route   GET /api/payments/admin/orders
@@ -127,7 +129,14 @@ export const refulfillOrder = async (req: AuthRequest, res: Response) => {
 export const getAdminPaymentConfig = async (_req: AuthRequest, res: Response) => {
   try {
     const config = await getPaymentConfig();
-    res.json(config);
+    // Diagnóstico somente leitura (vem de env, não do banco): o admin precisa
+    // saber que sem SMTP a compra sem login fica bloqueada.
+    res.json({
+      ...config,
+      emailConfigurado: isEmailConfigured(),
+      compraSemLoginPermitida: isEmailConfigured(),
+      mercadoPagoConfigurado: isMercadoPagoConfigured()
+    });
   } catch (error) {
     console.error('Erro ao obter configuração:', error);
     res.status(500).json({ message: 'Erro ao obter configuração' });
@@ -176,6 +185,12 @@ export const resetTerms = async (req: AuthRequest, res: Response) => {
     const atual = await getPaymentConfig();
     atual.termosCompra = DEFAULT_PAYMENT_CONFIG.termosCompra;
     await setPaymentConfig(atual, req.user?._id ? String(req.user._id) : undefined);
+    // Mantém os diagnósticos de ambiente na resposta (o painel recarrega o estado daqui)
+    Object.assign(atual as any, {
+      emailConfigurado: isEmailConfigured(),
+      compraSemLoginPermitida: isEmailConfigured(),
+      mercadoPagoConfigurado: isMercadoPagoConfigured()
+    });
     res.json(atual);
   } catch (error) {
     console.error('Erro ao restaurar termos:', error);

@@ -20,13 +20,15 @@ operacional, CPF obrigatório, aceite de termos e registro completo de compras.
 2. [Arquitetura e arquivos criados](#-arquitetura-e-arquivos-criados)
 3. [Variáveis de ambiente (obrigatório configurar)](#-variáveis-de-ambiente-obrigatório-configurar)
 4. [Como funciona (fluxos)](#-como-funciona-fluxos)
-5. [Cálculo de preço e taxa operacional](#-cálculo-de-preço-e-taxa-operacional)
-6. [Segurança](#-segurança-implementada)
-7. [Painel do administrador](#-painel-do-administrador)
-8. [Painel do usuário (/perfil)](#-painel-do-usuário-perfil)
-9. [Endpoints da API](#-endpoints-da-api)
-10. [Configuração do Mercado Pago (passo a passo)](#-configuração-do-mercado-pago-passo-a-passo)
-11. [Próximos passos](#-próximos-passos)
+5. [Meios de pagamento (individualmente)](#-meios-de-pagamento-individualmente)
+6. [Compra sem login depende do e-mail](#-compra-sem-login-depende-do-e-mail)
+7. [Cálculo de preço e taxa operacional](#-cálculo-de-preço-e-taxa-operacional)
+8. [Segurança](#-segurança-implementada)
+9. [Painel do administrador](#-painel-do-administrador)
+10. [Painel do usuário (/perfil)](#-painel-do-usuário-perfil)
+11. [Endpoints da API](#-endpoints-da-api)
+12. [Configuração do Mercado Pago (passo a passo)](#-configuração-do-mercado-pago-passo-a-passo)
+13. [Próximos passos](#-próximos-passos)
 
 ---
 
@@ -36,6 +38,8 @@ operacional, CPF obrigatório, aceite de termos e registro completo de compras.
 |-----------|--------|
 | Comprar cursos e receber acesso na conta (logado) | ✅ Entrega automática |
 | Comprar sem estar logado (convidado) | ✅ E-mail com serial key + link de ativação + comprovante |
+| **Bloquear compra de convidado quando o e-mail está desativado** | ✅ Exige login (ver [Compra sem login](#-compra-sem-login-depende-do-e-mail)) |
+| Cartão de crédito, cartão de débito (com 3-D Secure), boleto e Pix | ✅ Validados individualmente ([detalhes](#-meios-de-pagamento-individualmente)) |
 | Taxa de 1% somada ao produto como **taxa operacional** | ✅ Configurável pelo admin |
 | Sistema de **cupom** | ✅ CRUD completo no admin |
 | Sistema de **lotes de desconto** | ✅ CRUD completo no admin |
@@ -65,7 +69,8 @@ toda a infraestrutura de serial keys já existente na plataforma.
 
 **Serviços**
 - `services/pricingService.ts` — **fonte única da verdade** do cálculo de preço (lote → desconto ativado → cupom → taxa operacional). Validação de cupom e lote vigente.
-- `services/mercadoPagoService.ts` — integração com o Mercado Pago: **`createPayment`** (Checkout Transparente — cartão via token do Brick, Pix e boleto) e consulta de pagamento (fonte da verdade). Mantém `createPreference` (Checkout Pro) como fallback. Credenciais **apenas** via env.
+- `services/mercadoPagoService.ts` — integração com o Mercado Pago: **`createPayment`** (Checkout Transparente — cartão via token do Brick com **3-D Secure**, Pix e boleto), **`cancelPayment`** (troca de meio de pagamento) e consulta de pagamento (fonte da verdade). Mantém `createPreference` (Checkout Pro) como fallback. Credenciais **apenas** via env.
+- `services/paymentMethodService.ts` — resolve e valida o **meio de pagamento escolhido** (crédito, débito, boleto, Pix) contra a config do admin, normaliza o endereço exigido pelo boleto e limita as parcelas por meio.
 - `services/emailService.ts` — e-mail transacional (nodemailer) com comprovante HTML + serial key + link de ativação. Degrada graciosamente sem SMTP.
 - `services/fulfillmentService.ts` — **entrega** do pedido (gera serial key, libera acesso, contabiliza cupom/lote, envia e-mail) — idempotente e com **claim atômico** anti-duplicação.
 
@@ -86,6 +91,7 @@ toda a infraestrutura de serial keys já existente na plataforma.
 ### Frontend (`frontend/src`)
 
 - `components/MercadoPagoBrick.tsx` — **componente reutilizável do Payment Brick** (Checkout Transparente): carrega o SDK, renderiza cartão/Pix/boleto tematizados (light/dark), tokeniza o cartão no cliente e envia o `formData` ao backend. Usado por cursos e materiais.
+- `components/ThreeDSChallenge.tsx` — **desafio 3-D Secure** do emissor (obrigatório na prática no cartão de débito): submete o `creq` num iframe e acompanha o desfecho pelo status do pedido.
 - `utils/mercadoPago.ts` — carregamento sob demanda do SDK `MercadoPago.js v2`.
 - `pages/Checkout.tsx` — `/comprar/:cursoId` — formulário de compra + **etapa de pagamento embutida** (Payment Brick), cupom, resumo de valores, aceite de termos.
 - `pages/PaymentStatus.tsx` — `/compra/status?pedido=...` — retorno do pagamento (polling), **QR Code do Pix / boleto** quando pendente, serial key para convidados.
@@ -123,7 +129,7 @@ SMTP_FROM=ECO RJ <contato@cursodeecocardiografia.com>
 
 > ⚠️ **Sem `MP_ACCESS_TOKEN`** o checkout retorna "pagamentos indisponíveis" (nenhuma cobrança é feita).
 > ⚠️ **Sem `MP_PUBLIC_KEY`** o Payment Brick não renderiza no front-end (o Checkout Transparente exige a chave pública).
-> **Sem SMTP** as compras funcionam, mas o e-mail é apenas registrado no log (não enviado). Configure o SMTP para produção.
+> ⚠️ **Sem SMTP** a compra de quem está **logado** continua funcionando (o acesso é liberado direto na conta e o e-mail é apenas registrado no log), mas a **compra sem login é bloqueada** — não haveria como entregar a serial key/o PDF ao convidado. Configure o SMTP para produção.
 
 No **Vercel**, cadastre essas variáveis em *Project → Settings → Environment Variables*.
 
@@ -160,6 +166,71 @@ No **Vercel**, cadastre essas variáveis em *Project → Settings → Environmen
 
 ---
 
+## 💳 Meios de pagamento (individualmente)
+
+Cada meio tem um interruptor próprio em *Admin → Pagamentos → Configurações* e é
+validado **individualmente no servidor** (não basta o Brick escondê-lo na tela).
+
+| Meio | `payment_method_id` típico | Config | Particularidades |
+|------|---------------------------|--------|------------------|
+| **Cartão de crédito** | `visa`, `master`, `elo`, `amex`, `hipercard` | `metodos.cartaoCredito` | Parcelado até o teto do admin (`parcelasMaximas`); 3-D Secure `optional` |
+| **Cartão de débito** | `debvisa`, `debmaster`, `debelo`, `debcabal`, `maestro` | `metodos.cartaoDebito` | **Sempre 1x**; 3-D Secure `optional` — o desafio do emissor é exibido na própria página (ver abaixo) |
+| **Boleto** | `bolbradesco` | `metodos.boleto` | Exige **endereço completo** do pagador (CEP, rua, número, bairro, cidade, UF); compensa em até 2 dias úteis |
+| **Pix** | `pix` | `metodos.pix` | QR Code + copia-e-cola exibidos na página de status |
+
+Como o `formData` do Payment Brick só traz o `payment_method_id`, o front-end
+envia também o `selected_payment_method` (`credit_card` / `debit_card` /
+`ticket` / `bank_transfer`) — sem ele **não há como separar crédito de débito**.
+O servidor deriva o tipo do `payment_method_id` + presença do token e usa o
+campo declarado apenas para desempatar crédito x débito.
+
+### 3-D Secure (essencial no cartão de débito)
+
+Cartões de débito no Brasil praticamente sempre exigem a autenticação do
+emissor. Nesse caso o Mercado Pago devolve o pagamento com
+`status_detail: "pending_challenge"` e um `three_ds_info` (`external_resource_url` + `creq`).
+
+- O backend envia `three_d_secure_mode: 'optional'` em **todo pagamento com cartão**
+  (o desafio só aparece quando o banco exige) e repassa o `threeDs` na resposta de
+  `/process`.
+- O front-end abre o componente `ThreeDSChallenge`, que faz o **POST do `creq`**
+  para a URL do emissor dentro de um iframe e acompanha o desfecho consultando o
+  status do pedido (o iframe é de outro domínio e não pode ser inspecionado).
+- Sem esse tratamento o pagamento **nunca sai de "pendente"** — era o motivo de o
+  cartão de débito não funcionar.
+
+### Troca de meio de pagamento no mesmo pedido
+
+Se o comprador gerou um boleto (ou Pix) e resolveu pagar no cartão, o pagamento
+anterior é **cancelado no Mercado Pago** antes de criar o novo — assim ele não
+consegue pagar as duas cobranças. Pagamentos **aprovados ou em análise** nunca
+são recriados (idempotência: jamais cobrar duas vezes).
+
+---
+
+## 📧 Compra sem login depende do e-mail
+
+Quem compra **sem conta** recebe *tudo* por e-mail: a serial key, o link de
+ativação, o material em PDF (loja de materiais) e o comprovante. Se o **SMTP não
+estiver configurado**, essa entrega simplesmente não acontece — a compra ficaria
+órfã.
+
+Por isso, quando `isEmailConfigured()` é `false`:
+
+- `GET /api/payments/config` devolve `emailConfigurado: false` e
+  `compraSemLoginPermitida: false`;
+- os checkouts de **curso** e de **material** exibem uma tela pedindo
+  **login / criar conta** (com retorno automático para o checkout depois);
+- o backend recusa o checkout de convidado com **HTTP 401** e
+  `loginObrigatorio: true` — a proteção não depende do front-end;
+- *Admin → Pagamentos → Configurações* mostra um aviso explicando a situação e
+  quais variáveis configurar.
+
+Usuários **logados** continuam comprando normalmente: o acesso é liberado direto
+na conta, sem depender de e-mail.
+
+---
+
 ## 🧮 Cálculo de preço e taxa operacional
 
 Ordem determinística (calculada **sempre no servidor**, nunca no cliente):
@@ -187,6 +258,10 @@ Ordem determinística (calculada **sempre no servidor**, nunca no cliente):
 - **Consulta do pagamento na API do MP** como fonte da verdade (não confia no payload do webhook).
 - **Conferência de valor**: se o valor pago divergir do total do pedido, a entrega é **bloqueada** e um alerta é logado.
 - **Idempotência + claim atômico** na entrega: webhooks duplicados/concorrentes **não** geram serial keys duplicadas nem liberam acesso duas vezes.
+- **Anti-cobrança dupla ao trocar de meio de pagamento**: pagamento aprovado/em análise nunca é recriado; boleto ou Pix ainda pendente é **cancelado no Mercado Pago** antes de emitir a nova cobrança.
+- **Cada meio de pagamento validado no servidor** contra a config do admin (crédito, débito, boleto e Pix separadamente) — desligar um método no painel realmente o bloqueia, mesmo em chamada direta à API.
+- **Parcelamento controlado no servidor**: débito, boleto e Pix sempre à vista; crédito limitado ao teto configurado (o cliente não escolhe além disso).
+- **Compra de convidado exigindo login quando o SMTP está desativado** — evita a venda sem entrega possível.
 - **CPF validado** com dígito verificador; e-mail e telefone validados.
 - **Aceite de termos** obrigatório, com **versão, data e IP** registrados por pedido (auditoria/LGPD).
 - **Serial key de uso único** (infra existente) — não transferível e some ao ser deletada.

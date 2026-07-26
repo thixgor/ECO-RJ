@@ -155,6 +155,13 @@ export interface PaymentConfig {
   vendasAtivas: boolean;
   /** Adesão a cursos/materiais gratuitos — não depende do gateway de pagamento. */
   adesaoGratuitaAtiva?: boolean;
+  /** SMTP configurado no servidor (envio de serial key, PDF e comprovante). */
+  emailConfigurado?: boolean;
+  /**
+   * Compra sem login liberada. É `false` quando o e-mail está desativado:
+   * sem e-mail não há como entregar a chave/comprovante a um convidado.
+   */
+  compraSemLoginPermitida?: boolean;
 }
 
 // ==========================================================================

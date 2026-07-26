@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Mail, Lock, User, MapPin, Stethoscope, Eye, EyeOff, AlertTriangle, Download, Key, GraduationCap, Building2, Award, Calendar, BadgeCheck } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -66,6 +66,7 @@ const Register: React.FC = () => {
   const { register } = useAuth();
   const { isDark } = useTheme();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const hospitais = useMemo(
     () => (formData.estado ? withOutro(getHospitaisByUF(formData.estado)) : []),
@@ -271,7 +272,8 @@ NÃO COMPARTILHE ESTE TOKEN COM NINGUÉM!
       sessionStorage.removeItem('pendingSerialKey');
       navigate(`/ativar?codigo=${pendingKey}`);
     } else {
-      navigate('/dashboard');
+      // Volta para a página que exigiu o cadastro (ex.: checkout), como no login
+      navigate((location.state as any)?.from?.pathname || '/dashboard');
     }
   };
 
