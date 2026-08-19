@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import User from '../models/User';
 import { validateCRM, validateUF } from '../utils/validators';
+import { ensureCriticalUserIndexes } from '../config/database-indexes';
 import { AuthRequest } from '../middleware/auth';
 
 const TIPOS_VALIDOS = ['Médico', 'Residente', 'Acadêmico de Medicina'];
@@ -11,6 +12,19 @@ const UFS_VALIDAS = [
   'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN',
   'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
 ];
+
+// Identifica o campo de um erro de chave duplicada (E11000) do MongoDB
+const duplicateKeyField = (error: any): string | null => {
+  if (!error || error.code !== 11000) return null;
+  const source = error.keyPattern || error.keyValue;
+  if (source && typeof source === 'object') {
+    const [field] = Object.keys(source);
+    if (field) return field;
+  }
+  // Fallback: extrai o nome do índice da mensagem (ex.: "index: cpf_1 dup key")
+  const match = /index:\s+([A-Za-z0-9_.]+?)_\d+/.exec(String(error.message || ''));
+  return match ? match[1] : null;
+};
 
 // Gerar JWT
 const generateToken = (id: string): string => {
@@ -130,8 +144,9 @@ export const register = async (req: Request, res: Response) => {
     // Gerar token de recuperação de senha único
     const tokenRecuperacao = generateRecoveryToken();
 
-    // Criar usuário
-    const user = await User.create({
+    // Criar usuário. O CPF não é coletado aqui: ele é vinculado depois, a partir
+    // do CPF usado na compra (checkout).
+    const novoUsuario = {
       email: email.toLowerCase(),
       password,
       nomeCompleto,
@@ -139,10 +154,25 @@ export const register = async (req: Request, res: Response) => {
       tipoUsuario,
       ...dadosPerfil,
       ...(dataNascimento ? { dataNascimento: new Date(dataNascimento) } : {}),
-      cargo: 'Visitante',
+      cargo: 'Visitante' as const,
       emailConfirmado: true, // Por enquanto sem confirmação por email
       tokenRecuperacao
-    });
+    };
+
+    let user;
+    try {
+      user = await User.create(novoUsuario);
+    } catch (err: any) {
+      // Se a colisão for em um campo que o cadastro sequer envia (CPF/CRM de quem
+      // não é médico), o problema é um índice único antigo do banco indexando a
+      // chave nula. Repara o índice e tenta uma única vez novamente.
+      const campo = duplicateKeyField(err);
+      const campoNaoEnviado = (campo === 'cpf') || (campo === 'crm' && !crmClean);
+      if (!campoNaoEnviado) throw err;
+
+      await ensureCriticalUserIndexes(true);
+      user = await User.create(novoUsuario);
+    }
 
     // Gerar token JWT
     const token = generateToken(user._id.toString());
@@ -160,16 +190,19 @@ export const register = async (req: Request, res: Response) => {
     console.error('Erro no registro:', error);
 
     // Tratar erros de duplicação do MongoDB
-    if (error.code === 11000) {
-      const field = Object.keys(error.keyPattern)[0];
+    const field = duplicateKeyField(error);
+    if (field) {
       const fieldNames: Record<string, string> = {
         email: 'E-mail',
         cpf: 'CPF',
         crm: 'CRM'
       };
-      // Um CPF nulo duplicado não deve ocorrer (índice sparse), mas por segurança:
+      // O cadastro não envia CPF; se ainda assim houve colisão, é problema de
+      // índice no banco — não faz sentido culpar o dado do usuário.
       if (field === 'cpf') {
-        return res.status(400).json({ message: 'Este CPF já está vinculado a outra conta' });
+        return res.status(500).json({
+          message: 'Erro ao criar conta. Tente novamente em instantes.'
+        });
       }
       return res.status(400).json({
         message: `${fieldNames[field] || field} já está cadastrado`

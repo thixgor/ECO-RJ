@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import User from '../models/User';
 import Role from '../models/Role';
 import { CARGO_DESCRICAO } from './roles';
+import { ensureCriticalUserIndexes } from './database-indexes';
 
 dotenv.config();
 
@@ -14,6 +15,12 @@ const connectDB = async (): Promise<void> => {
   try {
     const conn = await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/eco-rj');
     console.log(`MongoDB Connected: ${conn.connection.host}`);
+
+    // Migração de índices únicos opcionais (CPF/CRM). Precisa rodar aqui porque no
+    // Vercel (serverless) `app.listen` — e portanto `createDatabaseIndexes` — nunca
+    // é executado em produção. Sem isso, o índice antigo de CPF (único e não-sparse)
+    // fazia todo cadastro novo colidir na chave nula.
+    await ensureCriticalUserIndexes();
 
     // Auto-seed basic roles if they don't exist
     const roleCount = await Role.countDocuments();

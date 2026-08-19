@@ -7,42 +7,102 @@ import ForumTopic from '../models/ForumTopic';
 import CourseTopic from '../models/CourseTopic';
 
 /**
- * Cria índices no MongoDB para melhorar performance de queries
- */
-/**
- * Garante que um índice único seja SPARSE (permite múltiplos documentos sem o campo).
+ * Garante que um índice único ignore documentos sem o campo (ou com valor nulo/vazio).
+ *
  * Necessário porque CPF e CRM deixaram de ser obrigatórios no cadastro: usuários
- * sem esses campos gerariam colisão de chave `null` em índices únicos não-sparse.
- * Se existir um índice antigo não-sparse, ele é derrubado e recriado como sparse.
+ * sem esses campos colidiriam na chave `null` de um índice único comum — foi o que
+ * gerava "Este CPF já está vinculado a outra conta" em todo cadastro novo.
+ *
+ * Usa `partialFilterExpression` em vez de `sparse` porque um índice sparse ainda
+ * indexa documentos que gravaram o campo explicitamente como `null` — e nesse caso
+ * a colisão de `null` volta a acontecer. O índice parcial só considera strings.
+ *
+ * Antes de criar o índice, valores `null`/`''` remanescentes são removidos dos
+ * documentos, para que a criação não falhe por duplicidade.
  */
-const ensureSparseUniqueIndex = async (
+const ensureOptionalUniqueIndex = async (
   collection: any,
   field: string,
   indexName: string
 ) => {
+  const desiredFilter = { [field]: { $type: 'string' } };
+
   try {
+    // 1) Limpa valores nulos/vazios gravados explicitamente (não afeta campos ausentes)
+    const cleanup = await collection.updateMany(
+      { $or: [{ [field]: { $type: 'null' } }, { [field]: '' }] },
+      { $unset: { [field]: '' } }
+    );
+    if (cleanup?.modifiedCount) {
+      console.log(`🧹 ${cleanup.modifiedCount} documento(s) tiveram o campo "${field}" vazio removido`);
+    }
+
+    // 2) Verifica se o índice atual já é do formato desejado
     const indexes = await collection.indexes();
     const existing = indexes.find((idx: any) => idx.name === indexName);
-    if (existing && (!existing.sparse || !existing.unique)) {
-      // Índice antigo não é sparse/único — recriar
+    const jaCorreto =
+      existing &&
+      existing.unique === true &&
+      JSON.stringify(existing.partialFilterExpression || null) === JSON.stringify(desiredFilter);
+
+    if (jaCorreto) return;
+
+    if (existing) {
       await collection.dropIndex(indexName);
-      console.log(`♻️  Índice ${indexName} recriado como único + sparse`);
     }
-    await collection.createIndex({ [field]: 1 }, { unique: true, sparse: true, name: indexName });
+
+    await collection.createIndex(
+      { [field]: 1 },
+      { unique: true, name: indexName, partialFilterExpression: desiredFilter }
+    );
+    console.log(`♻️  Índice ${indexName} recriado como único + parcial (apenas valores preenchidos)`);
   } catch (err: any) {
     console.error(`⚠️  Não foi possível ajustar o índice ${indexName}:`, err?.message || err);
+    throw err;
   }
 };
 
+/**
+ * Migração crítica de índices da coleção de usuários.
+ *
+ * Roda a cada cold start (via connectDB) porque no Vercel o servidor é serverless
+ * e `app.listen` — onde `createDatabaseIndexes` era chamado — nunca é executado em
+ * produção. Sem isso, índices antigos (CPF/CRM obrigatórios) continuavam no banco
+ * e quebravam todos os cadastros novos.
+ *
+ * O resultado fica em cache por processo: só o primeiro request de cada instância
+ * paga o custo da verificação.
+ */
+let userIndexesPromise: Promise<void> | null = null;
+
+export const ensureCriticalUserIndexes = async (force = false): Promise<void> => {
+  if (force) userIndexesPromise = null;
+
+  if (!userIndexesPromise) {
+    userIndexesPromise = (async () => {
+      await ensureOptionalUniqueIndex(User.collection, 'cpf', 'cpf_1');
+      await ensureOptionalUniqueIndex(User.collection, 'crm', 'crm_1');
+    })().catch((err) => {
+      // Permite nova tentativa no próximo request em vez de travar em um erro transitório
+      userIndexesPromise = null;
+      console.error('⚠️  Falha ao migrar índices de usuários:', err?.message || err);
+    });
+  }
+
+  return userIndexesPromise;
+};
+
+/**
+ * Cria índices no MongoDB para melhorar performance de queries
+ */
 export const createDatabaseIndexes = async () => {
   try {
     console.log('🔍 Criando índices no banco de dados...');
 
     // User indexes
     await User.collection.createIndex({ email: 1 }, { unique: true });
-    // CPF e CRM agora são opcionais → índices únicos precisam ser SPARSE
-    await ensureSparseUniqueIndex(User.collection, 'cpf', 'cpf_1');
-    await ensureSparseUniqueIndex(User.collection, 'crm', 'crm_1');
+    // CPF e CRM agora são opcionais → índices únicos precisam ignorar valores ausentes
+    await ensureCriticalUserIndexes(true);
     await User.collection.createIndex({ cargo: 1 });
     await User.collection.createIndex({ tipoUsuario: 1 });
     await User.collection.createIndex({ estado: 1 });
