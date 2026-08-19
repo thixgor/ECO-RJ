@@ -8,6 +8,7 @@ import { getPaymentConfig, setPaymentConfig, PaymentConfig, DEFAULT_PAYMENT_CONF
 import { fulfillOrder } from '../services/fulfillmentService';
 import { isEmailConfigured } from '../services/emailService';
 import { isMercadoPagoConfigured } from '../services/mercadoPagoService';
+import { escapeRegex } from '../utils/validators';
 
 // @desc    Listar pedidos (Admin)
 // @route   GET /api/payments/admin/orders
@@ -19,7 +20,7 @@ export const getAllOrders = async (req: AuthRequest, res: Response) => {
     if (status) query.status = status;
     if (cursoId) query.curso = cursoId;
     if (search) {
-      const s = String(search).trim();
+      const s = escapeRegex(String(search).trim());
       query.$or = [
         { numeroPedido: { $regex: s, $options: 'i' } },
         { 'compradorDados.nome': { $regex: s, $options: 'i' } },
@@ -323,7 +324,7 @@ export const getUnifiedOrders = async (req: AuthRequest, res: Response) => {
     if (status) postMatch.status = status;
     if (origem === 'curso' || origem === 'material') postMatch.origem = origem;
     if (search) {
-      const s = String(search).trim();
+      const s = escapeRegex(String(search).trim());
       postMatch.$or = [
         { numeroPedido: { $regex: s, $options: 'i' } },
         { 'compradorDados.nome': { $regex: s, $options: 'i' } },

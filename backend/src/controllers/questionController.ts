@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import Question from '../models/Question';
 import { AuthRequest } from '../middleware/auth';
+import { escapeRegex } from '../utils/validators';
 
 // @desc    Listar todas as questões (Admin)
 // @route   GET /api/questions
@@ -188,9 +189,10 @@ export const searchQuestions = async (req: Request, res: Response) => {
     const query: any = { ativo: true };
 
     if (q) {
+      const termo = escapeRegex(String(q).trim());
       query.$or = [
-        { pergunta: { $regex: q, $options: 'i' } },
-        { tags: { $regex: q, $options: 'i' } }
+        { pergunta: { $regex: termo, $options: 'i' } },
+        { tags: { $regex: termo, $options: 'i' } }
       ];
     }
 

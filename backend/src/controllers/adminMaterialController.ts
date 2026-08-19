@@ -8,6 +8,7 @@ import { AuthRequest } from '../middleware/auth';
 import { aaaammBR } from '../utils/datetime';
 import { fulfillMaterialOrder } from '../services/materialFulfillmentService';
 import { sendMaterialGrantEmail } from '../services/emailService';
+import { escapeRegex } from '../utils/validators';
 
 const TIPOS_CONTEUDO: ConteudoTipo[] = ['aula', 'pdf', 'arquivo'];
 
@@ -195,7 +196,7 @@ export const listMaterialOrders = async (req: AuthRequest, res: Response) => {
     if (status) query.status = status;
     if (materialId) query.material = materialId;
     if (search) {
-      const s = String(search).trim();
+      const s = escapeRegex(String(search).trim());
       query.$or = [
         { numeroPedido: { $regex: s, $options: 'i' } },
         { 'compradorDados.nome': { $regex: s, $options: 'i' } },
@@ -381,7 +382,7 @@ export const listMaterialEntitlements = async (req: AuthRequest, res: Response) 
     }
 
     if (search) {
-      const s = String(search).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const s = escapeRegex(String(search).trim());
       const rx = { $regex: s, $options: 'i' };
       // Busca também pelo nome da conta vinculada.
       const users = await User.find({ $or: [{ nomeCompleto: rx }, { email: rx }] }).select('_id').limit(200);

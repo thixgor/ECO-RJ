@@ -72,3 +72,15 @@ export function sanitizeString(str: string): string {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#x27;');
 }
+
+/**
+ * Escapa um termo digitado pelo usuário para uso em `$regex` do MongoDB.
+ *
+ * Sem isso, os campos de busca dos painéis tratavam a digitação como expressão
+ * regular: procurar por um CPF formatado ("123.456.789-00") casava com qualquer
+ * caractere no lugar dos pontos, e um parêntese solto derrubava a consulta com
+ * erro de sintaxe. Também evita padrões custosos vindos do cliente.
+ */
+export function escapeRegex(termo: string): string {
+  return termo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}

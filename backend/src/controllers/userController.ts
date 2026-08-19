@@ -4,6 +4,7 @@ import SerialKey from '../models/SerialKey';
 import Course from '../models/Course';
 import { AuthRequest } from '../middleware/auth';
 import { Cargo, maiorCargo, isCargoValido } from '../config/roles';
+import { escapeRegex } from '../utils/validators';
 
 // @desc    Listar todos os usuários (Admin)
 // @route   GET /api/users
@@ -31,16 +32,20 @@ export const getUsers = async (req: Request, res: Response) => {
     }
 
     if (search) {
+      // O termo é escapado antes de virar regex. Sem isso, buscar por um CPF
+      // formatado ("123.456...") casava com qualquer caractere no lugar do ponto,
+      // e um termo com parêntese solto derrubava a busca com erro de sintaxe.
+      const termo = escapeRegex(String(search).trim());
       query.$or = [
-        { nomeCompleto: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } },
-        { cpf: { $regex: search, $options: 'i' } },
-        { crm: { $regex: search, $options: 'i' } },
-        { estado: { $regex: search, $options: 'i' } },
-        { especialidade: { $regex: search, $options: 'i' } },
-        { areaResidencia: { $regex: search, $options: 'i' } },
-        { hospital: { $regex: search, $options: 'i' } },
-        { instituicao: { $regex: search, $options: 'i' } }
+        { nomeCompleto: { $regex: termo, $options: 'i' } },
+        { email: { $regex: termo, $options: 'i' } },
+        { cpf: { $regex: termo, $options: 'i' } },
+        { crm: { $regex: termo, $options: 'i' } },
+        { estado: { $regex: termo, $options: 'i' } },
+        { especialidade: { $regex: termo, $options: 'i' } },
+        { areaResidencia: { $regex: termo, $options: 'i' } },
+        { hospital: { $regex: termo, $options: 'i' } },
+        { instituicao: { $regex: termo, $options: 'i' } }
       ];
     }
 
@@ -90,6 +95,29 @@ export const getUserById = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * Impede que a última conta de Administrador ATIVA seja rebaixada, desativada ou
+ * apagada. Sem essa checagem, um clique no painel deixava a plataforma sem
+ * nenhum administrador — e a única saída seria mexer direto no banco.
+ *
+ * @returns a mensagem de erro, ou `null` quando a operação é segura.
+ */
+const bloqueiaSeUltimoAdmin = async (
+  usuario: { _id: any; cargo: string; ativo: boolean },
+  acao: string
+): Promise<string | null> => {
+  if (usuario.cargo !== 'Administrador' || !usuario.ativo) return null;
+
+  const outrosAdmins = await User.countDocuments({
+    _id: { $ne: usuario._id },
+    cargo: 'Administrador',
+    ativo: true
+  });
+
+  if (outrosAdmins > 0) return null;
+  return `Esta é a única conta de administrador ativa. ${acao} deixaria a plataforma sem acesso ao painel. Promova outro usuário a Administrador antes.`;
+};
+
 // @desc    Atualizar cargo do usuário (Admin)
 // @route   PUT /api/users/:id/cargo
 // @access  Private/Admin
@@ -99,6 +127,16 @@ export const updateUserCargo = async (req: Request, res: Response) => {
 
     if (!isCargoValido(cargo)) {
       return res.status(400).json({ message: 'Cargo inválido' });
+    }
+
+    const alvo = await User.findById(req.params.id).select('cargo ativo');
+    if (!alvo) {
+      return res.status(404).json({ message: 'Usuário não encontrado' });
+    }
+
+    if (cargo !== 'Administrador') {
+      const bloqueio = await bloqueiaSeUltimoAdmin(alvo, 'Alterar o cargo');
+      if (bloqueio) return res.status(400).json({ message: bloqueio });
     }
 
     const user = await User.findByIdAndUpdate(
@@ -129,6 +167,11 @@ export const toggleUserStatus = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Usuário não encontrado' });
     }
 
+    if (user.ativo) {
+      const bloqueio = await bloqueiaSeUltimoAdmin(user, 'Desativar a conta');
+      if (bloqueio) return res.status(400).json({ message: bloqueio });
+    }
+
     user.ativo = !user.ativo;
     await user.save();
 
@@ -155,6 +198,9 @@ export const deleteUser = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: 'Você não pode deletar sua própria conta' });
     }
 
+    const bloqueio = await bloqueiaSeUltimoAdmin(user, 'Excluir a conta');
+    if (bloqueio) return res.status(400).json({ message: bloqueio });
+
     await User.findByIdAndDelete(req.params.id);
 
     res.json({ message: 'Usuário deletado com sucesso' });
@@ -175,32 +221,53 @@ export const applySerialKey = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: 'Chave é obrigatória' });
     }
 
-    // Buscar a serial key
-    const serialKey = await SerialKey.findOne({ chave: chave.toUpperCase() });
+    const codigo = String(chave).trim().toUpperCase();
 
-    if (!serialKey) {
-      return res.status(400).json({ message: 'Chave inválida' });
-    }
-
-    if (serialKey.status === 'usada') {
-      return res.status(400).json({ message: 'Esta chave já foi utilizada' });
-    }
-
-    if (serialKey.status === 'expirada' || serialKey.validade < new Date()) {
-      return res.status(400).json({ message: 'Esta chave está expirada' });
-    }
-
-    // Atualizar usuário com novo cargo
     const user = await User.findById(req.user?._id);
     if (!user) {
       return res.status(404).json({ message: 'Usuário não encontrado' });
+    }
+
+    // CLAIM ATÔMICO da chave.
+    //
+    // A versão anterior conferia o status no início e só gravava `usada` no fim,
+    // depois de vários `await`. Duas requisições simultâneas — dois cliques no
+    // botão, a mesma chave repassada a duas pessoas, duas instâncias serverless —
+    // passavam as duas pela verificação e a chave era consumida mais de uma vez,
+    // contrariando a regra de uso único. Marcar a chave em uma única operação
+    // condicional garante que apenas um pedido vença a disputa.
+    const serialKey = await SerialKey.findOneAndUpdate(
+      {
+        chave: codigo,
+        status: { $nin: ['usada', 'expirada'] },
+        validade: { $gte: new Date() }
+      },
+      { $set: { status: 'usada', usadaPor: user._id, dataUso: new Date() } },
+      { new: true }
+    );
+
+    // Sem claim: ou a chave não existe, ou já foi usada/expirou. A mensagem é
+    // diferenciada relendo o documento — apenas para informar o usuário.
+    if (!serialKey) {
+      const existente = await SerialKey.findOne({ chave: codigo }).select('status validade');
+      if (!existente) {
+        return res.status(400).json({ message: 'Chave inválida' });
+      }
+      if (existente.status === 'usada') {
+        return res.status(400).json({ message: 'Esta chave já foi utilizada' });
+      }
+      return res.status(400).json({ message: 'Esta chave está expirada' });
     }
 
     // Promove o cargo SEM rebaixar: uma chave de "Aluno" nunca deve rebaixar
     // um Instrutor ou Administrador que por acaso ativar a chave.
     const cargoAnterior = user.cargo as Cargo;
     user.cargo = maiorCargo(cargoAnterior, serialKey.cargoAtribuido as Cargo);
-    user.serialKeysUsadas.push(serialKey._id as any);
+    // `$addToSet` no array em memória: reaplicar não deve duplicar o histórico.
+    const chaveId = (serialKey._id as any).toString();
+    if (!user.serialKeysUsadas.some((k) => k.toString() === chaveId)) {
+      user.serialKeysUsadas.push(serialKey._id as any);
+    }
     await user.save();
 
     // Se a chave está vinculada a um curso, inscreve o usuário nesse curso.
@@ -224,11 +291,7 @@ export const applySerialKey = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    // Marcar chave como usada
-    serialKey.status = 'usada';
-    serialKey.usadaPor = user._id as any;
-    serialKey.dataUso = new Date();
-    await serialKey.save();
+    // (a chave já foi marcada como usada no claim atômico acima)
 
     const promovido = user.cargo !== cargoAnterior;
     let message: string;
