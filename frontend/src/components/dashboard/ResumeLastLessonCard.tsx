@@ -4,6 +4,7 @@ import { Play, Clock, BookOpen, Video, FileText, Loader2 } from 'lucide-react';
 import { GlassCard, GlassProgress } from '../ui';
 import { LastWatchedLesson } from '../../types';
 import { formatDuration } from '../../utils/formatDuration';
+import { formatarDataCom } from '../../utils/datetime';
 
 interface ResumeLastLessonCardProps {
   lastLesson: LastWatchedLesson | null;
@@ -134,7 +135,7 @@ const ResumeLastLessonCard: React.FC<ResumeLastLessonCardProps> = ({ lastLesson,
           {/* Play Button */}
           <div className="mt-4 flex items-center justify-between">
             <span className="text-xs text-[var(--color-text-muted)]">
-              {new Date(lastLesson.assistidaEm).toLocaleDateString('pt-BR', {
+              {formatarDataCom(lastLesson.assistidaEm, {
                 day: '2-digit',
                 month: 'short'
               })}

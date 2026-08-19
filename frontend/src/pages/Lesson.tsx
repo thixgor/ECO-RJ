@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Clock, CheckCircle, BookOpen, FileText, Play, ExternalLink, Download, Layers, X, ChevronRight, Video, File, PlayCircle, Maximize, Minimize, MessageCircle, Settings, StickyNote } from 'lucide-react';
 import { lessonService, exerciseService, zoomService, siteConfigService } from '../services/api';
 import { Lesson as LessonType, Exercise, Course } from '../types';
+import { construirEmbedSeguro } from '../utils/safeEmbed';
 import { useAuth } from '../contexts/AuthContext';
 import { generateExercisePDF } from '../utils/pdfGenerator';
 import { LoadingPage } from '../components/common/Loading';
@@ -1069,6 +1070,30 @@ const Lesson: React.FC = () => {
     }
   }, []);
 
+  // Extract video ID from embed or URL
+  /**
+   * HTML do player da aula.
+   *
+   * A versão anterior reemitia o `<iframe>` colado pelo administrador, apenas
+   * "consertando" o `src` e injetando um `style` na marca `<iframe` — o que
+   * duplicava o atributo quando o código colado já tinha `style` (o HTML honra o
+   * primeiro, então o vídeo perdia o dimensionamento) e, no ramo final, devolvia
+   * qualquer HTML salvo tal e qual, direto para `dangerouslySetInnerHTML`.
+   *
+   * Agora a marcação é sempre construída aqui, a partir só da URL extraída, e o
+   * resultado é memoizado — antes `getVideoEmbed()` rodava três vezes por render.
+   */
+  const videoEmbedHtml = useMemo(
+    () =>
+      construirEmbedSeguro(typeof lesson?.embedVideo === 'string' ? lesson.embedVideo : '', {
+        comApi: true,
+        id: 'lesson-player',
+        absoluto: true,
+        titulo: lesson?.titulo || 'Aula'
+      }),
+    [lesson?.embedVideo, lesson?.titulo]
+  );
+
   if (isLoading) {
     return <LoadingPage text="Carregando aula..." />;
   }
@@ -1085,94 +1110,6 @@ const Lesson: React.FC = () => {
   }
 
   const curso = lesson.cursoId as Course;
-
-  // Extract video ID from embed or URL
-  const getVideoEmbed = () => {
-    let embedCode = typeof lesson.embedVideo === 'string' ? lesson.embedVideo : '';
-
-    if (!embedCode) return '';
-
-    const origin = typeof window !== 'undefined' ? window.location.origin : '';
-
-    // Helper to add YouTube API params
-    const addYouTubeParams = (url: string) => {
-      const params = new URLSearchParams();
-      params.set('enablejsapi', '1');
-      params.set('origin', origin);
-      params.set('widget_referrer', origin);
-
-      const separator = url.includes('?') ? '&' : '?';
-      return `${url}${separator}${params.toString()}`;
-    };
-
-    // Helper to add Vimeo API params
-    const addVimeoParams = (url: string) => {
-      const params = new URLSearchParams();
-      params.set('api', '1');
-      params.set('player_id', 'vimeo-player');
-
-      const separator = url.includes('?') ? '&' : '?';
-      return `${url}${separator}${params.toString()}`;
-    };
-
-    // 1. Priority: Check if it's already an iframe
-    if (typeof embedCode === 'string' && embedCode.trim().startsWith('<iframe')) {
-      // Extract src and modify it
-      const srcMatch = embedCode.match(/src=["']([^"']+)["']/);
-      if (srcMatch && srcMatch[1]) {
-        let src = srcMatch[1];
-
-        // Add API params based on provider
-        if (src.includes('youtube.com') && !src.includes('enablejsapi')) {
-          src = addYouTubeParams(src);
-        } else if (src.includes('vimeo.com') && !src.includes('api=1')) {
-          src = addVimeoParams(src);
-        }
-
-        // Replace src in iframe
-        embedCode = embedCode.replace(/src=["'][^"']+["']/, `src="${src}"`);
-      }
-
-      // Add responsive styles if they don't exist
-      if (!embedCode.includes('position:absolute')) {
-        return embedCode.replace(/<iframe/gi, '<iframe style="position:absolute;top:0;left:0;width:100%;height:100%;"');
-      }
-      return embedCode;
-    }
-
-    // 2. YouTube Regex (Handles standard, short, and embed URLs)
-    const ytRegex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
-    const ytMatch = embedCode.match(ytRegex);
-    if (ytMatch && ytMatch[1]) {
-      const ytUrl = addYouTubeParams(`https://www.youtube.com/embed/${ytMatch[1]}`);
-      return `<iframe id="youtube-player" width="100%" height="100%" src="${ytUrl}" frameborder="0" allowfullscreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" style="position:absolute;top:0;left:0;width:100%;height:100%;"></iframe>`;
-    }
-
-    // 3. Vimeo Regex
-    const vimeoRegex = /(?:vimeo\.com\/|player\.vimeo\.com\/video\/)([0-9]+)/;
-    const vimeoMatch = embedCode.match(vimeoRegex);
-    if (vimeoMatch && vimeoMatch[1]) {
-      const vimeoUrl = addVimeoParams(`https://player.vimeo.com/video/${vimeoMatch[1]}`);
-      return `<iframe id="vimeo-player" src="${vimeoUrl}" frameborder="0" allowfullscreen allow="autoplay; fullscreen; picture-in-picture" style="position:absolute;top:0;left:0;width:100%;height:100%;"></iframe>`;
-    }
-
-    // 4. Panda Video (example pattern, adjust if needed) or other generic URL handling
-    if (embedCode.includes('pandavideo.com')) {
-      // Assuming it's a direct link or something that needs an iframe, but better safe to return as is if unsure,
-      // OR wrap it in an iframe if it looks like a URL
-      if (embedCode.startsWith('http')) {
-        return `<iframe src="${embedCode}" frameborder="0" allowfullscreen style="position:absolute;top:0;left:0;width:100%;height:100%;"></iframe>`;
-      }
-    }
-
-    // 5. Fallback: If it's just a URL but didn't match specific providers, try unwrapped
-    if (embedCode.startsWith('http') && !embedCode.includes('<')) {
-      return `<iframe src="${embedCode}" frameborder="0" allowfullscreen style="position:absolute;top:0;left:0;width:100%;height:100%;"></iframe>`;
-    }
-
-    // 6. Return original if nothing else matched (generic HTML or embed code)
-    return embedCode;
-  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fade-in">
@@ -1420,7 +1357,7 @@ const Lesson: React.FC = () => {
                 )}
               </div>
             </div>
-          ) : getVideoEmbed() ? (
+          ) : videoEmbedHtml ? (
             <div className="card overflow-hidden relative">
               <div
                 ref={videoContainerRef}
@@ -1430,7 +1367,7 @@ const Lesson: React.FC = () => {
               >
                 <div
                   className="absolute inset-0 bg-gray-900"
-                  dangerouslySetInnerHTML={{ __html: getVideoEmbed() }}
+                  dangerouslySetInnerHTML={{ __html: videoEmbedHtml }}
                 />
                 <VideoWatermark />
 
@@ -1755,7 +1692,7 @@ const Lesson: React.FC = () => {
       {/* Floating Mini-Player (desktop only, recorded lessons) */}
       {lesson?.tipo === 'gravada' && lesson.embedVideo && (
         <FloatingMiniPlayer
-          embedHtml={getVideoEmbed()}
+          embedHtml={videoEmbedHtml}
           isVisible={showMiniPlayer}
           onExpand={handleMiniPlayerExpand}
           onClose={handleMiniPlayerClose}

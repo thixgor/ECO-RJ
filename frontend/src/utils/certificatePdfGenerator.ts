@@ -2,6 +2,7 @@ import jsPDF from 'jspdf';
 import QRCode from 'qrcode';
 import { Certificate, User, Course } from '../types';
 import toast from 'react-hot-toast';
+import { formatarData } from '../utils/datetime';
 
 // Logo ECO RJ embutida como base64 para evitar problemas de CSP
 // Logo ECO RJ via URL Imgur
@@ -56,7 +57,7 @@ const formatDateExtended = (dateStr: string): string => {
 // Formatar data simples
 const formatDateSimple = (dateStr?: string): string => {
   if (!dateStr) return '';
-  return new Date(dateStr).toLocaleDateString('pt-BR');
+  return formatarData(dateStr);
 };
 
 // Gerar QR Code como data URL

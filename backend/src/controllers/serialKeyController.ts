@@ -2,14 +2,14 @@ import { Request, Response } from 'express';
 import SerialKey from '../models/SerialKey';
 import User from '../models/User';
 import { isCargoValido } from '../config/roles';
+import { aaaammBR, formatarDataBR } from '../utils/datetime';
 
 // Função para gerar chave única no formato ECO-YYYYMM-XXXXXXXX
 const generateUniqueKey = async (): Promise<string> => {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0'); // 01-12
-  const yearMonth = `${year}${month}`; // Ex: 202601
+  // Mês de Brasília: o processo na Vercel roda em UTC, então uma chave criada
+  // às 22h de 31/01 recebia o prefixo `ECO-202602-`.
+  const yearMonth = aaaammBR(); // Ex: 202601
 
   let key = '';
   let isUnique = false;
@@ -99,7 +99,7 @@ export const generateSerialKeys = async (req: Request, res: Response) => {
         chave,
         cargoAtribuido,
         validade,
-        descricao: descricao || `Chaves geradas em ${new Date().toLocaleDateString('pt-BR')}`,
+        descricao: descricao || `Chaves geradas em ${formatarDataBR(new Date())}`,
         cursoRestrito: cursoRestrito || undefined
       });
       generatedKeys.push(chave);
@@ -243,10 +243,10 @@ export const exportSerialKeys = async (req: Request, res: Response) => {
 
     keys.forEach((key) => {
       const usadaPor = key.usadaPor as any;
-      csv += `${key.chave},${key.cargoAtribuido},${key.createdAt.toLocaleDateString('pt-BR')},`;
-      csv += `${key.validade.toLocaleDateString('pt-BR')},${key.status},`;
+      csv += `${key.chave},${key.cargoAtribuido},${formatarDataBR(key.createdAt)},`;
+      csv += `${formatarDataBR(key.validade)},${key.status},`;
       csv += `${usadaPor?.nomeCompleto || '-'},${usadaPor?.email || '-'},`;
-      csv += `${key.dataUso ? key.dataUso.toLocaleDateString('pt-BR') : '-'}\n`;
+      csv += `${key.dataUso ? formatarDataBR(key.dataUso) : '-'}\n`;
     });
 
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');

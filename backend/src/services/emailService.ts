@@ -1,6 +1,7 @@
 import nodemailer, { Transporter } from 'nodemailer';
 import { IOrder } from '../models/Order';
 import { IMaterialOrder } from '../models/MaterialOrder';
+import { formatarDataBR, formatarDataHoraBR } from '../utils/datetime';
 
 /**
  * Serviço de e-mail transacional.
@@ -132,7 +133,7 @@ export function buildReceiptHtml(order: IOrder, opts: { serialKeyCodigo?: string
         <tr><td style="padding:4px 0;color:#64748b;">Comprador</td><td align="right">${order.compradorDados.nome}</td></tr>
         <tr><td style="padding:4px 0;color:#64748b;">E-mail</td><td align="right">${order.compradorDados.email}</td></tr>
         <tr><td style="padding:4px 0;color:#64748b;">CPF</td><td align="right">${maskCpf(order.compradorDados.cpf)}</td></tr>
-        <tr><td style="padding:4px 0;color:#64748b;">Data</td><td align="right">${new Date(order.createdAt).toLocaleString('pt-BR')}</td></tr>
+        <tr><td style="padding:4px 0;color:#64748b;">Data</td><td align="right">${formatarDataHoraBR(order.createdAt)}</td></tr>
         ${order.metodoPagamento ? `<tr><td style="padding:4px 0;color:#64748b;">Método</td><td align="right">${order.metodoPagamento}</td></tr>` : ''}
       </table>
 
@@ -167,7 +168,7 @@ function fmtDate(date?: Date | string | null): string {
   if (!date) return '';
   const d = new Date(date);
   if (isNaN(d.getTime())) return '';
-  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  return formatarDataBR(d);
 }
 
 /** Gera o HTML do e-mail de término (encerramento de acesso) de um curso. */
@@ -292,7 +293,7 @@ export function buildMaterialReceiptHtml(order: IMaterialOrder, opts: MaterialEm
         <tr><td style="padding:4px 0;color:#64748b;">Comprador</td><td align="right">${order.compradorDados.nome}</td></tr>
         <tr><td style="padding:4px 0;color:#64748b;">E-mail</td><td align="right">${order.compradorDados.email}</td></tr>
         <tr><td style="padding:4px 0;color:#64748b;">CPF</td><td align="right">${maskCpf(order.compradorDados.cpf)}</td></tr>
-        <tr><td style="padding:4px 0;color:#64748b;">Data</td><td align="right">${new Date(order.createdAt).toLocaleString('pt-BR')}</td></tr>
+        <tr><td style="padding:4px 0;color:#64748b;">Data</td><td align="right">${formatarDataHoraBR(order.createdAt)}</td></tr>
         ${order.metodoPagamento ? `<tr><td style="padding:4px 0;color:#64748b;">Método</td><td align="right">${order.metodoPagamento}</td></tr>` : ''}
       </table>
 

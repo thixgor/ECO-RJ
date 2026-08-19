@@ -4,6 +4,7 @@ import { ArrowRight, Mail, Key, CheckCircle, Play, Award, ChevronDown, Heart, Ac
 import { GlassCard, GlassButton, GlassBadge } from '../components/ui';
 import { siteConfigService, courseService } from '../services/api';
 import { Course } from '../types';
+import { construirEmbedSeguro } from '../utils/safeEmbed';
 
 const PROFESSOR_IMAGE = 'https://i.imgur.com/QmeotYH.jpeg';
 
@@ -345,7 +346,11 @@ const Home: React.FC = () => {
             <GlassCard padding="sm" className="overflow-hidden">
               <div
                 className="aspect-video w-full rounded-xl overflow-hidden bg-black"
-                dangerouslySetInnerHTML={{ __html: config.demoVideo.embedCode }}
+                dangerouslySetInnerHTML={{
+                  __html: construirEmbedSeguro(config.demoVideo.embedCode, {
+                    titulo: config.demoVideo.title || 'Vídeo de apresentação'
+                  })
+                }}
               />
             </GlassCard>
           </div>

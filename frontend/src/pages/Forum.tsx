@@ -6,6 +6,8 @@ import { ForumTopic, User as UserType } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { LoadingPage } from '../components/common/Loading';
 import toast from 'react-hot-toast';
+import { construirEmbedSeguro, temEmbedValido } from '../utils/safeEmbed';
+import { formatarData } from '../utils/datetime';
 
 const Forum: React.FC = () => {
   const { user } = useAuth();
@@ -146,7 +148,7 @@ const Forum: React.FC = () => {
     if (days === 0) return 'Hoje';
     if (days === 1) return 'Ontem';
     if (days < 7) return `${days} dias atrás`;
-    return d.toLocaleDateString('pt-BR');
+    return formatarData(d);
   };
 
   if (isLoading) {
@@ -334,10 +336,12 @@ const Forum: React.FC = () => {
                         <X className="w-4 h-4" />
                       </button>
                     </div>
-                    {newTopic.embedVideo && (
+                    {temEmbedValido(newTopic.embedVideo) && (
                       <div
                         className="aspect-video max-w-md rounded-lg overflow-hidden bg-black"
-                        dangerouslySetInnerHTML={{ __html: newTopic.embedVideo }}
+                        dangerouslySetInnerHTML={{
+                          __html: construirEmbedSeguro(newTopic.embedVideo, { titulo: 'Pré-visualização do vídeo' })
+                        }}
                       />
                     )}
                   </div>

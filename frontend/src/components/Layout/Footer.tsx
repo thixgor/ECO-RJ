@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Mail, MapPin } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
+import { formatarDataCom } from '../../utils/datetime';
 
 // Logos ECO RJ
 const LOGO_DARK = 'https://i.imgur.com/qBXnSUD.png';
@@ -77,7 +78,7 @@ const Footer: React.FC = () => {
             {/* Social */}
             <div className="mt-6">
               <p className="text-[var(--color-text-muted)] text-sm">
-                {new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
+                {formatarDataCom(new Date(), { day: '2-digit', month: 'long', year: 'numeric' })}
               </p>
               <p className="text-[var(--color-text-primary)] font-semibold text-sm mt-1">
                 ECO RJ - Desde 2016

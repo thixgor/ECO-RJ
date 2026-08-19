@@ -4,6 +4,7 @@ import { serialKeyService, courseService } from '../../services/api';
 import { SerialKey, User, Course } from '../../types';
 import Loading from '../../components/common/Loading';
 import toast from 'react-hot-toast';
+import { formatarData } from '../../utils/datetime';
 
 const AdminSerialKeys: React.FC = () => {
   const [keys, setKeys] = useState<SerialKey[]>([]);
@@ -129,7 +130,7 @@ const AdminSerialKeys: React.FC = () => {
   };
 
   const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('pt-BR');
+    return formatarData(date);
   };
 
   const getStatusBadge = (status: string) => {

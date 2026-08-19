@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { BookOpen, CheckCircle, Clock, MessageSquare, TrendingUp, AlertCircle, ArrowRight, Sparkles, User, Video, Calendar, PlayCircle, X, Bell, Globe, Users, Info } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -8,6 +8,7 @@ import { GlassCard, GlassButton, GlassProgress, GlassBadge, SkeletonCard, Skelet
 import { formatDuration } from '../utils/formatDuration';
 import ResumeLastLessonCard from '../components/dashboard/ResumeLastLessonCard';
 import toast from 'react-hot-toast';
+import { formatarDataCom, formatarHora } from '../utils/datetime';
 
 // Interface para aulas ao vivo do dia
 interface LiveLessonEvent {
@@ -30,22 +31,37 @@ const Dashboard: React.FC = () => {
   const [lastWatchedLesson, setLastWatchedLesson] = useState<LastWatchedLesson | null>(null);
   const [isLoadingLastWatched, setIsLoadingLastWatched] = useState(true);
 
+  // Espelho do usuário atual, lido dentro de `loadData` sem entrar nas suas
+  // dependências (só a lista de cursos deve disparar uma nova carga).
+  const userRef = useRef(user);
+  userRef.current = user;
+
+  // IDs dos cursos inscritos, em uma chave ESTÁVEL.
+  //
+  // `loadData` dependia do objeto `user` inteiro. Como o AuthContext substitui
+  // esse objeto ao revalidar o perfil no início da sessão, a identidade mudava e
+  // o efeito refazia a carga toda — N requisições de progresso + N de curso
+  // disparadas duas vezes em todo acesso ao dashboard. Comparando a lista de IDs
+  // como string, a carga só se repete quando os cursos realmente mudam.
+  const cursoIdsKey = useMemo(() => {
+    const ids = (user?.cursosInscritos || []).map((curso: string | Course) =>
+      typeof curso === 'string' ? curso : curso._id
+    );
+    return ids.join(',');
+  }, [user?.cursosInscritos]);
+
   // Carregar dados com otimização - usar Promise.all para paralelizar
   const loadData = useCallback(async () => {
-    if (!user?.cursosInscritos || user.cursosInscritos.length === 0) {
+    const cursoIds = cursoIdsKey ? cursoIdsKey.split(',') : [];
+    if (cursoIds.length === 0) {
+      setCourses([]);
+      setProgress({});
       setIsLoading(false);
       return;
     }
 
+    setIsLoading(true);
     try {
-      // Extrair IDs dos cursos (pode ser string ou objeto Course)
-      const cursoIds = user.cursosInscritos.map((curso: string | Course) => {
-        if (typeof curso === 'string') {
-          return curso;
-        }
-        return curso._id;
-      });
-
       // Carregar tudo em paralelo para otimizar
       const [progressResults, courseResults] = await Promise.all([
         // Carregar progresso de todos os cursos em paralelo
@@ -59,16 +75,17 @@ const Dashboard: React.FC = () => {
             }
           })
         ),
-        // Carregar detalhes dos cursos se necessário
+        // Carregar detalhes dos cursos se necessário.
+        // `/auth/me` já popula os cursos com título e capa; quando vierem
+        // populados aproveitamos e evitamos N requisições.
         (async () => {
-          const firstCurso = user.cursosInscritos[0];
-          if (typeof firstCurso === 'object' && firstCurso._id) {
-            return user.cursosInscritos as Course[];
-          } else {
-            const coursePromises = cursoIds.map(id => courseService.getById(id));
-            const responses = await Promise.all(coursePromises);
-            return responses.map(r => r.data);
+          const inscritos = userRef.current?.cursosInscritos || [];
+          const primeiro = inscritos[0];
+          if (typeof primeiro === 'object' && primeiro?._id) {
+            return inscritos as Course[];
           }
+          const responses = await Promise.all(cursoIds.map((id) => courseService.getById(id)));
+          return responses.map((r) => r.data);
         })()
       ]);
 
@@ -86,7 +103,7 @@ const Dashboard: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [user]);
+  }, [cursoIdsKey]);
 
   // Carregar aulas ao vivo do dia usando a API dedicada
   const loadLiveLessonsToday = useCallback(async () => {
@@ -386,7 +403,7 @@ const Dashboard: React.FC = () => {
                         </span>
                         <span className="flex items-center gap-1">
                           <Clock className="w-3.5 h-3.5" />
-                          {new Date(announcement.createdAt).toLocaleDateString('pt-BR', {
+                          {formatarDataCom(announcement.createdAt, {
                             day: '2-digit',
                             month: 'short',
                             year: 'numeric'
@@ -488,7 +505,7 @@ const Dashboard: React.FC = () => {
                         </span>
                         <span className="flex items-center gap-1">
                           <Clock className="w-4 h-4" />
-                          {event.startsAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })}
+                          {formatarHora(event.startsAt)}
                           {event.lesson.duracao ? ` (${formatDuration(event.lesson.duracao)})` : ''}
                         </span>
                       </div>
@@ -725,7 +742,7 @@ const Dashboard: React.FC = () => {
                   <p className="text-sm text-[var(--color-text-muted)]">Último acesso</p>
                   <p className="font-medium text-[var(--color-text-primary)]">
                     {user?.ultimoLogin
-                      ? new Date(user.ultimoLogin).toLocaleDateString('pt-BR', {
+                      ? formatarDataCom(user.ultimoLogin, {
                         day: '2-digit',
                         month: 'long',
                         year: 'numeric'
@@ -742,7 +759,7 @@ const Dashboard: React.FC = () => {
                   <p className="text-sm text-[var(--color-text-muted)]">Membro desde</p>
                   <p className="font-medium text-[var(--color-text-primary)]">
                     {user?.createdAt
-                      ? new Date(user.createdAt).toLocaleDateString('pt-BR', {
+                      ? formatarDataCom(user.createdAt, {
                         day: '2-digit',
                         month: 'long',
                         year: 'numeric'

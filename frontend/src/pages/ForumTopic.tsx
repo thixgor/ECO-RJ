@@ -6,6 +6,8 @@ import { ForumTopic as ForumTopicType, User as UserType, ForumReply } from '../t
 import { useAuth } from '../contexts/AuthContext';
 import Loading from '../components/common/Loading';
 import toast from 'react-hot-toast';
+import { construirEmbedSeguro, temEmbedValido } from '../utils/safeEmbed';
+import { formatarDataCom } from '../utils/datetime';
 
 const ForumTopic: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -205,7 +207,7 @@ const ForumTopic: React.FC = () => {
   };
 
   const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('pt-BR', {
+    return formatarDataCom(date, {
       day: '2-digit',
       month: 'long',
       year: 'numeric',
@@ -374,10 +376,12 @@ const ForumTopic: React.FC = () => {
             )}
 
             {/* Topic Video */}
-            {topic.embedVideo && (
+            {temEmbedValido(topic.embedVideo) && (
               <div
                 className="aspect-video max-w-2xl rounded-lg overflow-hidden bg-black"
-                dangerouslySetInnerHTML={{ __html: topic.embedVideo }}
+                dangerouslySetInnerHTML={{
+                  __html: construirEmbedSeguro(topic.embedVideo!, { titulo: topic.titulo })
+                }}
               />
             )}
           </div>
@@ -452,10 +456,12 @@ const ForumTopic: React.FC = () => {
                       )}
 
                       {/* Reply Video */}
-                      {reply.embedVideo && (
+                      {temEmbedValido(reply.embedVideo) && (
                         <div
                           className="aspect-video max-w-xl mt-3 rounded-lg overflow-hidden bg-black"
-                          dangerouslySetInnerHTML={{ __html: reply.embedVideo }}
+                          dangerouslySetInnerHTML={{
+                            __html: construirEmbedSeguro(reply.embedVideo!, { titulo: 'Vídeo da resposta' })
+                          }}
                         />
                       )}
                     </div>
@@ -569,10 +575,12 @@ const ForumTopic: React.FC = () => {
                           <X className="w-4 h-4" />
                         </button>
                       </div>
-                      {replyVideo && (
+                      {temEmbedValido(replyVideo) && (
                         <div
                           className="aspect-video max-w-md rounded-lg overflow-hidden bg-black"
-                          dangerouslySetInnerHTML={{ __html: replyVideo }}
+                          dangerouslySetInnerHTML={{
+                            __html: construirEmbedSeguro(replyVideo, { titulo: 'Pré-visualização do vídeo' })
+                          }}
                         />
                       )}
                     </div>

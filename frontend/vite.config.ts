@@ -21,30 +21,36 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes('node_modules')) {
-            // Zoom SDK - carregado dinamicamente na página Lesson
-            if (id.includes('@zoom/meetingsdk') || id.includes('zoom')) {
-              return 'vendor-zoom';
-            }
-            // PDF - usado apenas para exportar exercícios
-            if (id.includes('jspdf') || id.includes('html2canvas')) {
-              return 'vendor-pdf';
-            }
-            // Icons - Lucide React
-            if (id.includes('lucide-react')) {
-              return 'vendor-icons';
-            }
-            // React core
-            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
-              return 'vendor-react';
-            }
-            // UI libraries
-            if (id.includes('framer-motion') || id.includes('react-hot-toast')) {
-              return 'vendor-ui';
-            }
-            // Outros vendors
-            return 'vendor';
+          if (!id.includes('node_modules')) return;
+
+          // O nome do pacote é extraído do caminho em vez de testado com
+          // `id.includes(...)`. A verificação antiga por substring classificava
+          // errado: `react-hot-toast` casava com `id.includes('react')` e caía em
+          // `vendor-react` antes de chegar à regra de UI, e qualquer caminho que
+          // por acaso contivesse "zoom" ia parar no chunk do SDK do Zoom.
+          const match = /node_modules\/(?:(@[^/]+)\/)?([^/]+)/.exec(id.replace(/\\/g, '/'));
+          if (!match) return 'vendor';
+          const pacote = match[1] ? `${match[1]}/${match[2]}` : match[2];
+
+          // Zoom SDK (~2,8 MB) — carregado sob demanda na página da aula ao vivo
+          if (pacote === '@zoom/meetingsdk') return 'vendor-zoom';
+
+          // Geração de PDF — só usada em certificados e exportações
+          if (['jspdf', 'jspdf-autotable', 'html2canvas', 'qrcode'].includes(pacote)) {
+            return 'vendor-pdf';
           }
+
+          if (pacote === 'lucide-react') return 'vendor-icons';
+
+          // Núcleo do React: react, react-dom, o runtime JSX e o `scheduler`
+          // (dependência interna do react-dom) precisam ficar no MESMO chunk.
+          if (['react', 'react-dom', 'react-router', 'react-router-dom', 'scheduler'].includes(pacote)) {
+            return 'vendor-react';
+          }
+
+          if (pacote === 'react-hot-toast') return 'vendor-ui';
+
+          return 'vendor';
         }
       }
     }

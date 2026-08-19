@@ -28,6 +28,19 @@ const normalizarEmail = (valor: unknown): string =>
 const normalizarToken = (valor: unknown): string =>
   typeof valor === 'string' ? valor.replace(/[^a-zA-Z0-9]/g, '').toUpperCase() : '';
 
+/** Compara dois segredos em tempo constante (não vaza o prefixo acertado). */
+const comparaSegura = (a: string, b: string): boolean => {
+  const bufA = Buffer.from(a, 'utf8');
+  const bufB = Buffer.from(b, 'utf8');
+  // `timingSafeEqual` exige buffers do mesmo tamanho; comparar contra o próprio
+  // buffer mantém o custo constante quando os tamanhos diferem.
+  if (bufA.length !== bufB.length) {
+    crypto.timingSafeEqual(bufA, bufA);
+    return false;
+  }
+  return crypto.timingSafeEqual(bufA, bufB);
+};
+
 // Traduz erros de validação do Mongoose para uma mensagem legível.
 // Sem isso, senha curta ou e-mail malformado caíam no catch genérico e o
 // usuário recebia 500 "Erro ao criar conta" sem saber o que corrigir.
@@ -469,8 +482,10 @@ export const resetPasswordWithToken = async (req: Request, res: Response) => {
 
     // O token é copiado do arquivo .txt baixado no cadastro, então costuma vir com
     // espaços, quebras de linha ou hífens — normaliza antes de comparar.
+    // A comparação é feita em tempo constante para não vazar, pelo tempo de
+    // resposta, quantos caracteres iniciais do token o atacante já acertou.
     const tokenInformado = normalizarToken(tokenRecuperacao);
-    if (!tokenInformado || normalizarToken(user.tokenRecuperacao) !== tokenInformado) {
+    if (!tokenInformado || !comparaSegura(normalizarToken(user.tokenRecuperacao), tokenInformado)) {
       return res.status(400).json({ message: TOKEN_INVALIDO });
     }
 
@@ -479,8 +494,16 @@ export const resetPasswordWithToken = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Conta desativada. Entre em contato com o suporte.' });
     }
 
-    // Atualizar senha
+    // Atualizar senha e ROTACIONAR o token de recuperação.
+    //
+    // O token era permanente: quem tivesse obtido uma cópia do .txt (e-mail
+    // encaminhado, backup, computador compartilhado) mantinha para sempre o poder
+    // de redefinir a senha da conta — inclusive depois de a vítima trocá-la.
+    // Trocando o token a cada uso, uma redefinição feita pelo dono invalida
+    // qualquer cópia antiga.
+    const novoTokenRecuperacao = generateRecoveryToken();
     user.password = novaSenha;
+    user.tokenRecuperacao = novoTokenRecuperacao;
     await user.save();
 
     // Gerar token JWT para login automático
@@ -493,7 +516,9 @@ export const resetPasswordWithToken = async (req: Request, res: Response) => {
       email: user.email,
       cargo: user.cargo,
       fotoPerfil: user.fotoPerfil,
-      token
+      token,
+      // O token anterior deixou de valer — o usuário precisa guardar este.
+      tokenRecuperacao: novoTokenRecuperacao
     });
   } catch (error) {
     console.error('Erro ao redefinir senha:', error);

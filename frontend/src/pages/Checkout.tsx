@@ -12,6 +12,7 @@ import { courseService, paymentService } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { brl, formatPreco, isGratuito } from '../utils/price';
 import type { Course, OrderValores, PaymentConfig } from '../types';
+import { formatarData } from '../utils/datetime';
 
 interface CheckoutData {
   numeroPedido: string;
@@ -505,14 +506,14 @@ const Checkout: React.FC = () => {
             <div className="mb-4 space-y-1.5 text-xs">
               <div className="flex items-center gap-2 text-[var(--color-text-muted)]">
                 <Calendar className="w-3.5 h-3.5 text-primary-500" />
-                <span>Início em {new Date(course.dataInicio).toLocaleDateString('pt-BR')}</span>
+                <span>Início em {formatarData(course.dataInicio)}</span>
               </div>
               {course.dataTermino && (
                 course.expirado ? (
                   <div className="flex items-start gap-2 rounded-lg bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 p-2.5 text-red-700 dark:text-red-400">
                     <Clock className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
                     <span>
-                      <strong>Curso encerrado em {new Date(course.dataTermino).toLocaleDateString('pt-BR')}.</strong>{' '}
+                      <strong>Curso encerrado em {formatarData(course.dataTermino)}.</strong>{' '}
                       Este curso atingiu a data de término e o acesso ao conteúdo não está mais disponível.
                     </span>
                   </div>
@@ -520,7 +521,7 @@ const Checkout: React.FC = () => {
                   <div className="flex items-start gap-2 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 p-2.5 text-amber-700 dark:text-amber-400">
                     <Clock className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
                     <span>
-                      <strong>Acesso disponível até {new Date(course.dataTermino).toLocaleDateString('pt-BR')}.</strong>{' '}
+                      <strong>Acesso disponível até {formatarData(course.dataTermino)}.</strong>{' '}
                       Após a data de término, o conteúdo do curso é encerrado e o acesso é interrompido.
                     </span>
                   </div>

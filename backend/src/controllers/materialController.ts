@@ -5,6 +5,7 @@ import Material, { IMaterial, normalizeMaterialTipo } from '../models/Material';
 import MaterialOrder, { MaterialOrderStatus } from '../models/MaterialOrder';
 import MaterialEntitlement, { isEntitlementValid } from '../models/MaterialEntitlement';
 import { AuthRequest } from '../middleware/auth';
+import { aaaammddBR } from '../utils/datetime';
 import { validateCPF } from '../utils/validators';
 import { getPaymentConfig } from '../config/paymentConfig';
 import {
@@ -95,8 +96,8 @@ function getBaseUrl(): string {
 }
 
 async function generateNumeroPedido(): Promise<string> {
-  const now = new Date();
-  const datePart = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+  // Data de Brasília (o processo na Vercel roda em UTC).
+  const datePart = aaaammddBR();
   // eslint-disable-next-line no-constant-condition
   while (true) {
     let rand = '';

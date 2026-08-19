@@ -7,12 +7,13 @@ import User from '../models/User';
 import Coupon from '../models/Coupon';
 import PriceLot from '../models/PriceLot';
 import { sendPurchaseEmail } from './emailService';
+import { aaaammBR } from '../utils/datetime';
 
 const KEY_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 
 async function generateUniqueKey(): Promise<string> {
-  const now = new Date();
-  const yearMonth = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}`;
+  // Mês de Brasília (o processo na Vercel roda em UTC).
+  const yearMonth = aaaammBR();
   // Loop até obter uma chave inédita
   // eslint-disable-next-line no-constant-condition
   while (true) {

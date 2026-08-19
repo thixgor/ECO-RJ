@@ -6,6 +6,7 @@ import Loading from '../../components/common/Loading';
 import { ESTADOS } from '../../data/cadastroData';
 import { getRoleInfo } from '../../config/roles';
 import toast from 'react-hot-toast';
+import { formatarDataCom } from '../../utils/datetime';
 
 const AdminUsers: React.FC = () => {
   const [users, setUsers] = useState<UserType[]>([]);
@@ -91,7 +92,7 @@ const AdminUsers: React.FC = () => {
   };
 
   const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('pt-BR', {
+    return formatarDataCom(date, {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',

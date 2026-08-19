@@ -8,6 +8,7 @@ import { GlassCard, GlassButton, GlassInput, GlassSelect, GlassBadge } from '../
 import { detectVideoDuration } from '../../utils/videoUtils';
 import { formatDuration } from '../../utils/formatDuration';
 import toast from 'react-hot-toast';
+import { datetimeLocalBRParaISO, isoParaDatetimeLocalBR } from '../../utils/datetime';
 
 // Ícones disponíveis para botões personalizados
 const AVAILABLE_ICONS = [
@@ -354,29 +355,17 @@ const AdminLessons: React.FC = () => {
     }
   };
 
-  // Converter datetime-local para ISO string com timezone de Brasília explícito
-  // O datetime-local retorna "2026-01-11T16:00" sem timezone
-  // Precisamos interpretar isso como horário de Brasília e converter para UTC
-  const convertToISO = (datetimeLocal: string): string => {
-    if (!datetimeLocal) return '';
-    // Adicionar o offset de Brasília (-03:00) explicitamente
-    // Isso garante que 16:00 Brasília seja salvo como 19:00 UTC
-    return new Date(datetimeLocal + ':00-03:00').toISOString();
-  };
-
-  // Converter ISO (UTC) para datetime-local em horário de Brasília
-  const convertFromISO = (isoString: string): string => {
-    if (!isoString) return '';
-    // Usar toLocaleString para obter o horário em Brasília
-    const date = new Date(isoString);
-    const brasilDate = new Date(date.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
-    const year = brasilDate.getFullYear();
-    const month = String(brasilDate.getMonth() + 1).padStart(2, '0');
-    const day = String(brasilDate.getDate()).padStart(2, '0');
-    const hours = String(brasilDate.getHours()).padStart(2, '0');
-    const minutes = String(brasilDate.getMinutes()).padStart(2, '0');
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
-  };
+  // O campo `datetime-local` trabalha sempre no horário de Brasília: o que o
+  // administrador digita é o horário que o aluno vê. A conversão de/para UTC
+  // vive em utils/datetime.
+  //
+  // A versão anterior fixava o offset em `-03:00` no texto da data e, na volta,
+  // reparseava o resultado de `toLocaleString('en-US', ...)` — string que as
+  // versões recentes de ICU passaram a escrever com espaço estreito (U+202F)
+  // antes de AM/PM, produzindo `Invalid Date` em alguns navegadores e deixando o
+  // campo de data em branco ao editar uma aula ao vivo.
+  const convertToISO = datetimeLocalBRParaISO;
+  const convertFromISO = isoParaDatetimeLocalBR;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

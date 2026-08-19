@@ -9,6 +9,7 @@ import { formatDuration } from '../utils/formatDuration';
 import { ContextMenu, ContextMenuItem } from '../components/ui';
 import { brl, formatPreco, isGratuito } from '../utils/price';
 import toast from 'react-hot-toast';
+import { formatarData, formatarDataCom } from '../utils/datetime';
 
 const CourseDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -440,7 +441,7 @@ const CourseDetail: React.FC = () => {
             <p className="font-semibold text-red-700 dark:text-red-300">Curso encerrado</p>
             <p className="text-red-600 dark:text-red-400/80">
               Este curso atingiu a data de término
-              {course.dataTermino ? ` (${new Date(course.dataTermino).toLocaleDateString('pt-BR')})` : ''}.
+              {course.dataTermino ? ` (${formatarData(course.dataTermino)})` : ''}.
               O acesso ao conteúdo <strong>não está mais disponível</strong>.
             </p>
           </div>
@@ -452,7 +453,7 @@ const CourseDetail: React.FC = () => {
             <p className="font-semibold text-amber-800 dark:text-amber-300">Acesso por tempo limitado</p>
             <p className="text-amber-700 dark:text-amber-400/80">
               O acesso a este curso encerra em{' '}
-              <strong>{new Date(course.dataTermino).toLocaleDateString('pt-BR')}</strong>.
+              <strong>{formatarData(course.dataTermino)}</strong>.
               Após essa data, o conteúdo deixará de ficar disponível e você receberá um e-mail de encerramento.
             </p>
           </div>
@@ -475,14 +476,14 @@ const CourseDetail: React.FC = () => {
             </div>
             <div className="flex items-center gap-2">
               <Calendar className="w-5 h-5 text-primary-500" />
-              <span>Início: {new Date(course.dataInicio).toLocaleDateString('pt-BR')}</span>
+              <span>Início: {formatarData(course.dataInicio)}</span>
             </div>
             {course.dataTermino && (
               <div className="flex items-center gap-2">
                 <Calendar className={`w-5 h-5 ${course.expirado ? 'text-red-500' : 'text-amber-500'}`} />
                 <span>
                   {course.expirado ? 'Encerrado em: ' : 'Término: '}
-                  {new Date(course.dataTermino).toLocaleDateString('pt-BR')}
+                  {formatarData(course.dataTermino)}
                 </span>
               </div>
             )}
@@ -533,7 +534,7 @@ const CourseDetail: React.FC = () => {
               <p className="font-semibold text-[var(--color-text-primary)]">Curso encerrado</p>
               <p className="text-sm text-[var(--color-text-muted)] mt-1">
                 O acesso ao conteúdo foi finalizado
-                {course.dataTermino ? ` em ${new Date(course.dataTermino).toLocaleDateString('pt-BR')}` : ''}.
+                {course.dataTermino ? ` em ${formatarData(course.dataTermino)}` : ''}.
               </p>
             </div>
           ) : isEnrolled ? (
@@ -575,7 +576,7 @@ const CourseDetail: React.FC = () => {
                         Aguardando aprovacao do administrador
                       </p>
                       <p className="text-xs text-[var(--color-text-muted)] mt-2">
-                        Solicitado em: {new Date(certificateStatus.request.dataSolicitacao).toLocaleDateString('pt-BR', {
+                        Solicitado em: {formatarDataCom(certificateStatus.request.dataSolicitacao, {
                           day: '2-digit',
                           month: '2-digit',
                           year: 'numeric',
@@ -591,7 +592,7 @@ const CourseDetail: React.FC = () => {
                           <span className="text-sm font-medium">Solicitacao anterior recusada</span>
                         </div>
                         <p className="text-xs text-[var(--color-text-muted)] mt-1">
-                          Solicitado em: {new Date(certificateStatus.previousRequest.dataSolicitacao).toLocaleDateString('pt-BR', {
+                          Solicitado em: {formatarDataCom(certificateStatus.previousRequest.dataSolicitacao, {
                             day: '2-digit',
                             month: '2-digit',
                             year: 'numeric',
@@ -601,7 +602,7 @@ const CourseDetail: React.FC = () => {
                         </p>
                         {certificateStatus.previousRequest.dataResposta && (
                           <p className="text-xs text-[var(--color-text-muted)]">
-                            Recusado em: {new Date(certificateStatus.previousRequest.dataResposta).toLocaleDateString('pt-BR', {
+                            Recusado em: {formatarDataCom(certificateStatus.previousRequest.dataResposta, {
                               day: '2-digit',
                               month: '2-digit',
                               year: 'numeric',

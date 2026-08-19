@@ -18,6 +18,7 @@ import {
 } from '../data/cadastroData';
 import toast from 'react-hot-toast';
 import { materialService } from '../services/api';
+import { formatarData, formatarHora } from '../utils/datetime';
 
 // Logos ECO RJ
 const LOGO_DARK = 'https://i.imgur.com/qBXnSUD.png';
@@ -229,7 +230,7 @@ E-mail: ${recoveryData.email}
 Token de Recuperação: ${recoveryData.tokenRecuperacao}
 -------------------------------------------
 
-Data de criação: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}
+Data de criação: ${formatarData(new Date())} às ${formatarHora(new Date())}
 
 ===========================================
 NÃO COMPARTILHE ESTE TOKEN COM NINGUÉM!

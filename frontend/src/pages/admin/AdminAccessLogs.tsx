@@ -3,6 +3,7 @@ import { Activity, User, BookOpen, Monitor, Clock, Filter, Download, RefreshCw, 
 import Loading from '../../components/common/Loading';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
+import { formatarDataCom } from '../../utils/datetime';
 
 interface AccessLog {
   _id: string;
@@ -146,7 +147,7 @@ const AdminAccessLogs: React.FC = () => {
   };
 
   const formatDate = (date: string) => {
-    return new Date(date).toLocaleString('pt-BR', {
+    return formatarDataCom(date, {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',

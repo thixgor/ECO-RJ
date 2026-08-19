@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 import { GlassButton, GlassInput, GlassSelect, GlassModal, GlassBadge } from '../ui';
 import { materialService, userService } from '../../services/api';
 import type { MaterialAdmin, MaterialEntitlementAdmin, MaterialEntitlementResumo } from '../../types';
+import { formatarData } from '../../utils/datetime';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -23,7 +24,7 @@ const VALIDADE_OPTIONS = [
 const fmtData = (d?: string) => {
   if (!d) return '';
   const date = new Date(d);
-  return isNaN(date.getTime()) ? '' : date.toLocaleDateString('pt-BR');
+  return isNaN(date.getTime()) ? '' : formatarData(date);
 };
 
 const statusBadge = (e: MaterialEntitlementAdmin) => {

@@ -3,6 +3,7 @@ import { X, StickyNote, Clock, Trash2, Edit3, Check, Loader2, Plus, Play } from 
 import { notesService } from '../../services/api';
 import { UserNote } from '../../types';
 import toast from 'react-hot-toast';
+import { formatarDataCom } from '../../utils/datetime';
 
 interface NotesSidePanelProps {
   lessonId: string;
@@ -264,7 +265,7 @@ const NotesSidePanel: React.FC<NotesSidePanelProps> = ({
                     {/* Actions */}
                     <div className="flex items-center justify-between mt-2 pt-2 border-t border-[var(--glass-border)]">
                       <span className="text-xs text-[var(--color-text-muted)]">
-                        {new Date(note.createdAt).toLocaleDateString('pt-BR', {
+                        {formatarDataCom(note.createdAt, {
                           day: '2-digit',
                           month: 'short',
                           hour: '2-digit',

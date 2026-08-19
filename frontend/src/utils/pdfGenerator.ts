@@ -2,6 +2,7 @@ import jsPDF from 'jspdf';
 import { exerciseService } from '../services/api';
 import { Exercise } from '../types';
 import toast from 'react-hot-toast';
+import { formatarData } from '../utils/datetime';
 
 export const generateExercisePDF = async (exercise: Exercise) => {
     try {
@@ -38,7 +39,7 @@ export const generateExercisePDF = async (exercise: Exercise) => {
             doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
             doc.setFontSize(9);
             doc.text(`Página ${pageNum}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
-            doc.text(`Gerado em ${new Date().toLocaleDateString('pt-BR')}`, margin, pageHeight - 10);
+            doc.text(`Gerado em ${formatarData(new Date())}`, margin, pageHeight - 10);
         };
 
         // 1. Capa / Informações Iniciais

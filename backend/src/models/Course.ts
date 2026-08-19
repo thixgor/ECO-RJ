@@ -1,4 +1,5 @@
 import mongoose, { Document, Schema } from 'mongoose';
+import { fimDoDiaBR } from '../utils/datetime';
 
 export interface ICourse extends Document {
   titulo: string;
@@ -129,12 +130,25 @@ CourseSchema.index({ dataTermino: 1, terminoNotificado: 1 });
 /**
  * Retorna true se o curso já atingiu sua data de término.
  * A partir desse momento o acesso dos alunos ao conteúdo é interrompido.
+ *
+ * O prazo vale até o FIM do dia informado, no horário de Brasília. O campo é
+ * preenchido por um `<input type="date">`, que envia `2026-08-19T00:00:00.000Z`:
+ * comparar direto com `Date.now()` cortava o acesso às 21h do dia 18/08 — quase
+ * 27 horas antes do prazo prometido ao aluno.
  */
 export function isCourseExpired(course: { dataTermino?: Date | string | null } | null | undefined): boolean {
   if (!course || !course.dataTermino) return false;
-  const termino = new Date(course.dataTermino);
-  if (isNaN(termino.getTime())) return false;
-  return Date.now() > termino.getTime();
+  const limite = fimDoDiaBR(course.dataTermino);
+  if (!limite) return false;
+  return Date.now() > limite.getTime();
+}
+
+/**
+ * Instante em que o curso efetivamente expira (fim do dia de término em
+ * Brasília). Serve para montar queries — ex.: "cursos já encerrados".
+ */
+export function courseExpiryInstant(dataTermino?: Date | string | null): Date | null {
+  return fimDoDiaBR(dataTermino);
 }
 
 export default mongoose.model<ICourse>('Course', CourseSchema);

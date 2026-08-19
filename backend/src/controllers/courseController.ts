@@ -3,6 +3,7 @@ import Course, { isCourseExpired } from '../models/Course';
 import Lesson from '../models/Lesson';
 import User from '../models/User';
 import { AuthRequest } from '../middleware/auth';
+import { fimDoDiaBR, meiaNoiteUTCDeHojeBR } from '../utils/datetime';
 import { registrarAcesso } from './accessLogController';
 import { sendCourseEndedEmail } from '../services/emailService';
 
@@ -289,8 +290,11 @@ export const enrollCourse = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: 'Este curso não está disponível para inscrição' });
     }
 
-    // Verificar data limite de inscrição
-    if (course.dataLimiteInscricao && new Date() > course.dataLimiteInscricao) {
+    // Verificar data limite de inscrição.
+    // O prazo vale até o fim do dia informado, em Brasília — comparar direto com
+    // `new Date()` fechava as inscrições às 21h do dia anterior.
+    const limiteInscricao = fimDoDiaBR(course.dataLimiteInscricao);
+    if (limiteInscricao && Date.now() > limiteInscricao.getTime()) {
       return res.status(400).json({ message: 'O prazo de inscrição para este curso já encerrou' });
     }
 
@@ -508,7 +512,8 @@ export async function notifyCourseCompletion(courseId: string): Promise<number> 
     {
       _id: courseId,
       terminoNotificado: { $ne: true },
-      dataTermino: { $exists: true, $ne: null, $lte: new Date() }
+      // Encerrado = o dia de término já passou por completo em Brasília.
+      dataTermino: { $exists: true, $ne: null, $lt: meiaNoiteUTCDeHojeBR() }
     },
     { $set: { terminoNotificado: true } },
     { new: true }
@@ -556,7 +561,7 @@ export const processCourseCompletions = async (_req: AuthRequest, res: Response)
   try {
     // Cursos vencidos que ainda não notificaram os alunos
     const cursos = await Course.find({
-      dataTermino: { $exists: true, $ne: null, $lte: new Date() },
+      dataTermino: { $exists: true, $ne: null, $lt: meiaNoiteUTCDeHojeBR() },
       terminoNotificado: { $ne: true }
     }).select('_id');
 

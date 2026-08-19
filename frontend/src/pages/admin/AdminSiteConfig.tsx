@@ -20,6 +20,7 @@ import { siteConfigService, courseService } from '../../services/api';
 import { Course } from '../../types';
 import Loading from '../../components/common/Loading';
 import toast from 'react-hot-toast';
+import { construirEmbedSeguro, temEmbedValido } from '../../utils/safeEmbed';
 
 interface Testimonial {
   id: string;
@@ -797,10 +798,19 @@ const AdminSiteConfig: React.FC = () => {
                   {config.demoVideo.embedCode && (
                     <div>
                       <label className="label">Preview</label>
-                      <div
-                        className="aspect-video max-w-2xl rounded-xl overflow-hidden bg-black border border-[var(--glass-border)]"
-                        dangerouslySetInnerHTML={{ __html: config.demoVideo.embedCode }}
-                      />
+                      {temEmbedValido(config.demoVideo.embedCode) ? (
+                        <div
+                          className="aspect-video max-w-2xl rounded-xl overflow-hidden bg-black border border-[var(--glass-border)]"
+                          dangerouslySetInnerHTML={{
+                            __html: construirEmbedSeguro(config.demoVideo.embedCode, { titulo: 'Pré-visualização' })
+                          }}
+                        />
+                      ) : (
+                        <p className="text-sm text-amber-600 dark:text-amber-400">
+                          Não foi possível reconhecer um vídeo neste código. Cole o link ou o
+                          código de incorporação do YouTube ou do Vimeo.
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>

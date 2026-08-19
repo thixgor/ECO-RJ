@@ -1,5 +1,6 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
+import { meiaNoiteUTCDeHojeBR } from '../utils/datetime';
 import Announcement from '../models/Announcement';
 import Course from '../models/Course';
 
@@ -50,13 +51,16 @@ export const getUserAnnouncements = async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ message: 'Não autorizado' });
     }
 
-    const now = new Date();
+    // O aviso vale até o FIM do dia de expiração, em Brasília. O campo vem de um
+    // `<input type="date">` (meia-noite UTC): comparar com o instante atual fazia
+    // o aviso sumir às 21h do dia anterior ao escolhido pelo administrador.
+    const hojeBR = meiaNoiteUTCDeHojeBR();
     const baseQuery: any = {
       ativo: true,
       $or: [
         { dataExpiracao: { $exists: false } },
         { dataExpiracao: null },
-        { dataExpiracao: { $gt: now } }
+        { dataExpiracao: { $gte: hojeBR } }
       ]
     };
 

@@ -4,6 +4,7 @@ import Course from '../models/Course';
 import Order, { OrderStatus } from '../models/Order';
 import { AuthRequest } from '../middleware/auth';
 import { validateCPF } from '../utils/validators';
+import { aaaammddBR } from '../utils/datetime';
 import { getPaymentConfig } from '../config/paymentConfig';
 import {
   getActiveLot,
@@ -75,8 +76,9 @@ function getBaseUrl(): string {
 }
 
 async function generateNumeroPedido(): Promise<string> {
-  const now = new Date();
-  const datePart = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+  // Data de Brasília: o processo na Vercel roda em UTC, então uma compra feita
+  // às 21h30 recebia o número do dia seguinte.
+  const datePart = aaaammddBR();
   // eslint-disable-next-line no-constant-condition
   while (true) {
     let rand = '';

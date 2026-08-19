@@ -5,6 +5,7 @@ import MaterialOrder from '../models/MaterialOrder';
 import MaterialEntitlement, { isEntitlementValid } from '../models/MaterialEntitlement';
 import User from '../models/User';
 import { AuthRequest } from '../middleware/auth';
+import { aaaammBR } from '../utils/datetime';
 import { fulfillMaterialOrder } from '../services/materialFulfillmentService';
 import { sendMaterialGrantEmail } from '../services/emailService';
 
@@ -315,8 +316,9 @@ function buildAccessLink(accessToken: string): string {
 
 /** Gera um código de acesso amigável e único no formato ECO-MAT-AAAAMM-XXXXXX. */
 function generateSerialKey(): string {
-  const now = new Date();
-  const yearMonth = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}`;
+  // Mês de Brasília: sem isso, uma chave criada às 22h de 31/01 nascia com
+  // o prefixo do mês seguinte.
+  const yearMonth = aaaammBR();
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   const rand = Array.from(crypto.randomBytes(6)).map((n) => chars[n % chars.length]).join('');
   return `ECO-MAT-${yearMonth}-${rand}`;

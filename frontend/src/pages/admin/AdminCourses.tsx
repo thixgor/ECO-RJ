@@ -6,6 +6,7 @@ import Loading from '../../components/common/Loading';
 import { GlassModal } from '../../components/ui';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
+import { formatarData } from '../../utils/datetime';
 
 /** O formulário do curso fica no corpo rolável e o botão Salvar no rodapé fixo do modal. */
 const COURSE_FORM_ID = 'admin-course-form';
@@ -209,7 +210,7 @@ const AdminCourses: React.FC = () => {
   };
 
   const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('pt-BR');
+    return formatarData(date);
   };
 
   // Reorder courses

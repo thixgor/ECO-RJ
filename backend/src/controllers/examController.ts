@@ -283,10 +283,15 @@ export const startExam = async (req: AuthRequest, res: Response) => {
     });
 
     if (tentativaEmAndamento) {
+      // As questões precisam passar pela MESMA projeção da tentativa nova.
+      // Antes este ramo devolvia `exam.questoesRef` populado e cru — ou seja,
+      // com `respostaCorreta` e `explicacao`. Bastava começar a prova e recarregar
+      // a página (ou chamar /start duas vezes) para receber o gabarito completo.
       return res.json({
         message: 'Continuando tentativa em andamento',
         tentativa: tentativaEmAndamento,
-        questoes: exam.questoesRef
+        questoes: projetarQuestoesParaAluno(exam),
+        tempoLimite: exam.tempoLimite
       });
     }
 
@@ -299,23 +304,10 @@ export const startExam = async (req: AuthRequest, res: Response) => {
       ip: getClientIp(req)
     });
 
-    // Preparar questões (embaralhar se configurado)
-    let questoes = exam.questoesRef.map((q: any) => ({
-      _id: q._id,
-      pergunta: q.pergunta,
-      tipo: q.tipo,
-      opcoes: exam.embaralharOpcoes && q.opcoes ? shuffleArray([...q.opcoes]) : q.opcoes,
-      pontos: q.pontos
-    }));
-
-    if (exam.embaralharQuestoes) {
-      questoes = shuffleArray(questoes);
-    }
-
     res.json({
       message: 'Prova iniciada',
       tentativa: novaTentativa,
-      questoes,
+      questoes: projetarQuestoesParaAluno(exam),
       tempoLimite: exam.tempoLimite
     });
   } catch (error) {
@@ -364,27 +356,41 @@ export const submitExam = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    // Calcular nota
+    // Calcular nota.
+    //
+    // O total de pontos vem SEMPRE das questões da prova, nunca do que o cliente
+    // enviou. Somando apenas as respostas recebidas, bastava submeter só as
+    // questões que o aluno sabia — as omitidas saíam do denominador e a nota
+    // fechava em 100%. Pelo mesmo motivo o array é indexado por questão (e não
+    // percorrido), o que também impede que `questaoId` repetido conte duas vezes.
+    const questoesDaProva = exam.questoesRef as any[];
+
+    const respostaPorQuestao = new Map<string, any>();
+    for (const r of respostas) {
+      const id = String(r?.questaoId ?? '');
+      // Em duplicidade, vale a primeira resposta enviada para aquela questão.
+      if (id && !respostaPorQuestao.has(id)) respostaPorQuestao.set(id, r);
+    }
+
     let pontosTotais = 0;
     let pontosObtidos = 0;
 
-    const respostasCorrigidas = respostas.map((r: any) => {
-      const questao = (exam.questoesRef as any[]).find(
-        (q: any) => q._id.toString() === r.questaoId
-      );
-
-      if (!questao) return r;
+    const respostasCorrigidas = questoesDaProva.map((questao: any) => {
+      const questaoId = questao._id.toString();
+      const enviada = respostaPorQuestao.get(questaoId);
+      const resposta = enviada?.resposta;
 
       pontosTotais += questao.pontos;
-      const correta = String(questao.respostaCorreta) === String(r.resposta);
 
-      if (correta) {
-        pontosObtidos += questao.pontos;
-      }
+      // Questão não respondida nunca é considerada correta.
+      const correta = resposta !== undefined && resposta !== null && resposta !== ''
+        && String(questao.respostaCorreta) === String(resposta);
+
+      if (correta) pontosObtidos += questao.pontos;
 
       return {
-        questaoId: r.questaoId,
-        resposta: r.resposta,
+        questaoId,
+        resposta: resposta ?? null,
         correta,
         pontosObtidos: correta ? questao.pontos : 0
       };
@@ -488,4 +494,24 @@ function shuffleArray<T>(array: T[]): T[] {
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
   return shuffled;
+}
+
+/**
+ * Projeção das questões que pode ser enviada a um aluno: sem `respostaCorreta`
+ * e sem `explicacao`, aplicando os embaralhamentos configurados na prova.
+ *
+ * Existe como função única justamente para que nenhum caminho de resposta
+ * (iniciar prova, retomar tentativa) volte a vazar o gabarito por engano.
+ */
+function projetarQuestoesParaAluno(exam: any) {
+  const questoes = (exam.questoesRef as any[]).map((q: any) => ({
+    _id: q._id,
+    pergunta: q.pergunta,
+    tipo: q.tipo,
+    imagem: q.imagem,
+    opcoes: exam.embaralharOpcoes && q.opcoes ? shuffleArray([...q.opcoes]) : q.opcoes,
+    pontos: q.pontos
+  }));
+
+  return exam.embaralharQuestoes ? shuffleArray(questoes) : questoes;
 }

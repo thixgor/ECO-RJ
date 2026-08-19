@@ -3,7 +3,33 @@ import Lesson from '../models/Lesson';
 import Course, { isCourseExpired } from '../models/Course';
 import User from '../models/User';
 import { AuthRequest } from '../middleware/auth';
+import { intervaloDoDiaBR } from '../utils/datetime';
+import { CARGOS_COM_ACESSO } from '../config/roles';
 import { registrarAcesso } from './accessLogController';
+
+/**
+ * Campos de uma aula que só podem sair do servidor para quem realmente tem
+ * acesso ao conteúdo: são eles que dão o vídeo e a sala ao vivo de graça.
+ */
+const CAMPOS_RESTRITOS = ['embedVideo', 'zoomMeetingId', 'zoomMeetingPassword', 'notasAula'] as const;
+
+/**
+ * Remove o conteúdo pago de uma aula, preservando o "esqueleto" (título, tipo,
+ * duração, ordem) que a listagem usa para desenhar o índice do curso bloqueado.
+ */
+const removerConteudoRestrito = (lesson: any) => {
+  const obj = typeof lesson?.toObject === 'function' ? lesson.toObject() : { ...lesson };
+  for (const campo of CAMPOS_RESTRITOS) delete obj[campo];
+  obj.bloqueada = true;
+  return obj;
+};
+
+/** O usuário pode ver o conteúdo desta aula? (cargo do usuário × cargos da aula) */
+const podeVerConteudo = (cargo: string, cargosPermitidos: string[] = []): boolean => {
+  if (cargo === 'Administrador') return true;
+  if (!CARGOS_COM_ACESSO.includes(cargo as any)) return false;
+  return cargosPermitidos.includes(cargo);
+};
 
 // @desc    Listar aulas de um curso
 // @route   GET /api/lessons/course/:courseId
@@ -12,13 +38,33 @@ export const getLessonsByCourse = async (req: AuthRequest, res: Response) => {
   try {
     const { courseId } = req.params;
 
-    // Retornar todas as aulas do curso para visualização
-    // O controle de acesso é feito no frontend (aulas aparecem bloqueadas)
-    // e no endpoint individual getLessonById
+    // A listagem é pública para que qualquer visitante veja o ÍNDICE do curso
+    // (títulos, tipos, duração) e entenda o que está comprando.
+    //
+    // Antes o endpoint devolvia o documento inteiro e o bloqueio era só visual,
+    // no front-end: bastava abrir o DevTools — ou chamar a rota sem token algum —
+    // para obter o `embedVideo` de todas as aulas pagas e as credenciais das
+    // salas de Zoom. Agora o conteúdo restrito é removido no servidor, aula a
+    // aula, respeitando os cargos configurados em cada uma.
     const lessons = await Lesson.find({ cursoId: courseId })
       .sort({ ordem: 1, createdAt: 1 });
 
-    res.json(lessons);
+    const cargo = req.user?.cargo || 'Visitante';
+    const curso = await Course.findById(courseId).select('acessoRestrito alunosAutorizados dataTermino');
+
+    const cursoEncerrado = isCourseExpired(curso) && cargo !== 'Administrador' && cargo !== 'Instrutor';
+    const autorizadoNoCurso =
+      cargo === 'Administrador' ||
+      !curso?.acessoRestrito ||
+      !!curso.alunosAutorizados?.some((id: any) => id.toString() === req.user?._id?.toString());
+
+    res.json(
+      lessons.map((lesson) =>
+        !cursoEncerrado && autorizadoNoCurso && podeVerConteudo(cargo, lesson.cargosPermitidos)
+          ? lesson
+          : removerConteudoRestrito(lesson)
+      )
+    );
   } catch (error) {
     console.error('Erro ao listar aulas:', error);
     res.status(500).json({ message: 'Erro ao listar aulas' });
@@ -500,23 +546,10 @@ export const getLiveLessonsToday = async (req: AuthRequest, res: Response) => {
       return curso.toString();
     });
 
-    // Calcular início e fim do dia atual no timezone do Brasil (UTC-3)
-    const now = new Date();
-
-    // Criar datas para início e fim do dia em UTC, ajustado para Brasil (UTC-3)
-    // Início do dia no Brasil = 03:00 UTC do mesmo dia
-    // Fim do dia no Brasil = 02:59:59 UTC do dia seguinte
-    const startOfDay = new Date(now);
-    startOfDay.setUTCHours(3, 0, 0, 0); // 00:00 em Brasília = 03:00 UTC
-
-    // Se agora for antes das 03:00 UTC, o dia brasileiro ainda é o dia anterior
-    if (now.getUTCHours() < 3) {
-      startOfDay.setUTCDate(startOfDay.getUTCDate() - 1);
-    }
-
-    const endOfDay = new Date(startOfDay);
-    endOfDay.setUTCDate(endOfDay.getUTCDate() + 1);
-    endOfDay.setUTCMilliseconds(-1); // 23:59:59.999 em Brasília
+    // Intervalo do dia corrente no fuso de Brasília. O offset não é mais fixado
+    // em -03:00 no código: é derivado do próprio fuso, para continuar correto se
+    // o horário de verão brasileiro voltar a existir.
+    const { inicio: startOfDay, fim: endOfDay } = intervaloDoDiaBR();
 
     // Buscar aulas ao vivo de hoje dos cursos inscritos
     const lessons = await Lesson.find({
@@ -554,7 +587,14 @@ export const getUpcomingLiveLessons = async (req: AuthRequest, res: Response) =>
       return res.status(401).json({ message: 'Não autorizado' });
     }
 
-    const cursosInscritos = user.cursosInscritos || [];
+    // Normaliza os IDs da mesma forma que `getLiveLessonsToday`: o campo pode
+    // vir como ObjectId, string ou documento populado dependendo de quem leu o
+    // usuário, e um array populado nunca casaria no `$in`.
+    const cursosInscritos = (user.cursosInscritos || []).map((curso: any) => {
+      if (typeof curso === 'string') return curso;
+      if (curso?._id) return curso._id.toString();
+      return curso.toString();
+    });
     if (cursosInscritos.length === 0) {
       return res.json({ lessons: [] });
     }

@@ -7,6 +7,7 @@ import MaterialContentViewer from '../components/materials/MaterialContentViewer
 import { materialService, authService } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import type { MaterialDetalhe } from '../types';
+import { formatarData } from '../utils/datetime';
 
 const MaterialAccess: React.FC = () => {
   const [params] = useSearchParams();
@@ -144,7 +145,7 @@ const MaterialAccess: React.FC = () => {
             )}
             {validade && (
               <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-                Acesso válido até {new Date(validade).toLocaleDateString('pt-BR')}
+                Acesso válido até {formatarData(validade)}
               </p>
             )}
           </div>

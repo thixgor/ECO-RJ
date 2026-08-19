@@ -10,6 +10,7 @@ import Loading from '../components/common/Loading';
 import { ESTADOS } from '../data/cadastroData';
 import { getRoleInfo } from '../config/roles';
 import toast from 'react-hot-toast';
+import { formatarData, formatarDataCom, formatarDataHora } from '../utils/datetime';
 
 const Profile: React.FC = () => {
   const { user, refreshUser } = useAuth();
@@ -131,7 +132,7 @@ const Profile: React.FC = () => {
         <tr><td class="muted">Curso</td><td style="text-align:right"><strong>${order.cursoTitulo}</strong></td></tr>
         <tr><td class="muted">Comprador</td><td style="text-align:right">${order.compradorDados?.nome || ''}</td></tr>
         <tr><td class="muted">E-mail</td><td style="text-align:right">${order.compradorDados?.email || ''}</td></tr>
-        <tr><td class="muted">Data</td><td style="text-align:right">${new Date(order.createdAt).toLocaleString('pt-BR')}</td></tr>
+        <tr><td class="muted">Data</td><td style="text-align:right">${formatarDataHora(order.createdAt)}</td></tr>
         ${order.metodoPagamento ? `<tr><td class="muted">Método</td><td style="text-align:right">${order.metodoPagamento}</td></tr>` : ''}
         ${order.serialKeyCodigo ? `<tr><td class="muted">Serial Key</td><td style="text-align:right;font-family:monospace">${order.serialKeyCodigo}</td></tr>` : ''}
       </table>
@@ -379,7 +380,7 @@ const Profile: React.FC = () => {
     : '';
 
   const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('pt-BR');
+    return formatarData(date);
   };
 
   const formatHours = (hours: number) => {
@@ -712,7 +713,7 @@ const Profile: React.FC = () => {
                       <p className="text-sm text-[var(--color-text-muted)]">Membro desde</p>
                       <p className="font-medium text-[var(--color-text-primary)]">
                         {user?.createdAt
-                          ? new Date(user.createdAt).toLocaleDateString('pt-BR')
+                          ? formatarData(user.createdAt)
                           : '-'}
                       </p>
                     </div>
@@ -832,7 +833,7 @@ const Profile: React.FC = () => {
                             <p className="text-xs text-[var(--color-text-muted)] font-mono mt-0.5">{order.numeroPedido}</p>
                             <div className="flex items-center gap-2 mt-2 text-sm text-[var(--color-text-muted)]">
                               <Calendar className="w-4 h-4" />
-                              {new Date(order.createdAt).toLocaleDateString('pt-BR')}
+                              {formatarData(order.createdAt)}
                               {order.metodoPagamento && <span>· {order.metodoPagamento}</span>}
                             </div>
                           </div>
@@ -901,7 +902,7 @@ const Profile: React.FC = () => {
                               <p className="text-xs text-[var(--color-text-muted)] font-mono">{m.serialKey}</p>
                               {m.validade && (
                                 <p className="text-xs text-[var(--color-text-muted)]">
-                                  {m.valido ? `Válido até ${new Date(m.validade).toLocaleDateString('pt-BR')}` : 'Acesso expirado'}
+                                  {m.valido ? `Válido até ${formatarData(m.validade)}` : 'Acesso expirado'}
                                 </p>
                               )}
                               {!m.validade && <p className="text-xs text-emerald-500">Acesso vitalício</p>}
@@ -968,7 +969,7 @@ const Profile: React.FC = () => {
                       <div key={index} className="p-3 bg-gray-50 dark:bg-white/5 rounded-lg flex justify-between items-center">
                         <span className="font-mono text-sm text-[var(--color-text-primary)]">{key.chave}</span>
                         <span className="text-sm text-[var(--color-text-muted)]">
-                          {key.dataUso ? new Date(key.dataUso).toLocaleDateString('pt-BR') : ''}
+                          {key.dataUso ? formatarData(key.dataUso) : ''}
                         </span>
                       </div>
                     ))}
@@ -1061,7 +1062,7 @@ const Profile: React.FC = () => {
 
                                 {/* Date */}
                                 <p className="mt-2 text-xs text-[var(--color-text-muted)]">
-                                  {new Date(note.createdAt).toLocaleDateString('pt-BR', {
+                                  {formatarDataCom(note.createdAt, {
                                     day: '2-digit',
                                     month: 'short',
                                     year: 'numeric',

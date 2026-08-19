@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode, useCallback, useRef } from 'react';
 import { User, AuthResponse } from '../types';
 import { authService } from '../services/api';
 
@@ -89,7 +89,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Guarda o token e carrega o perfil completo. Se o perfil falhar, desfaz o
   // token gravado: sem isso a aplicação ficava "meio logada" (token salvo, nenhum
   // usuário carregado), estado em que nada funciona e nem a tela de login sai.
-  const armazenarSessao = async (novoToken: string) => {
+  const armazenarSessao = useCallback(async (novoToken: string) => {
     localStorage.setItem('token', novoToken);
     setToken(novoToken);
 
@@ -104,9 +104,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setUser(null);
       throw error;
     }
-  };
+  }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string) => {
     setIsLoading(true);
     try {
       const response = await authService.login(email, password);
@@ -116,9 +116,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [armazenarSessao]);
 
-  const register = async (data: RegisterData): Promise<{ tokenRecuperacao: string; email: string; id: string }> => {
+  const register = useCallback(async (data: RegisterData): Promise<{ tokenRecuperacao: string; email: string; id: string }> => {
     setIsLoading(true);
     try {
       const response = await authService.register(data);
@@ -135,7 +135,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [armazenarSessao]);
 
   const logout = useCallback(() => {
     localStorage.removeItem('token');
@@ -150,18 +150,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     localStorage.setItem('user', JSON.stringify(updatedUser));
   }, []);
 
-  const value: AuthContextType = {
-    user,
-    token,
-    isLoading,
-    isAuthenticated: !!token && !!user,
-    isAdmin: user?.cargo === 'Administrador',
-    login,
-    register,
-    logout,
-    updateUser,
-    refreshUser
-  };
+  // O objeto de contexto precisa ser memoizado: sem isso ele era recriado a cada
+  // render do provider e TODO componente que usa `useAuth()` re-renderizava junto
+  // — inclusive páginas com efeitos que dependem de `user`, que voltavam a buscar
+  // dados na API sem que nada tivesse mudado.
+  const value = useMemo<AuthContextType>(
+    () => ({
+      user,
+      token,
+      isLoading,
+      isAuthenticated: !!token && !!user,
+      isAdmin: user?.cargo === 'Administrador',
+      login,
+      register,
+      logout,
+      updateUser,
+      refreshUser
+    }),
+    [user, token, isLoading, login, register, logout, updateUser, refreshUser]
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

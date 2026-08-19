@@ -10,6 +10,7 @@ import { GlassTabs, ContextMenu, ContextMenuItem } from '../components/ui';
 import { renderBold } from '../utils/richText';
 import { brl, formatPreco, isGratuito } from '../utils/price';
 import toast from 'react-hot-toast';
+import { formatarData } from '../utils/datetime';
 
 // Calcula o preço final de um curso aplicando o desconto ativado (percentual/fixo).
 // Preço 0 com venda habilitada = curso GRATUITO (aparece como "Gratuito", não é oculto).
@@ -293,7 +294,7 @@ const Courses: React.FC = () => {
                     <div className="flex items-center gap-2">
                       <Calendar className="w-4 h-4 text-primary-500" />
                       <span>
-                        Início: {new Date(course.dataInicio).toLocaleDateString('pt-BR')}
+                        Início: {formatarData(course.dataInicio)}
                       </span>
                     </div>
                     {(course as any).duracaoTotal > 0 && course.exibirDuracao !== false && (

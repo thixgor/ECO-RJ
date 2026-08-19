@@ -4,6 +4,7 @@ import { announcementService, courseService } from '../../services/api';
 import { Announcement, Course } from '../../types';
 import Loading from '../../components/common/Loading';
 import toast from 'react-hot-toast';
+import { formatarData, formatarDataCom, hojeISOBR } from '../../utils/datetime';
 
 const AdminAnnouncements: React.FC = () => {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
@@ -164,7 +165,7 @@ const AdminAnnouncements: React.FC = () => {
   );
 
   const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('pt-BR', {
+    return formatarDataCom(date, {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
@@ -347,7 +348,7 @@ const AdminAnnouncements: React.FC = () => {
                           <p>{formatDate(announcement.createdAt)}</p>
                           {announcement.dataExpiracao && (
                             <p className="text-xs text-orange-500">
-                              Expira: {new Date(announcement.dataExpiracao).toLocaleDateString('pt-BR')}
+                              Expira: {formatarData(announcement.dataExpiracao)}
                             </p>
                           )}
                         </div>
@@ -535,7 +536,7 @@ const AdminAnnouncements: React.FC = () => {
                     value={form.dataExpiracao}
                     onChange={(e) => setForm({ ...form, dataExpiracao: e.target.value })}
                     className="input"
-                    min={new Date().toISOString().split('T')[0]}
+                    min={hojeISOBR()}
                   />
                   <p className="text-xs text-[var(--color-text-muted)] mt-1">
                     Opcional. Deixe vazio para nao expirar.

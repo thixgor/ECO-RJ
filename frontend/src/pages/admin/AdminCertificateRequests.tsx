@@ -4,6 +4,7 @@ import { certificateRequestService, courseService } from '../../services/api';
 import { Course } from '../../types';
 import Loading from '../../components/common/Loading';
 import toast from 'react-hot-toast';
+import { formatarDataCom } from '../../utils/datetime';
 
 interface CertificateRequest {
   _id: string;
@@ -115,7 +116,7 @@ const AdminCertificateRequests: React.FC = () => {
   };
 
   const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('pt-BR', {
+    return formatarDataCom(date, {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',

@@ -12,6 +12,7 @@ import {
   paymentService, materialService, couponService, priceLotService, courseService
 } from '../../services/api';
 import type { Coupon, PriceLot, Course, PaymentConfig } from '../../types';
+import { formatarData, formatarDataHora } from '../../utils/datetime';
 
 const brl = (v: number) => `R$ ${Number(v || 0).toFixed(2).replace('.', ',')}`;
 
@@ -203,7 +204,7 @@ const OrdersTab: React.FC = () => {
                     <td className="py-2 px-2">{o.produtoTitulo}</td>
                     <td className="py-2 px-2 font-semibold">{brl(o.valores.total)}</td>
                     <td className="py-2 px-2"><GlassBadge variant={statusBadge[o.status]?.variant}>{statusBadge[o.status]?.label || o.status}</GlassBadge></td>
-                    <td className="py-2 px-2 text-xs">{new Date(o.createdAt).toLocaleDateString('pt-BR')}</td>
+                    <td className="py-2 px-2 text-xs">{formatarData(o.createdAt)}</td>
                     <td className="py-2 px-2">
                       <GlassButton size="sm" variant="secondary" onClick={() => openDetail(o)} leftIcon={<Eye className="w-4 h-4" />}>Ver</GlassButton>
                     </td>
@@ -247,7 +248,7 @@ const OrdersTab: React.FC = () => {
             </div>
             {detail.aceiteTermos?.aceito && (
               <p className="text-xs text-[var(--color-text-muted)]">
-                Termos aceitos (v{detail.aceiteTermos.versao}) em {new Date(detail.aceiteTermos.dataAceite).toLocaleString('pt-BR')} · IP {detail.aceiteTermos.ip}
+                Termos aceitos (v{detail.aceiteTermos.versao}) em {formatarDataHora(detail.aceiteTermos.dataAceite)} · IP {detail.aceiteTermos.ip}
               </p>
             )}
             {detail.status === 'aprovado' && (

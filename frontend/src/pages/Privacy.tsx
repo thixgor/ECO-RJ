@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
+import { formatarDataCom } from '../utils/datetime';
 
 const Privacy: React.FC = () => {
   return (
@@ -14,7 +15,7 @@ const Privacy: React.FC = () => {
 
       <div className="prose prose-gray max-w-none">
         <p className="text-gray-600 mb-6">
-          Última atualização: {new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+          Última atualização: {formatarDataCom(new Date(), { month: 'long', year: 'numeric' })}
         </p>
 
         <p className="text-gray-600 mb-8">

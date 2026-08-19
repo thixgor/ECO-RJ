@@ -12,6 +12,7 @@ import { materialService } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import type { MaterialDetalhe, MaterialReview, MaterialTipo } from '../types';
 import { brl, formatPreco, isGratuito } from '../utils/price';
+import { formatarData } from '../utils/datetime';
 
 const tipoIcon: Record<MaterialTipo, React.ReactNode> = {
   aula: <Video className="w-4 h-4" />,
@@ -229,7 +230,7 @@ const MaterialDetail: React.FC = () => {
                     </div>
                     {r.comentario && <p className="text-sm text-[var(--color-text-secondary)]">{r.comentario}</p>}
                     <p className="text-xs text-[var(--color-text-muted)] mt-1">
-                      {new Date(r.createdAt).toLocaleDateString('pt-BR')}
+                      {formatarData(r.createdAt)}
                     </p>
                   </div>
                 ))}

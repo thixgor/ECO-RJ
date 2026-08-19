@@ -4,6 +4,7 @@ import { Award, Search, CheckCircle, XCircle, Calendar, Clock, User, BookOpen, A
 import { certificateService } from '../services/api';
 import { CertificateValidationResult } from '../types';
 import { useTheme } from '../contexts/ThemeContext';
+import { formatarDataCom } from '../utils/datetime';
 
 // Logos ECO RJ
 const LOGO_DARK = 'https://i.imgur.com/qBXnSUD.png';
@@ -51,7 +52,7 @@ const ValidateCertificate: React.FC = () => {
   };
 
   const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('pt-BR', {
+    return formatarDataCom(dateStr, {
       day: '2-digit',
       month: 'long',
       year: 'numeric'

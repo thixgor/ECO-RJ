@@ -4,6 +4,7 @@ import { certificateService, courseService, userService } from '../../services/a
 import { Certificate, User, Course } from '../../types';
 import Loading from '../../components/common/Loading';
 import toast from 'react-hot-toast';
+import { formatarData } from '../../utils/datetime';
 
 const AdminCertificates: React.FC = () => {
   const [certificates, setCertificates] = useState<Certificate[]>([]);
@@ -154,7 +155,7 @@ const AdminCertificates: React.FC = () => {
   };
 
   const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('pt-BR');
+    return formatarData(date);
   };
 
   const formatHours = (hours: number) => {
