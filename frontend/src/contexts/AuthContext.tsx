@@ -86,19 +86,33 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, [token, refreshUser]);
 
+  // Guarda o token e carrega o perfil completo. Se o perfil falhar, desfaz o
+  // token gravado: sem isso a aplicação ficava "meio logada" (token salvo, nenhum
+  // usuário carregado), estado em que nada funciona e nem a tela de login sai.
+  const armazenarSessao = async (novoToken: string) => {
+    localStorage.setItem('token', novoToken);
+    setToken(novoToken);
+
+    try {
+      const userResponse = await authService.getMe();
+      setUser(userResponse.data);
+      localStorage.setItem('user', JSON.stringify(userResponse.data));
+    } catch (error) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      setToken(null);
+      setUser(null);
+      throw error;
+    }
+  };
+
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
       const response = await authService.login(email, password);
       const data: AuthResponse = response.data;
 
-      localStorage.setItem('token', data.token);
-      setToken(data.token);
-
-      // Fetch full user data
-      const userResponse = await authService.getMe();
-      setUser(userResponse.data);
-      localStorage.setItem('user', JSON.stringify(userResponse.data));
+      await armazenarSessao(data.token);
     } finally {
       setIsLoading(false);
     }
@@ -110,13 +124,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const response = await authService.register(data);
       const authData = response.data;
 
-      localStorage.setItem('token', authData.token);
-      setToken(authData.token);
-
-      // Fetch full user data
-      const userResponse = await authService.getMe();
-      setUser(userResponse.data);
-      localStorage.setItem('user', JSON.stringify(userResponse.data));
+      await armazenarSessao(authData.token);
 
       // Retornar token de recuperação para exibição no modal
       return {

@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
 import User from '../models/User';
+import { getJwtSecret } from '../config/jwt';
 
 /**
  * Client Upload do Vercel Blob (arquivos grandes, > 4.5 MB).
@@ -77,7 +78,7 @@ export const handleBlobUpload = async (req: Request, res: Response) => {
         try {
           const decoded = jwt.verify(
             clientPayload,
-            process.env.JWT_SECRET || 'secret'
+            getJwtSecret()
           ) as { id: string };
           userId = decoded.id;
         } catch {

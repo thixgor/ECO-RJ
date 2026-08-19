@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import User from '../models/User';
 import { validateCRM, validateUF } from '../utils/validators';
 import { ensureCriticalUserIndexes } from '../config/database-indexes';
+import { getJwtSecret } from '../config/jwt';
 import { AuthRequest } from '../middleware/auth';
 
 const TIPOS_VALIDOS = ['Médico', 'Residente', 'Acadêmico de Medicina'];
@@ -12,6 +13,29 @@ const UFS_VALIDAS = [
   'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN',
   'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
 ];
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const SENHA_MINIMA = 6;
+const MAX_IPS_REGISTRADOS = 10;
+
+// Normaliza o e-mail vindo do cliente. Teclados de celular costumam anexar
+// espaços e capitalizar a primeira letra automaticamente.
+const normalizarEmail = (valor: unknown): string =>
+  typeof valor === 'string' ? valor.trim().toLowerCase() : '';
+
+// Normaliza o token de recuperação: o usuário copia do arquivo .txt e o valor
+// costuma chegar com espaços, quebras de linha ou hífens de formatação.
+const normalizarToken = (valor: unknown): string =>
+  typeof valor === 'string' ? valor.replace(/[^a-zA-Z0-9]/g, '').toUpperCase() : '';
+
+// Traduz erros de validação do Mongoose para uma mensagem legível.
+// Sem isso, senha curta ou e-mail malformado caíam no catch genérico e o
+// usuário recebia 500 "Erro ao criar conta" sem saber o que corrigir.
+const validationErrorMessage = (error: any): string | null => {
+  if (!error || error.name !== 'ValidationError' || !error.errors) return null;
+  const primeiro: any = Object.values(error.errors)[0];
+  return primeiro?.message || 'Dados inválidos';
+};
 
 // Identifica o campo de um erro de chave duplicada (E11000) do MongoDB
 const duplicateKeyField = (error: any): string | null => {
@@ -28,7 +52,7 @@ const duplicateKeyField = (error: any): string | null => {
 
 // Gerar JWT
 const generateToken = (id: string): string => {
-  return jwt.sign({ id }, process.env.JWT_SECRET || 'secret', {
+  return jwt.sign({ id }, getJwtSecret(), {
     expiresIn: (process.env.JWT_EXPIRES_IN || '7d') as any
   });
 };
@@ -67,6 +91,20 @@ export const register = async (req: Request, res: Response) => {
     // Validações básicas
     if (!email || !password || !nomeCompleto) {
       return res.status(400).json({ message: 'Nome, e-mail e senha são obrigatórios' });
+    }
+
+    const emailNormalizado = normalizarEmail(email);
+    if (!EMAIL_REGEX.test(emailNormalizado)) {
+      return res.status(400).json({ message: 'Digite um e-mail válido' });
+    }
+
+    if (typeof password !== 'string' || password.length < SENHA_MINIMA) {
+      return res.status(400).json({ message: `A senha deve ter no mínimo ${SENHA_MINIMA} caracteres` });
+    }
+
+    const nomeNormalizado = String(nomeCompleto).trim();
+    if (nomeNormalizado.length < 3) {
+      return res.status(400).json({ message: 'Informe seu nome completo' });
     }
 
     // Estado é obrigatório e vem antes de tudo
@@ -128,7 +166,7 @@ export const register = async (req: Request, res: Response) => {
     }
 
     // Verificar se email já existe
-    const emailExists = await User.findOne({ email: email.toLowerCase() });
+    const emailExists = await User.findOne({ email: emailNormalizado });
     if (emailExists) {
       return res.status(400).json({ message: 'Este e-mail já está cadastrado' });
     }
@@ -147,9 +185,9 @@ export const register = async (req: Request, res: Response) => {
     // Criar usuário. O CPF não é coletado aqui: ele é vinculado depois, a partir
     // do CPF usado na compra (checkout).
     const novoUsuario = {
-      email: email.toLowerCase(),
+      email: emailNormalizado,
       password,
-      nomeCompleto,
+      nomeCompleto: nomeNormalizado,
       estado: String(estado).toUpperCase(),
       tipoUsuario,
       ...dadosPerfil,
@@ -189,6 +227,12 @@ export const register = async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('Erro no registro:', error);
 
+    // Erros de validação do schema viram 400 com a mensagem real
+    const validacao = validationErrorMessage(error);
+    if (validacao) {
+      return res.status(400).json({ message: validacao });
+    }
+
     // Tratar erros de duplicação do MongoDB
     const field = duplicateKeyField(error);
     if (field) {
@@ -224,8 +268,13 @@ export const login = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'E-mail e senha são obrigatórios' });
     }
 
+    const emailNormalizado = normalizarEmail(email);
+    if (!emailNormalizado || typeof password !== 'string') {
+      return res.status(401).json({ message: 'E-mail ou senha incorretos' });
+    }
+
     // Buscar usuário
-    const user = await User.findOne({ email: email.toLowerCase() });
+    const user = await User.findOne({ email: emailNormalizado });
     if (!user) {
       return res.status(401).json({ message: 'E-mail ou senha incorretos' });
     }
@@ -241,13 +290,24 @@ export const login = async (req: Request, res: Response) => {
       return res.status(401).json({ message: 'E-mail ou senha incorretos' });
     }
 
-    // Atualizar último login e IP
+    // Registrar último login e IP.
+    // Feito com updateOne (em vez de user.save()) por dois motivos: não revalida o
+    // documento inteiro — contas antigas com campos fora do schema atual travariam
+    // o login com erro 500 — e mantém apenas os últimos acessos, já que a lista de
+    // IPs crescia indefinidamente a cada rede nova (celular troca de IP o tempo todo).
     const ip = req.ip || req.socket.remoteAddress || 'unknown';
-    user.ultimoLogin = new Date();
-    if (!user.ipsAcesso.includes(ip)) {
-      user.ipsAcesso.push(ip);
+    const ipsAtualizados = [ip, ...(user.ipsAcesso || []).filter((registrado) => registrado !== ip)]
+      .slice(0, MAX_IPS_REGISTRADOS);
+
+    try {
+      await User.updateOne(
+        { _id: user._id },
+        { $set: { ultimoLogin: new Date(), ipsAcesso: ipsAtualizados } }
+      );
+    } catch (err: any) {
+      // Falha ao registrar o acesso não pode impedir o login de quem já se autenticou
+      console.error('Não foi possível registrar o acesso do usuário:', err?.message || err);
     }
-    await user.save();
 
     // Gerar token
     const token = generateToken(user._id.toString());
@@ -359,8 +419,8 @@ export const changePassword = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: 'Senha atual e nova senha são obrigatórias' });
     }
 
-    if (novaSenha.length < 6) {
-      return res.status(400).json({ message: 'Nova senha deve ter no mínimo 6 caracteres' });
+    if (typeof novaSenha !== 'string' || novaSenha.length < SENHA_MINIMA) {
+      return res.status(400).json({ message: `Nova senha deve ter no mínimo ${SENHA_MINIMA} caracteres` });
     }
 
     const user = await User.findById(req.user?._id);
@@ -394,24 +454,24 @@ export const resetPasswordWithToken = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'E-mail, token de recuperação e nova senha são obrigatórios' });
     }
 
-    if (novaSenha.length < 6) {
-      return res.status(400).json({ message: 'Nova senha deve ter no mínimo 6 caracteres' });
+    if (typeof novaSenha !== 'string' || novaSenha.length < SENHA_MINIMA) {
+      return res.status(400).json({ message: `Nova senha deve ter no mínimo ${SENHA_MINIMA} caracteres` });
     }
 
-    // Buscar usuário pelo email
-    const user = await User.findOne({ email: email.toLowerCase() });
-    if (!user) {
-      return res.status(400).json({ message: 'Token inválido. Verifique as informações e tente novamente.' });
+    // Mensagem única para qualquer falha de identificação: mensagens diferentes
+    // permitiriam descobrir quais e-mails possuem conta na plataforma.
+    const TOKEN_INVALIDO = 'Token inválido. Verifique as informações e tente novamente.';
+
+    const user = await User.findOne({ email: normalizarEmail(email) });
+    if (!user || !user.tokenRecuperacao) {
+      return res.status(400).json({ message: TOKEN_INVALIDO });
     }
 
-    // Verificar se o usuário tem token de recuperação
-    if (!user.tokenRecuperacao) {
-      return res.status(400).json({ message: 'Token de recuperação não configurado para este usuário. Entre em contato com o suporte.' });
-    }
-
-    // Verificar se o token corresponde (comparação case-insensitive)
-    if (user.tokenRecuperacao.toUpperCase() !== tokenRecuperacao.toUpperCase()) {
-      return res.status(400).json({ message: 'Token inválido. Verifique as informações e tente novamente.' });
+    // O token é copiado do arquivo .txt baixado no cadastro, então costuma vir com
+    // espaços, quebras de linha ou hífens — normaliza antes de comparar.
+    const tokenInformado = normalizarToken(tokenRecuperacao);
+    if (!tokenInformado || normalizarToken(user.tokenRecuperacao) !== tokenInformado) {
+      return res.status(400).json({ message: TOKEN_INVALIDO });
     }
 
     // Verificar se a conta está ativa

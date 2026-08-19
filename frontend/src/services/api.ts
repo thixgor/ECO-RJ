@@ -16,15 +16,30 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Rotas onde um 401 significa "credencial errada agora", e não "sessão expirou".
+// Sem esta exceção, errar a senha enquanto havia um token antigo no navegador
+// limpava a sessão e recarregava a página — o usuário nunca chegava a ver a
+// mensagem "E-mail ou senha incorretos" e ainda era deslogado da conta atual.
+const ROTAS_DE_CREDENCIAL = ['/auth/login', '/auth/register', '/auth/reset-password'];
+
+const ehRotaDeCredencial = (url?: string) =>
+  !!url && ROTAS_DE_CREDENCIAL.some((rota) => url.includes(rota));
+
 // Interceptor para tratar erros
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Só redireciona para login se tinha token (estava logado e expirou)
-    if (error.response?.status === 401 && localStorage.getItem('token')) {
+    // Só redireciona para login se a sessão salva expirou durante a navegação
+    if (
+      error.response?.status === 401 &&
+      localStorage.getItem('token') &&
+      !ehRotaDeCredencial(error.config?.url)
+    ) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      window.location.href = '/login';
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }
