@@ -41,8 +41,8 @@ export function validateCRM(crm: string): boolean {
   // Remove caracteres não numéricos
   crm = crm.replace(/[^\d]/g, '');
 
-  // CRM deve ter entre 4 e 7 dígitos
-  return crm.length >= 4 && crm.length <= 7;
+  // CRM deve ter entre 4 e 10 dígitos
+  return crm.length >= 4 && crm.length <= 10;
 }
 
 // Lista de UFs válidas

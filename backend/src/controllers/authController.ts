@@ -130,7 +130,7 @@ export const register = async (req: Request, res: Response) => {
         return res.status(400).json({ message: 'Informe o CRM' });
       }
       if (!validateCRM(crm)) {
-        return res.status(400).json({ message: 'CRM inválido. Deve conter de 4 a 7 dígitos numéricos.' });
+        return res.status(400).json({ message: 'CRM inválido. Deve conter de 4 a 10 dígitos numéricos.' });
       }
       const localCrm = crmLocal || estado;
       if (!validateUF(localCrm)) {
