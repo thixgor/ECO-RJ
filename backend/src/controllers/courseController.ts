@@ -33,19 +33,24 @@ export const getCourses = async (req: AuthRequest, res: Response) => {
       Course.countDocuments(query)
     ]);
 
-    // Calcular duração total para cada curso
-    const coursesWithDuration = await Promise.all(
-      courses.map(async (course) => {
-        const duracaoResult = await Lesson.aggregate([
-          { $match: { cursoId: course._id } },
-          { $group: { _id: null, total: { $sum: '$duracao' } } }
-        ]);
-        const duracaoTotal = duracaoResult.length > 0 ? duracaoResult[0].total : 0;
-        const courseObj = course.toObject();
-        (courseObj as any).duracaoTotal = duracaoTotal;
-        return courseObj;
-      })
+    // Duração total de cada curso em UMA agregação.
+    //
+    // Antes era uma agregação por curso: a listagem pública (que é aberta a
+    // qualquer visitante e carrega até 1000 cursos por página) disparava uma ida
+    // ao banco por item, todas na mesma requisição.
+    const duracoes = await Lesson.aggregate([
+      { $match: { cursoId: { $in: courses.map((c) => c._id) } } },
+      { $group: { _id: '$cursoId', total: { $sum: '$duracao' } } }
+    ]);
+    const duracaoPorCurso = new Map<string, number>(
+      duracoes.map((d: any) => [String(d._id), d.total || 0])
     );
+
+    const coursesWithDuration = courses.map((course) => {
+      const courseObj = course.toObject();
+      (courseObj as any).duracaoTotal = duracaoPorCurso.get(String(course._id)) || 0;
+      return courseObj;
+    });
 
     res.json({
       courses: coursesWithDuration,
@@ -115,18 +120,16 @@ export const getCourseById = async (req: AuthRequest, res: Response) => {
       temAcessoConteudo = userCargo === 'Aluno';
     }
 
-    // Contar total de aulas e materiais
-    const totalAulas = await Lesson.countDocuments({ cursoId: course._id });
-    const totalMateriais = await Lesson.countDocuments({ cursoId: course._id, tipo: 'material' });
-    const totalAulasRegulares = await Lesson.countDocuments({
-      cursoId: course._id,
-      tipo: { $in: ['ao_vivo', 'gravada'] }
-    });
-
-    // Calcular duração total do curso (soma de todas as durações das aulas)
-    const duracaoResult = await Lesson.aggregate([
-      { $match: { cursoId: course._id } },
-      { $group: { _id: null, total: { $sum: '$duracao' } } }
+    // Contagens e duração do curso: quatro consultas independentes que eram
+    // executadas em sequência, uma esperando a anterior. Agora vão juntas.
+    const [totalAulas, totalMateriais, totalAulasRegulares, duracaoResult] = await Promise.all([
+      Lesson.countDocuments({ cursoId: course._id }),
+      Lesson.countDocuments({ cursoId: course._id, tipo: 'material' }),
+      Lesson.countDocuments({ cursoId: course._id, tipo: { $in: ['ao_vivo', 'gravada'] } }),
+      Lesson.aggregate([
+        { $match: { cursoId: course._id } },
+        { $group: { _id: null, total: { $sum: '$duracao' } } }
+      ])
     ]);
     const duracaoTotal = duracaoResult.length > 0 ? duracaoResult[0].total : 0;
 

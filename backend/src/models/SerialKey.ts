@@ -79,4 +79,21 @@ SerialKeySchema.statics.generateKey = function(): string {
   return `ECO-${yearMonth}-${randomPart}`; // Ex: ECO-202601-A7K9B2X5
 };
 
+
+/*
+ * Índices declarados NO SCHEMA de propósito.
+ *
+ * `createDatabaseIndexes()` (config/database-indexes.ts) só roda dentro de
+ * `app.listen`, que nunca é executado na Vercel — em produção a aplicação é
+ * serverless. Estes índices, portanto, nunca chegavam ao banco de produção e as
+ * consultas abaixo varriam a coleção inteira. Declarados aqui, o Mongoose os
+ * cria sozinho no primeiro uso do model, em qualquer forma de hospedagem.
+ */
+// Filtros do painel de chaves e a validação no momento da ativação
+SerialKeySchema.index({ status: 1, validade: 1 });
+SerialKeySchema.index({ cargoAtribuido: 1 });
+SerialKeySchema.index({ usadaPor: 1 });
+SerialKeySchema.index({ cursoRestrito: 1 });
+SerialKeySchema.index({ createdAt: -1 });
+
 export default mongoose.model<ISerialKey>('SerialKey', SerialKeySchema);

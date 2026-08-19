@@ -124,4 +124,18 @@ const ExerciseSchema = new Schema<IExercise>(
   }
 );
 
+
+/*
+ * Índices declarados NO SCHEMA de propósito.
+ *
+ * `createDatabaseIndexes()` (config/database-indexes.ts) só roda dentro de
+ * `app.listen`, que nunca é executado na Vercel — em produção a aplicação é
+ * serverless. Estes índices, portanto, nunca chegavam ao banco de produção e as
+ * consultas abaixo varriam a coleção inteira. Declarados aqui, o Mongoose os
+ * cria sozinho no primeiro uso do model, em qualquer forma de hospedagem.
+ */
+ExerciseSchema.index({ aulaId: 1 });
+ExerciseSchema.index({ tipo: 1 });
+ExerciseSchema.index({ createdAt: -1 });
+
 export default mongoose.model<IExercise>('Exercise', ExerciseSchema);

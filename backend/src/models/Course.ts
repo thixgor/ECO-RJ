@@ -143,12 +143,16 @@ export function isCourseExpired(course: { dataTermino?: Date | string | null } |
   return Date.now() > limite.getTime();
 }
 
-/**
- * Instante em que o curso efetivamente expira (fim do dia de término em
- * Brasília). Serve para montar queries — ex.: "cursos já encerrados".
+/*
+ * Índices declarados NO SCHEMA de propósito.
+ *
+ * `createDatabaseIndexes()` (config/database-indexes.ts) só roda dentro de
+ * `app.listen`, que nunca é executado na Vercel — em produção a aplicação é
+ * serverless. Estes índices, portanto, nunca chegavam ao banco de produção e as
+ * consultas abaixo varriam a coleção inteira. Declarados aqui, o Mongoose os
+ * cria sozinho no primeiro uso do model, em qualquer forma de hospedagem.
  */
-export function courseExpiryInstant(dataTermino?: Date | string | null): Date | null {
-  return fimDoDiaBR(dataTermino);
-}
+CourseSchema.index({ ativo: 1, ordem: 1 });
+CourseSchema.index({ dataInicio: -1 });
 
 export default mongoose.model<ICourse>('Course', CourseSchema);

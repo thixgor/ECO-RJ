@@ -89,4 +89,18 @@ const ForumTopicSchema = new Schema<IForumTopic>(
 // Index for searching
 ForumTopicSchema.index({ titulo: 'text', conteudo: 'text' });
 
+
+/*
+ * Índices declarados NO SCHEMA de propósito.
+ *
+ * `createDatabaseIndexes()` (config/database-indexes.ts) só roda dentro de
+ * `app.listen`, que nunca é executado na Vercel — em produção a aplicação é
+ * serverless. Estes índices, portanto, nunca chegavam ao banco de produção e as
+ * consultas abaixo varriam a coleção inteira. Declarados aqui, o Mongoose os
+ * cria sozinho no primeiro uso do model, em qualquer forma de hospedagem.
+ */
+ForumTopicSchema.index({ cursoId: 1, createdAt: -1 });
+ForumTopicSchema.index({ autor: 1, createdAt: -1 });
+ForumTopicSchema.index({ fixado: -1, createdAt: -1 });
+
 export default mongoose.model<IForumTopic>('ForumTopic', ForumTopicSchema);

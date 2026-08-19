@@ -195,9 +195,19 @@ export const fimDoDiaBR = (valor: Date | string | number | null | undefined): Da
   return instanteBR(p.ano, p.mes, p.dia, 23, 59, 59, 999);
 };
 
-/** Início (00:00:00.000 em Brasília) do dia a que o instante pertence. */
-export const inicioDoDiaBR = (valor: Date | string | number = new Date()): Date => {
-  const p = partesBR(valor)!;
+/**
+ * Primeiro milissegundo do dia (em Brasília) a que a data pertence.
+ * Simétrico a `fimDoDiaBR`, inclusive no tratamento de datas puras.
+ */
+export const inicioDoDiaBR = (valor: Date | string | number | null | undefined): Date | null => {
+  const d = paraData(valor);
+  if (!d) return null;
+
+  if (ehDataPura(d)) {
+    return instanteBR(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate(), 0, 0, 0, 0);
+  }
+
+  const p = partesBR(d)!;
   return instanteBR(p.ano, p.mes, p.dia, 0, 0, 0, 0);
 };
 
@@ -215,8 +225,14 @@ export const meiaNoiteUTCDeHojeBR = (agora: Date = new Date()): Date => {
   return new Date(Date.UTC(p.ano, p.mes - 1, p.dia, 0, 0, 0, 0));
 };
 
-/** Intervalo `[início, fim]` do dia corrente em Brasília. */
+/**
+ * Intervalo `[início, fim]` do dia corrente em Brasília.
+ *
+ * Trabalha sempre sobre o relógio de Brasília do instante recebido — nunca pela
+ * regra de "data pura" —, porque aqui o argumento é sempre um momento real.
+ */
 export const intervaloDoDiaBR = (valor: Date | string | number = new Date()): { inicio: Date; fim: Date } => {
-  const inicio = inicioDoDiaBR(valor);
+  const p = partesBR(valor)!;
+  const inicio = instanteBR(p.ano, p.mes, p.dia, 0, 0, 0, 0);
   return { inicio, fim: new Date(inicio.getTime() + 24 * 60 * 60 * 1000 - 1) };
 };

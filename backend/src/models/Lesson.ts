@@ -171,4 +171,23 @@ LessonSchema.pre('save', function (next) {
   next();
 });
 
+
+/*
+ * Índices declarados NO SCHEMA de propósito.
+ *
+ * `createDatabaseIndexes()` (config/database-indexes.ts) só roda dentro de
+ * `app.listen`, que nunca é executado na Vercel — em produção a aplicação é
+ * serverless. Estes índices, portanto, nunca chegavam ao banco de produção e as
+ * consultas abaixo varriam a coleção inteira. Declarados aqui, o Mongoose os
+ * cria sozinho no primeiro uso do model, em qualquer forma de hospedagem.
+ */
+// Listagem das aulas de um curso (getLessonsByCourse, painel admin)
+LessonSchema.index({ cursoId: 1, ordem: 1 });
+LessonSchema.index({ cursoId: 1, topicoId: 1, ordem: 1 });
+LessonSchema.index({ cursoId: 1, subtopicoId: 1, ordem: 1 });
+// Aulas ao vivo do dia / dos próximos 7 dias
+LessonSchema.index({ tipo: 1, status: 1, dataHoraInicio: 1 });
+LessonSchema.index({ status: 1 });
+LessonSchema.index({ createdAt: -1 });
+
 export default mongoose.model<ILesson>('Lesson', LessonSchema);

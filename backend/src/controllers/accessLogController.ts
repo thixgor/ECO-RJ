@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import AccessLog from '../models/AccessLog';
 import SystemSettings from '../models/SystemSettings';
 import { AuthRequest } from '../middleware/auth';
+import { TIMEZONE_BR, fimDoDiaBR, inicioDoDiaBR } from '../utils/datetime';
 
 // Helper para verificar se logs estão habilitados (busca do banco)
 const isLogsEnabled = async (): Promise<boolean> => {
@@ -77,11 +78,16 @@ export const getAccessLogs = async (req: Request, res: Response) => {
     if (cursoId) query.cursoId = cursoId;
     if (aulaId) query.aulaId = aulaId;
 
-    // Filtro de data
+    // Filtro de data.
+    //
+    // O painel envia apenas o dia (`2026-08-19`), que vira meia-noite UTC — ou
+    // seja, 21h do dia anterior em Brasília. Filtrar "de 19/08 até 19/08"
+    // devolvia só as três horas entre 21h de 18/08 e a meia-noite. O intervalo
+    // passa a cobrir o dia inteiro no fuso de Brasília.
     if (dataInicio || dataFim) {
       query.createdAt = {};
-      if (dataInicio) query.createdAt.$gte = new Date(dataInicio as string);
-      if (dataFim) query.createdAt.$lte = new Date(dataFim as string);
+      if (dataInicio) query.createdAt.$gte = inicioDoDiaBR(dataInicio as string);
+      if (dataFim) query.createdAt.$lte = fimDoDiaBR(dataFim as string);
     }
 
     const skip = (Number(page) - 1) * Number(limit);
@@ -156,11 +162,13 @@ export const getAccessStats = async (req: Request, res: Response) => {
   try {
     const { dataInicio, dataFim } = req.query;
 
+    // Mesmo ajuste de `getAccessLogs`: o dia informado no painel cobre o dia
+    // inteiro em Brasília, não a fatia que sobra depois da meia-noite UTC.
     const matchStage: any = {};
     if (dataInicio || dataFim) {
       matchStage.createdAt = {};
-      if (dataInicio) matchStage.createdAt.$gte = new Date(dataInicio as string);
-      if (dataFim) matchStage.createdAt.$lte = new Date(dataFim as string);
+      if (dataInicio) matchStage.createdAt.$gte = inicioDoDiaBR(dataInicio as string);
+      if (dataFim) matchStage.createdAt.$lte = fimDoDiaBR(dataFim as string);
     }
 
     const [
@@ -189,7 +197,10 @@ export const getAccessStats = async (req: Request, res: Response) => {
         },
         {
           $group: {
-            _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+            // Agrupa pelo dia de BRASÍLIA. Sem `timezone`, o Mongo corta o dia à
+            // meia-noite UTC e todo acesso feito entre 21h e 0h era contabilizado
+            // no dia seguinte.
+            _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt', timezone: TIMEZONE_BR } },
             count: { $sum: 1 }
           }
         },

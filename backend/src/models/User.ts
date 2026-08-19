@@ -233,4 +233,24 @@ UserSchema.methods.comparePassword = async function (candidatePassword: string):
   return bcrypt.compare(candidatePassword, this.password);
 };
 
+
+/*
+ * Índices declarados NO SCHEMA de propósito.
+ *
+ * `createDatabaseIndexes()` (config/database-indexes.ts) só roda dentro de
+ * `app.listen`, que nunca é executado na Vercel — em produção a aplicação é
+ * serverless. Estes índices, portanto, nunca chegavam ao banco de produção e as
+ * consultas abaixo varriam a coleção inteira. Declarados aqui, o Mongoose os
+ * cria sozinho no primeiro uso do model, em qualquer forma de hospedagem.
+ */
+// Filtros e estatísticas do painel administrativo
+UserSchema.index({ cargo: 1 });
+UserSchema.index({ tipoUsuario: 1 });
+UserSchema.index({ estado: 1 });
+UserSchema.index({ ativo: 1 });
+UserSchema.index({ createdAt: -1 });
+UserSchema.index({ ultimoLogin: -1 });
+// "Meus cursos" e a busca por alunos de um curso
+UserSchema.index({ cursosInscritos: 1 });
+
 export default mongoose.model<IUser>('User', UserSchema);

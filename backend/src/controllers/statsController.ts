@@ -4,6 +4,7 @@ import Course from '../models/Course';
 import Lesson from '../models/Lesson';
 import Exercise from '../models/Exercise';
 import ExerciseAnswer from '../models/ExerciseAnswer';
+import { TIMEZONE_BR } from '../utils/datetime';
 import ForumTopic from '../models/ForumTopic';
 import SerialKey from '../models/SerialKey';
 
@@ -43,8 +44,10 @@ export const getGeneralStats = async (req: Request, res: Response) => {
         },
         {
           $group: {
+            // Semana no fuso de Brasília: sem `timezone`, um cadastro feito às
+            // 22h de sábado era contado na semana seguinte.
             _id: {
-              $dateToString: { format: '%Y-%U', date: '$createdAt' }
+              $dateToString: { format: '%Y-%U', date: '$createdAt', timezone: TIMEZONE_BR }
             },
             count: { $sum: 1 }
           }
@@ -54,23 +57,38 @@ export const getGeneralStats = async (req: Request, res: Response) => {
       ])
     ]);
 
-    // Calcular taxa de conclusão
-    const usersWithProgress = await User.find({
-      cursosInscritos: { $exists: true, $ne: [] }
-    }).select('cursosInscritos aulasAssistidas');
+    // Calcular taxa de conclusão.
+    //
+    // Antes, o laço fazia um `Course.findById` para CADA inscrição de CADA
+    // usuário, de forma sequencial: com 250 alunos em 2 cursos eram ~500 idas ao
+    // banco, uma esperando a outra, toda vez que o painel abria. Os cursos são
+    // poucos — são carregados de uma vez e consultados em memória. O conjunto de
+    // aulas de cada curso também vira um `Set`, trocando a busca linear por
+    // acesso direto.
+    const [usersWithProgress, cursos] = await Promise.all([
+      User.find({ cursosInscritos: { $exists: true, $ne: [] } })
+        .select('cursosInscritos aulasAssistidas')
+        .lean(),
+      Course.find().select('aulas').lean()
+    ]);
+
+    const aulasPorCurso = new Map<string, Set<string>>(
+      cursos.map((curso: any) => [
+        curso._id.toString(),
+        new Set((curso.aulas || []).map((a: any) => a.toString()))
+      ])
+    );
 
     let totalAulasInscritas = 0;
     let totalAulasAssistidas = 0;
 
     for (const user of usersWithProgress) {
+      const assistidas = (user.aulasAssistidas || []).map((a: any) => a.toString());
       for (const cursoId of user.cursosInscritos) {
-        const curso = await Course.findById(cursoId);
-        if (curso) {
-          totalAulasInscritas += curso.aulas.length;
-          totalAulasAssistidas += user.aulasAssistidas.filter((aulaId) =>
-            curso.aulas.some((a: any) => a.toString() === aulaId.toString())
-          ).length;
-        }
+        const aulasDoCurso = aulasPorCurso.get(cursoId.toString());
+        if (!aulasDoCurso) continue;
+        totalAulasInscritas += aulasDoCurso.size;
+        totalAulasAssistidas += assistidas.filter((id) => aulasDoCurso.has(id)).length;
       }
     }
 
