@@ -114,7 +114,12 @@ export async function fulfillMaterialOrder(orderId: string): Promise<void> {
       { _id: order.cupomAplicado.couponId },
       {
         $inc: { usosAtuais: 1 },
-        $addToSet: { emailsQueUsaram: order.compradorDados.email.toLowerCase().trim() }
+        // `$push`, não `$addToSet`: a lista CONTA os usos por e-mail, e o limite
+        // `usosPorEmail` é apurado somando as ocorrências. Com `$addToSet` o mesmo
+        // e-mail nunca aparecia duas vezes, então qualquer cupom com mais de um uso
+        // por pessoa bloqueava a segunda compra. A gravação já é idempotente pelo
+        // sinalizador `cupomContabilizado`, então nenhum uso é contado em duplicidade.
+        $push: { emailsQueUsaram: order.compradorDados.email.toLowerCase().trim() }
       }
     );
     order.cupomContabilizado = true;

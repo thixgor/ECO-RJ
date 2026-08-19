@@ -5,6 +5,7 @@ import PriceLot from '../models/PriceLot';
 import Coupon from '../models/Coupon';
 import { IOrderValores } from '../models/Order';
 import { IMaterial } from '../models/Material';
+import { fimDoDiaBR, inicioDoDiaBR } from '../utils/datetime';
 
 /** Arredonda para 2 casas decimais evitando erros de ponto flutuante. */
 export function round2(value: number): number {
@@ -47,11 +48,16 @@ export async function validateCoupon(
   if (!coupon) return { valido: false, motivo: 'Cupom inválido' };
   if (!coupon.ativo) return { valido: false, motivo: 'Cupom inativo' };
 
+  // As datas do cupom vêm de `<input type="date">` (meia-noite UTC). Comparadas
+  // direto com o instante atual, um cupom "válido até 19/08" morria às 21h de
+  // 18/08 e um que começava em 19/08 já valia desde as 21h de 18/08.
   const agora = new Date();
-  if (coupon.dataInicio && coupon.dataInicio > agora) {
+  const inicioValidade = inicioDoDiaBR(coupon.dataInicio);
+  const fimValidade = fimDoDiaBR(coupon.dataValidade);
+  if (inicioValidade && inicioValidade > agora) {
     return { valido: false, motivo: 'Cupom ainda não está válido' };
   }
-  if (coupon.dataValidade && coupon.dataValidade < agora) {
+  if (fimValidade && fimValidade < agora) {
     return { valido: false, motivo: 'Cupom expirado' };
   }
   if (coupon.usosMaximos > 0 && coupon.usosAtuais >= coupon.usosMaximos) {
@@ -172,11 +178,16 @@ export async function validateCouponForMaterial(
     return { valido: false, motivo: 'Cupom não válido para materiais' };
   }
 
+  // As datas do cupom vêm de `<input type="date">` (meia-noite UTC). Comparadas
+  // direto com o instante atual, um cupom "válido até 19/08" morria às 21h de
+  // 18/08 e um que começava em 19/08 já valia desde as 21h de 18/08.
   const agora = new Date();
-  if (coupon.dataInicio && coupon.dataInicio > agora) {
+  const inicioValidade = inicioDoDiaBR(coupon.dataInicio);
+  const fimValidade = fimDoDiaBR(coupon.dataValidade);
+  if (inicioValidade && inicioValidade > agora) {
     return { valido: false, motivo: 'Cupom ainda não está válido' };
   }
-  if (coupon.dataValidade && coupon.dataValidade < agora) {
+  if (fimValidade && fimValidade < agora) {
     return { valido: false, motivo: 'Cupom expirado' };
   }
   if (coupon.usosMaximos > 0 && coupon.usosAtuais >= coupon.usosMaximos) {
