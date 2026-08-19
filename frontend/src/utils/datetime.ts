@@ -37,11 +37,6 @@ const fmt = (opcoes: Intl.DateTimeFormatOptions, utc = false) =>
 
 const dataCurta = fmt({ day: '2-digit', month: '2-digit', year: 'numeric' });
 const dataCurtaUTC = fmt({ day: '2-digit', month: '2-digit', year: 'numeric' }, true);
-const dataLonga = fmt({ day: '2-digit', month: 'long', year: 'numeric' });
-const dataLongaUTC = fmt({ day: '2-digit', month: 'long', year: 'numeric' }, true);
-const dataMedia = fmt({ day: '2-digit', month: 'short', year: 'numeric' });
-const dataMediaUTC = fmt({ day: '2-digit', month: 'short', year: 'numeric' }, true);
-const mesAno = fmt({ month: 'long', year: 'numeric' });
 const dataHora = fmt({ day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
 const somenteHora = fmt({ hour: '2-digit', minute: '2-digit', hour12: false });
 
@@ -82,20 +77,6 @@ export const formatarData = (valor: Date | string | number | null | undefined): 
   return ehDataPura(d) ? dataCurtaUTC.format(d) : dataCurta.format(d);
 };
 
-/** `19 de agosto de 2026`. */
-export const formatarDataExtenso = (valor: Date | string | number | null | undefined): string => {
-  const d = paraData(valor);
-  if (!d) return '';
-  return ehDataPura(d) ? dataLongaUTC.format(d) : dataLonga.format(d);
-};
-
-/** `19 de ago. de 2026` — versão compacta para listas e tabelas. */
-export const formatarDataCurta = (valor: Date | string | number | null | undefined): string => {
-  const d = paraData(valor);
-  if (!d) return '';
-  return ehDataPura(d) ? dataMediaUTC.format(d) : dataMedia.format(d);
-};
-
 /** `dd/mm/aaaa HH:MM` no horário de Brasília. */
 export const formatarDataHora = (valor: Date | string | number | null | undefined): string => {
   const d = paraData(valor);
@@ -107,12 +88,6 @@ export const formatarDataHora = (valor: Date | string | number | null | undefine
 export const formatarHora = (valor: Date | string | number | null | undefined): string => {
   const d = paraData(valor);
   return d ? somenteHora.format(d) : '';
-};
-
-/** `agosto de 2026` — usado em "Última atualização" das páginas legais. */
-export const formatarMesAno = (valor: Date | string | number | null | undefined): string => {
-  const d = paraData(valor);
-  return d ? mesAno.format(d) : '';
 };
 
 /** Partes do calendário de Brasília para um instante. */
