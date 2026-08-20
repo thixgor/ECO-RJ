@@ -271,11 +271,8 @@ export async function cancelPayment(paymentId: string): Promise<boolean> {
   }
 }
 
-/** Busca um pagamento pelo ID diretamente na API do Mercado Pago (fonte da verdade). */
-export async function getPayment(paymentId: string): Promise<MpPaymentInfo | null> {
-  const config = buildConfig();
-  const paymentClient = new Payment(config);
-  const p: any = await paymentClient.get({ id: paymentId });
+/** Normaliza um pagamento cru da API do MP para o formato interno. */
+function mapPayment(p: any): MpPaymentInfo | null {
   if (!p || !p.id) return null;
   return {
     id: String(p.id),
@@ -289,4 +286,110 @@ export async function getPayment(paymentId: string): Promise<MpPaymentInfo | nul
     installments: p.installments,
     dateApproved: p.date_approved
   };
+}
+
+/** `true` quando o erro do SDK indica "pagamento inexistente" (HTTP 404). */
+function isNotFoundError(err: any): boolean {
+  const status = err?.status ?? err?.statusCode ?? err?.error?.status;
+  return Number(status) === 404;
+}
+
+/**
+ * Busca um pagamento pelo ID diretamente na API do Mercado Pago (fonte da verdade).
+ *
+ * Devolve `null` apenas quando o pagamento realmente não existe (404). Erros de
+ * rede/instabilidade são propagados de propósito: tratá-los como "não existe"
+ * faria o checkout criar uma segunda cobrança para o mesmo pedido.
+ */
+export async function getPayment(paymentId: string): Promise<MpPaymentInfo | null> {
+  const config = buildConfig();
+  const paymentClient = new Payment(config);
+  try {
+    const p: any = await paymentClient.get({ id: paymentId });
+    return mapPayment(p);
+  } catch (err) {
+    if (isNotFoundError(err)) return null;
+    throw err;
+  }
+}
+
+/**
+ * Lista os pagamentos criados para um pedido (`external_reference` = order._id).
+ *
+ * É a rede de segurança da reconciliação: quando a resposta do
+ * `createPayment` se perde (timeout, cold start, deploy no meio da requisição)
+ * o pedido fica SEM `paymentId` gravado — e nem o webhook (que casa pelo
+ * external_reference, mas só chega uma vez) nem o `/sync` conseguem recuperá-lo.
+ * Consultando por external_reference achamos o pagamento mesmo nesse caso.
+ */
+export async function searchPaymentsByExternalReference(externalReference: string): Promise<MpPaymentInfo[]> {
+  const config = buildConfig();
+  const paymentClient = new Payment(config);
+  const result: any = await paymentClient.search({
+    options: { external_reference: externalReference, sort: 'date_created', criteria: 'desc', limit: 20 }
+  });
+  const results: any[] = Array.isArray(result?.results) ? result.results : [];
+  return results.map(mapPayment).filter((p): p is MpPaymentInfo => !!p);
+}
+
+/**
+ * Reúne os pagamentos que o Mercado Pago conhece para um pedido.
+ *
+ * A consulta por `external_reference` é a que resolve o pedido sem `paymentId`
+ * gravado; o `getPayment` entra como complemento (e como plano B caso a busca
+ * por referência falhe).
+ *
+ * `buscaCompleta: false` (usado no `/sync`, que o comprador chama em polling)
+ * dispensa a busca por referência quando o pedido já tem `paymentId` — assim a
+ * página de status continua custando **uma** chamada por consulta, como antes.
+ * A reconciliação agendada usa sempre a busca completa.
+ */
+export async function collectOrderPayments(
+  orderId: string,
+  paymentId?: string,
+  options: { buscaCompleta?: boolean } = {}
+): Promise<MpPaymentInfo[]> {
+  const encontrados: MpPaymentInfo[] = [];
+  const buscaCompleta = options.buscaCompleta !== false;
+
+  if (buscaCompleta || !paymentId) {
+    try {
+      const porReferencia = await searchPaymentsByExternalReference(orderId);
+      encontrados.push(...porReferencia);
+    } catch (err) {
+      console.warn(`Busca de pagamentos por external_reference falhou (${orderId}):`, err);
+    }
+  }
+
+  if (paymentId && !encontrados.some((p) => String(p.id) === String(paymentId))) {
+    const direto = await getPayment(paymentId);
+    if (direto) encontrados.push(direto);
+  }
+
+  return encontrados;
+}
+
+/** Prioridade de um pagamento na reconciliação (maior = mais relevante). */
+function paymentRank(p: MpPaymentInfo): number {
+  switch (p.status) {
+    case 'approved': return 6;
+    case 'authorized': return 5;
+    case 'in_process':
+    case 'in_mediation': return 4;
+    case 'refunded':
+    case 'charged_back': return 3;
+    case 'pending': return 2;
+    case 'rejected': return 1;
+    default: return 0;
+  }
+}
+
+/**
+ * Escolhe o pagamento que deve valer para o pedido: o comprador pode ter feito
+ * várias tentativas (boleto abandonado, cartão recusado e depois Pix pago) e o
+ * que importa é o desfecho mais avançado — aprovado acima de tudo.
+ */
+export function pickRelevantPayment(payments: MpPaymentInfo[]): MpPaymentInfo | null {
+  if (!payments.length) return null;
+  return payments.reduce((best, cur) => (paymentRank(cur) > paymentRank(best) ? cur : best));
 }

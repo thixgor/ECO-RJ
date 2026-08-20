@@ -567,6 +567,11 @@ export const paymentService = {
 
     resetTerms: () => api.post('/payments/admin/config/reset-terms'),
 
+    // Reconsulta no Mercado Pago todos os pedidos pendentes e libera os que já
+    // foram pagos (mesma rotina que o cron externo executa automaticamente).
+    reconcile: (data?: { dias?: number; limite?: number }) =>
+      api.post('/payments/admin/reconcile', data || {}),
+
     getCoursesPricing: () => api.get('/payments/admin/courses-pricing'),
 
     updateCoursePricing: (id: string, data: {

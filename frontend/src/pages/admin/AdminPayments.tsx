@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   ShoppingBag, Tag, Layers, Settings as SettingsIcon, DollarSign,
   Search, RefreshCw, Loader2, Trash2, Plus, Eye, CheckCircle2,
-  BookOpen, Package, AlertTriangle, TrendingUp
+  BookOpen, Package, AlertTriangle, TrendingUp, RefreshCcwDot
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -39,6 +39,7 @@ const OrdersTab: React.FC = () => {
   const [origem, setOrigem] = useState<'' | 'curso' | 'material'>('');
   const [detail, setDetail] = useState<any>(null);
   const [reprocessing, setReprocessing] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -86,6 +87,31 @@ const OrdersTab: React.FC = () => {
       toast.error(e.response?.data?.message || 'Erro ao reprocessar');
     } finally {
       setReprocessing(false);
+    }
+  };
+
+  /**
+   * Reconsulta o Mercado Pago para TODOS os pedidos pendentes e aprova os que
+   * já foram pagos (quando o webhook não chegou). O cron externo faz isso
+   * sozinho de tempos em tempos — este botão é o disparo manual.
+   */
+  const reconcile = async () => {
+    setSyncing(true);
+    try {
+      const res = await paymentService.admin.reconcile();
+      const { pedidosVerificados, pedidosAtualizados, pedidosAprovados, entregasReprocessadas } = res.data;
+      if (pedidosAtualizados || entregasReprocessadas) {
+        toast.success(
+          `${pedidosAtualizados} pedido(s) atualizado(s) · ${pedidosAprovados} aprovado(s) · ${entregasReprocessadas} entrega(s) reprocessada(s)`
+        );
+      } else {
+        toast.success(`Nenhuma mudança: ${pedidosVerificados} pedido(s) pendente(s) continuam sem pagamento confirmado.`);
+      }
+      await load();
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || 'Erro ao sincronizar pagamentos');
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -170,6 +196,15 @@ const OrdersTab: React.FC = () => {
             ]}
           />
           <GlassButton variant="secondary" onClick={load} leftIcon={<RefreshCw className="w-4 h-4" />}>Atualizar</GlassButton>
+          <GlassButton
+            variant="primary"
+            onClick={reconcile}
+            disabled={syncing}
+            leftIcon={syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCcwDot className="w-4 h-4" />}
+            title="Reconsulta o Mercado Pago e aprova os pedidos que já foram pagos"
+          >
+            {syncing ? 'Sincronizando...' : 'Sincronizar pendentes'}
+          </GlassButton>
         </div>
 
         {loading ? (

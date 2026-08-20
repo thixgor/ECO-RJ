@@ -18,6 +18,8 @@ import {
   createPayment,
   cancelPayment,
   getPayment,
+  collectOrderPayments,
+  pickRelevantPayment,
   ThreeDsChallenge
 } from '../services/mercadoPagoService';
 import {
@@ -329,13 +331,36 @@ export const createCheckout = async (req: AuthRequest, res: Response) => {
   }
 };
 
+/**
+ * Um pagamento recebido é "obsoleto" quando o pedido já está aprovado e a
+ * notificação se refere a OUTRA tentativa de pagamento que não prosperou.
+ *
+ * Cenário real: o comprador gerou um boleto/Pix, desistiu e pagou no cartão.
+ * Dias depois o Mercado Pago notifica o cancelamento/expiração da cobrança
+ * antiga — aplicá-la reverteria um pedido pago para "cancelado" no painel.
+ * Estorno (`refunded`/`charged_back`) e o próprio pagamento do pedido continuam
+ * sendo aplicados normalmente.
+ */
+function isPagamentoObsoleto(order: any, payment: { id: string; status: string }): boolean {
+  if (order.status !== 'aprovado') return false;
+  if (order.mercadoPago?.paymentId && String(order.mercadoPago.paymentId) === String(payment.id)) return false;
+  return !['approved', 'refunded', 'charged_back', 'in_mediation'].includes(payment.status);
+}
+
 /** Persiste os dados de um pagamento MP no pedido e libera acesso se aprovado. */
-async function applyPaymentToOrder(order: any, payment: {
+export async function applyPaymentToOrder(order: any, payment: {
   id: string; status: string; statusDetail: string; transactionAmount: number;
   paymentMethodId?: string; paymentTypeId?: string; lastFourDigits?: string;
   installments?: number; dateApproved?: string;
   pixQrCode?: string; pixQrCodeBase64?: string; ticketUrl?: string; barcode?: string;
 }): Promise<OrderStatus> {
+  if (isPagamentoObsoleto(order, payment)) {
+    console.warn(
+      `Pedido ${order.numeroPedido} já aprovado — ignorando pagamento ${payment.id} (${payment.status}) de tentativa anterior.`
+    );
+    return order.status;
+  }
+
   order.mercadoPago.paymentId = payment.id;
   order.mercadoPago.status = payment.status;
   order.mercadoPago.statusDetail = payment.statusDetail;
@@ -631,11 +656,24 @@ export const syncOrderStatus = async (req: Request, res: Response) => {
   try {
     const order = await Order.findOne({ numeroPedido: req.params.numeroPedido });
     if (!order) return res.status(404).json({ message: 'Pedido não encontrado' });
+
     if (order.status === 'aprovado') {
-      return res.json({ status: order.status, entregue: order.entregue });
+      // Pago mas sem entrega (falha ao gerar a chave / liberar acesso): reprocessa.
+      if (!order.entregue) await fulfillOrder((order._id as any).toString());
+      const pago = await Order.findById(order._id);
+      return res.json({ status: pago?.status, entregue: pago?.entregue });
     }
-    if (order.mercadoPago.paymentId && isMercadoPagoConfigured()) {
-      const payment = await getPayment(order.mercadoPago.paymentId);
+
+    if (isMercadoPagoConfigured()) {
+      // Consulta por payment_id E por external_reference: o pedido pode ter
+      // ficado sem `paymentId` gravado (resposta do MP perdida) e, mesmo assim,
+      // ter um pagamento aprovado do lado do Mercado Pago.
+      const pagamentos = await collectOrderPayments(
+        (order._id as any).toString(),
+        order.mercadoPago?.paymentId,
+        { buscaCompleta: false }
+      );
+      const payment = pickRelevantPayment(pagamentos);
       if (payment) {
         await applyPaymentToOrder(order, payment);
       }

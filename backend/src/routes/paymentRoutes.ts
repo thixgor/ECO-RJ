@@ -22,6 +22,7 @@ import {
   updateCoursePricing,
   getCoursesPricing
 } from '../controllers/adminPaymentController';
+import { cronReconcilePayments, adminReconcilePayments } from '../controllers/cronController';
 import { protect, adminOnly, optionalAuth } from '../middleware/auth';
 
 const router = Router();
@@ -35,6 +36,10 @@ router.all('/webhook', mercadoPagoWebhook); // MP pode usar GET ou POST
 router.get('/order/:numeroPedido', getOrderStatus);
 router.post('/order/:numeroPedido/sync', syncOrderStatus);
 
+// ---- Cron externo (cron-job.org) — autenticado por CRON_SECRET ----
+// Reconcilia pedidos pendentes com o Mercado Pago (aceita GET e POST).
+router.all('/cron/reconcile', cronReconcilePayments);
+
 // ---- Usuário logado ----
 router.get('/my-orders', protect, getMyOrders);
 
@@ -46,6 +51,7 @@ router.get('/admin/stats-unified', protect, adminOnly, getUnifiedStats);
 router.get('/admin/config', protect, adminOnly, getAdminPaymentConfig);
 router.put('/admin/config', protect, adminOnly, updateAdminPaymentConfig);
 router.post('/admin/config/reset-terms', protect, adminOnly, resetTerms);
+router.post('/admin/reconcile', protect, adminOnly, adminReconcilePayments);
 router.get('/admin/courses-pricing', protect, adminOnly, getCoursesPricing);
 router.put('/admin/course/:id/pricing', protect, adminOnly, updateCoursePricing);
 router.get('/admin/orders/:id', protect, adminOnly, getOrderById);

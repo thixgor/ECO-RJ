@@ -19,6 +19,8 @@ import {
   createPayment,
   cancelPayment,
   getPayment,
+  collectOrderPayments,
+  pickRelevantPayment,
   ThreeDsChallenge
 } from '../services/mercadoPagoService';
 import {
@@ -451,13 +453,27 @@ export const createMaterialCheckout = async (req: AuthRequest, res: Response) =>
   }
 };
 
+/** Ver `isPagamentoObsoleto` em paymentController — mesma regra para materiais. */
+function isPagamentoObsoletoMaterial(order: any, payment: { id: string; status: string }): boolean {
+  if (order.status !== 'aprovado') return false;
+  if (order.mercadoPago?.paymentId && String(order.mercadoPago.paymentId) === String(payment.id)) return false;
+  return !['approved', 'refunded', 'charged_back', 'in_mediation'].includes(payment.status);
+}
+
 /** Persiste dados de um pagamento MP no pedido de material e entrega se aprovado. */
-async function applyMaterialPayment(order: any, payment: {
+export async function applyMaterialPayment(order: any, payment: {
   id: string; status: string; statusDetail: string; transactionAmount: number;
   paymentMethodId?: string; paymentTypeId?: string; lastFourDigits?: string;
   installments?: number; dateApproved?: string;
   pixQrCode?: string; pixQrCodeBase64?: string; ticketUrl?: string; barcode?: string;
 }): Promise<MaterialOrderStatus> {
+  if (isPagamentoObsoletoMaterial(order, payment)) {
+    console.warn(
+      `Pedido de material ${order.numeroPedido} já aprovado — ignorando pagamento ${payment.id} (${payment.status}) de tentativa anterior.`
+    );
+    return order.status;
+  }
+
   order.mercadoPago.paymentId = payment.id;
   order.mercadoPago.status = payment.status;
   order.mercadoPago.statusDetail = payment.statusDetail;
@@ -733,11 +749,23 @@ export const syncMaterialOrder = async (req: Request, res: Response) => {
   try {
     const order = await MaterialOrder.findOne({ numeroPedido: req.params.numeroPedido });
     if (!order) return res.status(404).json({ message: 'Pedido não encontrado' });
+
     if (order.status === 'aprovado') {
-      return res.json({ status: order.status, entregue: order.entregue });
+      // Pago mas sem entrega (falha ao gerar o acesso / enviar o e-mail): reprocessa.
+      if (!order.entregue) await fulfillMaterialOrder((order._id as any).toString());
+      const pago = await MaterialOrder.findById(order._id);
+      return res.json({ status: pago?.status, entregue: pago?.entregue });
     }
-    if (order.mercadoPago.paymentId && isMercadoPagoConfigured()) {
-      const payment = await getPayment(order.mercadoPago.paymentId);
+
+    if (isMercadoPagoConfigured()) {
+      // Consulta por payment_id E por external_reference — cobre o pedido que
+      // ficou sem `paymentId` gravado mas foi pago no Mercado Pago.
+      const pagamentos = await collectOrderPayments(
+        (order._id as any).toString(),
+        order.mercadoPago?.paymentId,
+        { buscaCompleta: false }
+      );
+      const payment = pickRelevantPayment(pagamentos);
       if (payment) {
         await applyMaterialPayment(order, payment);
       }

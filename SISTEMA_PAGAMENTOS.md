@@ -28,7 +28,8 @@ operacional, CPF obrigatório, aceite de termos e registro completo de compras.
 10. [Painel do usuário (/perfil)](#-painel-do-usuário-perfil)
 11. [Endpoints da API](#-endpoints-da-api)
 12. [Configuração do Mercado Pago (passo a passo)](#-configuração-do-mercado-pago-passo-a-passo)
-13. [Próximos passos](#-próximos-passos)
+13. [Reconciliação automática (cron-job.org)](#-reconciliação-automática-cron-joborg)
+14. [Próximos passos](#-próximos-passos)
 
 ---
 
@@ -73,6 +74,7 @@ toda a infraestrutura de serial keys já existente na plataforma.
 - `services/paymentMethodService.ts` — resolve e valida o **meio de pagamento escolhido** (crédito, débito, boleto, Pix) contra a config do admin, normaliza o endereço exigido pelo boleto e limita as parcelas por meio.
 - `services/emailService.ts` — e-mail transacional (nodemailer) com comprovante HTML + serial key + link de ativação. Degrada graciosamente sem SMTP.
 - `services/fulfillmentService.ts` — **entrega** do pedido (gera serial key, libera acesso, contabiliza cupom/lote, envia e-mail) — idempotente e com **claim atômico** anti-duplicação.
+- `services/reconciliationService.ts` — **reconciliação** dos pedidos pendentes (cursos + materiais) contra o Mercado Pago e reprocessamento de entregas presas. É a rede de segurança para o pedido "pago que ficou pendente" ([detalhes](#-reconciliação-automática-cron-joborg)).
 
 **Config**
 - `config/paymentConfig.ts` — configuração de pagamento (taxa, métodos, parcelas, termos, vendas ativas) persistida em `SystemSettings`. Contém o **texto padrão dos termos**.
@@ -82,6 +84,7 @@ toda a infraestrutura de serial keys já existente na plataforma.
 - `controllers/adminPaymentController.ts` — admin: pedidos, estatísticas, reprocessar entrega, config, preços por curso.
 - `controllers/couponController.ts` — CRUD de cupons.
 - `controllers/priceLotController.ts` — CRUD de lotes.
+- `controllers/cronController.ts` — rotina agendada: endpoint do **cron externo** (autenticado por `CRON_SECRET`) e a versão manual usada pelo botão "Sincronizar pendentes" do painel.
 
 **Rotas** (registradas em `routes/index.ts`)
 - `routes/paymentRoutes.ts` → `/api/payments/*`
@@ -117,6 +120,9 @@ MP_WEBHOOK_SECRET=xxxxxxxx            # Segredo de assinatura do webhook
 
 # URL pública da aplicação (back_urls, webhook e links de ativação)
 APP_BASE_URL=https://www.cursodeecocardiografia.com
+
+# Segredo da rotina agendada de reconciliação (cron-job.org) — ver seção própria
+CRON_SECRET=uma_chave_longa_e_aleatoria
 
 # SMTP (envio de comprovante e serial key)
 SMTP_HOST=smtp.seuprovedor.com
@@ -268,6 +274,8 @@ Ordem determinística (calculada **sempre no servidor**, nunca no cliente):
 - **Anti-abuso**: limite de pedidos pendentes por e-mail em janela curta; incremento de uso de cupom/lote **atômico** e idempotente.
 - **Credenciais do Mercado Pago apenas em variáveis de ambiente** — nunca no banco, nunca no front-end.
 - **PCI**: no Checkout Transparente os dados do cartão são digitados nos campos seguros do **Payment Brick** e **tokenizados no navegador pelo SDK do Mercado Pago** — o backend recebe apenas o **token**, nunca o número do cartão/CVV (mantém o nível **PCI SAQ-A**).
+- **Reconciliação agendada** com segredo próprio (`CRON_SECRET`, comparação em tempo constante) e desligada por padrão quando a variável não existe. A rotina apenas **consulta** o Mercado Pago — nunca cria cobrança.
+- **Notificação atrasada não reverte pedido pago**: o desfecho de uma tentativa antiga (boleto abandonado, cartão recusado) não muda o status de um pedido já aprovado — só estorno faz isso.
 - Serial key só é exposta na página pública de status para **convidados** (usuários logados recebem acesso direto na conta).
 
 ---
@@ -276,7 +284,7 @@ Ordem determinística (calculada **sempre no servidor**, nunca no cliente):
 
 Acesse **Admin → Pagamentos** (`/admin/pagamentos`):
 
-- **Pedidos** — lista com busca (pedido/nome/e-mail/CPF) e filtro por status; estatísticas de receita; detalhe do pedido (dados, valores, MP, serial key, aceite de termos); **reprocessar entrega / reenviar e-mail**.
+- **Pedidos** — lista com busca (pedido/nome/e-mail/CPF) e filtro por status; estatísticas de receita; detalhe do pedido (dados, valores, MP, serial key, aceite de termos); **reprocessar entrega / reenviar e-mail**; botão **"Sincronizar pendentes"**, que reconsulta o Mercado Pago e aprova na hora os pedidos que já foram pagos.
 - **Preços** — por curso: disponível para venda, **preço**, **validade do acesso** e **desconto ativado** (percentual/fixo).
 - **Cupons** — criar/editar/excluir: código, tipo, valor, validade, usos máximos, usos por e-mail, valor mínimo, curso específico.
 - **Lotes** — por curso: nome, preço, quantidade, ordem, ativo, quantidade vendida.
@@ -306,6 +314,11 @@ Nova aba **"Minhas Compras"**:
 | GET | `/api/payments/order/:numeroPedido` | Status público do pedido |
 | POST | `/api/payments/order/:numeroPedido/sync` | Reconsulta o pagamento (fallback) |
 
+### Rotina agendada (cron externo)
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| GET/POST | `/api/payments/cron/reconcile` | Reconcilia **todos** os pedidos pendentes com o Mercado Pago. Autenticado por `CRON_SECRET` |
+
 ### Usuário logado
 | Método | Rota | Descrição |
 |--------|------|-----------|
@@ -320,6 +333,7 @@ Nova aba **"Minhas Compras"**:
 | POST | `/api/payments/admin/orders/:id/refulfill` | Reprocessar entrega |
 | GET/PUT | `/api/payments/admin/config` | Config de pagamento |
 | POST | `/api/payments/admin/config/reset-terms` | Restaurar termos padrão |
+| POST | `/api/payments/admin/reconcile` | Sincronizar pendentes agora (botão do painel) |
 | GET | `/api/payments/admin/courses-pricing` | Cursos com config de venda |
 | PUT | `/api/payments/admin/course/:id/pricing` | Atualizar venda do curso |
 | GET/POST/PUT/DELETE | `/api/coupons` | CRUD de cupons |
@@ -343,11 +357,124 @@ Nova aba **"Minhas Compras"**:
 
 ---
 
+## ⏰ Reconciliação automática (cron-job.org)
+
+### O problema: "o cliente pagou, mas o pedido continua PENDENTE"
+
+O status de um pedido só mudava em duas situações: quando o **webhook** do
+Mercado Pago chegava, ou quando o **próprio comprador** estava com a página
+`/compra/status` aberta (que chama o `/sync`). Se as duas falham, o dinheiro
+entra e o pedido fica **"Pendente" para sempre** no painel — e o aluno não
+recebe o acesso.
+
+Isso acontece em cenários bem comuns:
+
+| Causa | O que acontece |
+|-------|----------------|
+| Webhook não cadastrado / URL errada no painel do MP | Nenhuma notificação chega |
+| `MP_WEBHOOK_SECRET` diferente do painel | Webhook recusado com 401 (assinatura inválida) |
+| Função serverless indisponível / deploy no momento do envio | Notificação perdida |
+| **Pix ou boleto pago depois** que o comprador fechou a página | O `/sync` nunca roda |
+| Resposta do `createPayment` perdida (timeout) | O pedido fica **sem `paymentId`** — nem o `/sync` recuperava |
+| Pagamento aprovado mas a entrega falhou | Pedido aprovado e **não entregue** |
+
+### A solução
+
+1. **Rotina de reconciliação** (`services/reconciliationService.ts`): varre os
+   pedidos de **cursos e materiais** em aberto e consulta o Mercado Pago (fonte
+   da verdade) por `payment_id` **e por `external_reference`** — é a consulta
+   por referência que recupera o pedido que ficou sem `paymentId`. Aprovou?
+   Libera o acesso na hora. Também **reprocessa entregas** de pedidos aprovados
+   que ficaram sem entregar.
+2. **Endpoint para o cron externo**: `GET|POST /api/payments/cron/reconcile`,
+   autenticado por `CRON_SECRET` (comparação em tempo constante).
+3. **Botão "Sincronizar pendentes"** em *Admin → Pagamentos → Pedidos*, para
+   disparar a mesma rotina na hora.
+4. **`/sync` reforçado**: a página de status também passou a consultar por
+   `external_reference` e a reprocessar a entrega de pedido pago e não entregue.
+5. **Proteção contra "des-aprovar" pedido pago**: a notificação atrasada de uma
+   tentativa antiga (ex.: o boleto abandonado depois de o cartão ser aprovado)
+   **não** reverte mais um pedido já aprovado.
+
+Tudo é **idempotente**: rodar a cada 15 minutos não gera chave duplicada, não
+entrega duas vezes e **não cobra ninguém de novo** (a rotina só consulta).
+
+### Passo a passo no cron-job.org
+
+1. Gere o segredo: `openssl rand -hex 32`.
+2. Cadastre no ambiente do servidor (Vercel → *Project → Settings → Environment
+   Variables*) a variável **`CRON_SECRET`** com esse valor e **faça o redeploy**.
+   *Sem essa variável o endpoint responde `503` e fica desligado — nunca aberto.*
+3. Em [cron-job.org](https://console.cron-job.org) → **Create cronjob**:
+   - **Title**: `ECO RJ — Reconciliar pagamentos`
+   - **URL**: `https://www.cursodeecocardiografia.com/api/payments/cron/reconcile`
+   - **Schedule**: a cada **15 minutos** (`Every 15 minutes`)
+   - **Advanced → Request method**: `POST` (o `GET` também funciona)
+   - **Advanced → Headers**: adicione
+     `Authorization: Bearer SEU_CRON_SECRET`
+   - **Enable job** e salvar.
+4. Use **Test run** para conferir: a resposta deve ser `200` com um JSON de resumo.
+
+> Prefira o segredo no **header** `Authorization`. A query `?token=` também é
+> aceita (útil em painéis que não deixam configurar headers), mas o valor fica
+> registrado no histórico de execuções do cron e nos logs de acesso.
+
+### Testando pelo terminal
+
+```bash
+# Recomendado (segredo no header)
+curl -X POST "https://www.cursodeecocardiografia.com/api/payments/cron/reconcile" \
+  -H "Authorization: Bearer SEU_CRON_SECRET"
+
+# Alternativa (segredo na URL)
+curl -X POST "https://www.cursodeecocardiografia.com/api/payments/cron/reconcile?token=SEU_CRON_SECRET"
+```
+
+Parâmetros opcionais (query): `?dias=30` (janela de varredura, 1–180) e
+`?limite=40` (máximo de pedidos por execução, 1–200). A execução também respeita
+um **orçamento de tempo** (20 s por padrão, ajustável em `RECONCILE_BUDGET_MS`)
+para caber no tempo máximo da função serverless: ao estourar, ela para e devolve
+`interrompidoPorTempo: true` — o que sobrou é varrido na execução seguinte, sem
+perder nada.
+
+Resposta:
+
+```json
+{
+  "ok": true,
+  "verificados": 12,
+  "atualizados": 2,
+  "aprovados": 2,
+  "entregasReprocessadas": 0,
+  "erros": 0,
+  "interrompidoPorTempo": false,
+  "duracaoMs": 2841,
+  "alteracoes": [
+    { "origem": "curso", "numeroPedido": "ECO-PED-20250105-A7K9B2X5",
+      "de": "pendente", "para": "aprovado", "paymentId": "1234567890", "entregue": true }
+  ]
+}
+```
+
+| Código | Significado |
+|--------|-------------|
+| `200` | Rodou (veja o resumo no corpo) |
+| `401` | Segredo ausente ou incorreto |
+| `503` | `CRON_SECRET` não configurado no servidor |
+
+> ⚠️ A reconciliação é uma **rede de segurança**, não substitui o webhook.
+> Mantenha a URL `https://SEU_DOMINIO/api/payments/webhook` cadastrada no painel
+> do Mercado Pago com o `MP_WEBHOOK_SECRET` correto — o webhook confirma em
+> segundos; o cron cobre o que escapar.
+
+---
+
 ## 🚀 Próximos passos
 
 **Recomendados antes de produção**
 - [ ] Configurar `MP_ACCESS_TOKEN`, `MP_PUBLIC_KEY`, `MP_WEBHOOK_SECRET`, `APP_BASE_URL` e SMTP no ambiente.
 - [ ] Cadastrar a URL do webhook no painel do Mercado Pago e testar em sandbox.
+- [ ] Configurar `CRON_SECRET` e o job de 15 em 15 minutos no cron-job.org (ver [Reconciliação automática](#-reconciliação-automática-cron-joborg)).
 - [ ] Definir preços/validade dos cursos à venda no admin.
 - [ ] Revisar o texto dos **Termos de Compra** com apoio jurídico.
 - [ ] Testar os 3 fluxos: logado, convidado e cupom 100% (cortesia).
@@ -358,7 +485,6 @@ Nova aba **"Minhas Compras"**:
 - [ ] **Notas fiscais** automáticas (integração com emissor de NF-e).
 - [ ] **Assinaturas/recorrência** (o SDK suporta `PreApproval`).
 - [ ] **Comprovante em PDF** anexado ao e-mail (hoje o comprovante vai no corpo do e-mail e é imprimível no /perfil).
-- [ ] **Reconciliação agendada** (cron) para pedidos pendentes que não receberam webhook.
 - [ ] **Rate limiting** dedicado (ex.: `express-rate-limit`) nas rotas públicas de pagamento.
 
 ---
