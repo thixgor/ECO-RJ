@@ -380,7 +380,7 @@ Status: Ativo desde a criação do banco de dados
 ## 🎯 FLUXO DE USUÁRIO - EXEMPLO PRÁTICO
 
 ### Cenário 1: Novo Usuário
-1. Acessa `www.cursodeecocardiografia.com`
+1. Acessa `www.ecorj.com`
 2. Clica em "Registrar"
 3. Preenche: Email, Senha, Nome, Profissão
 4. Recebe email de confirmação

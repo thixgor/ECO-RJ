@@ -119,7 +119,7 @@ MP_PUBLIC_KEY=APP_USR-xxxxxxxx        # Chave pública — OBRIGATÓRIA (usada p
 MP_WEBHOOK_SECRET=xxxxxxxx            # Segredo de assinatura do webhook
 
 # URL pública da aplicação (back_urls, webhook e links de ativação)
-APP_BASE_URL=https://www.cursodeecocardiografia.com
+APP_BASE_URL=https://www.ecorj.com
 
 # Segredo da rotina agendada de reconciliação (cron-job.org) — ver seção própria
 CRON_SECRET=uma_chave_longa_e_aleatoria
@@ -407,7 +407,7 @@ entrega duas vezes e **não cobra ninguém de novo** (a rotina só consulta).
    *Sem essa variável o endpoint responde `503` e fica desligado — nunca aberto.*
 3. Em [cron-job.org](https://console.cron-job.org) → **Create cronjob**:
    - **Title**: `ECO RJ — Reconciliar pagamentos`
-   - **URL**: `https://www.cursodeecocardiografia.com/api/payments/cron/reconcile`
+   - **URL**: `https://www.ecorj.com/api/payments/cron/reconcile`
    - **Schedule**: a cada **15 minutos** (`Every 15 minutes`)
    - **Advanced → Request method**: `POST` (o `GET` também funciona)
    - **Advanced → Headers**: adicione
@@ -423,11 +423,11 @@ entrega duas vezes e **não cobra ninguém de novo** (a rotina só consulta).
 
 ```bash
 # Recomendado (segredo no header)
-curl -X POST "https://www.cursodeecocardiografia.com/api/payments/cron/reconcile" \
+curl -X POST "https://www.ecorj.com/api/payments/cron/reconcile" \
   -H "Authorization: Bearer SEU_CRON_SECRET"
 
 # Alternativa (segredo na URL)
-curl -X POST "https://www.cursodeecocardiografia.com/api/payments/cron/reconcile?token=SEU_CRON_SECRET"
+curl -X POST "https://www.ecorj.com/api/payments/cron/reconcile?token=SEU_CRON_SECRET"
 ```
 
 Parâmetros opcionais (query): `?dias=30` (janela de varredura, 1–180) e

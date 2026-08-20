@@ -27,7 +27,7 @@ async function generateUniqueKey(): Promise<string> {
 }
 
 function getBaseUrl(): string {
-  return process.env.APP_BASE_URL || process.env.FRONTEND_URL || 'https://www.cursodeecocardiografia.com';
+  return process.env.APP_BASE_URL || process.env.FRONTEND_URL || 'https://www.ecorj.com';
 }
 
 /**

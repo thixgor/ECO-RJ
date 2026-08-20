@@ -226,7 +226,7 @@ export async function sendCourseEndedEmail(opts: {
   dataInicio?: Date | string | null;
   dataTermino?: Date | string | null;
 }): Promise<boolean> {
-  const linkPlataforma = (process.env.APP_BASE_URL || process.env.FRONTEND_URL || 'https://www.cursodeecocardiografia.com').replace(/\/+$/, '') + '/dashboard';
+  const linkPlataforma = (process.env.APP_BASE_URL || process.env.FRONTEND_URL || 'https://www.ecorj.com').replace(/\/+$/, '') + '/dashboard';
   const html = buildCourseEndedHtml({ ...opts, linkPlataforma });
   const subject = `ECO RJ · O curso ${opts.cursoTitulo} foi encerrado`;
   return sendMail(opts.to, subject, html);

@@ -93,7 +93,7 @@ function getClientIp(req: Request): string {
 }
 
 function getBaseUrl(): string {
-  return (process.env.APP_BASE_URL || process.env.FRONTEND_URL || 'https://www.cursodeecocardiografia.com').replace(/\/+$/, '');
+  return (process.env.APP_BASE_URL || process.env.FRONTEND_URL || 'https://www.ecorj.com').replace(/\/+$/, '');
 }
 
 async function generateNumeroPedido(): Promise<string> {
