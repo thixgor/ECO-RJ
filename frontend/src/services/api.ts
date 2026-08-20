@@ -565,6 +565,11 @@ export const paymentService = {
     // todos os pagamentos encontrados (útil quando "Sincronizar pendentes" não pega um caso).
     syncOrderMp: (id: string) => api.post(`/payments/admin/orders/${id}/sync-mp`),
 
+    // Libera o acesso sem confirmação do Mercado Pago (pagamento feito por fora
+    // do checkout). Fica registrado quem aprovou e o motivo, para auditoria.
+    approveManually: (id: string, motivo: string) =>
+      api.post(`/payments/admin/orders/${id}/approve-manually`, { motivo }),
+
     getConfig: () => api.get('/payments/admin/config'),
 
     updateConfig: (data: any) => api.put('/payments/admin/config', data),
@@ -661,6 +666,8 @@ export const materialService = {
     getStats: () => api.get('/materials/admin/stats'),
     refulfill: (id: string) => api.post(`/materials/admin/orders/${id}/refulfill`),
     syncOrderMp: (id: string) => api.post(`/materials/admin/orders/${id}/sync-mp`),
+    approveManually: (id: string, motivo: string) =>
+      api.post(`/materials/admin/orders/${id}/approve-manually`, { motivo }),
     deleteReview: (reviewId: string) => api.delete(`/materials/admin/reviews/${reviewId}`),
 
     // Acessos (quem pode ver o material)

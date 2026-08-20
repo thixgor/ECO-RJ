@@ -347,6 +347,42 @@ export const syncMaterialOrderWithMp = async (req: AuthRequest, res: Response) =
   }
 };
 
+/** Ver `approveOrderManually` em adminPaymentController — mesmo mecanismo para materiais. */
+// @desc    Aprovar pedido de material manualmente (liberação sem confirmação do MP)
+// @route   POST /api/materials/admin/orders/:id/approve-manually
+// @access  Private/Admin
+export const approveMaterialOrderManually = async (req: AuthRequest, res: Response) => {
+  try {
+    const motivo = String(req.body?.motivo || '').trim();
+    if (motivo.length < 5) {
+      return res.status(400).json({ message: 'Descreva o motivo da liberação manual (mínimo 5 caracteres)' });
+    }
+
+    const order = await MaterialOrder.findById(req.params.id);
+    if (!order) return res.status(404).json({ message: 'Pedido não encontrado' });
+    if (order.status === 'aprovado') {
+      return res.status(400).json({ message: 'Este pedido já está aprovado' });
+    }
+
+    order.status = 'aprovado';
+    if (!order.metodoPagamento) order.metodoPagamento = 'manual_admin';
+    order.aprovacaoManual = {
+      aprovadoPor: req.user?._id as any,
+      nomeAprovador: req.user?.nomeCompleto || req.user?.email || 'Admin',
+      motivo,
+      data: new Date()
+    };
+    await order.save();
+
+    await fulfillMaterialOrder((order._id as any).toString());
+    const atualizado = await MaterialOrder.findById(order._id);
+    res.json({ message: 'Pedido aprovado manualmente e acesso liberado', order: atualizado });
+  } catch (error) {
+    console.error('Erro ao aprovar pedido de material manualmente:', error);
+    res.status(500).json({ message: 'Erro ao aprovar pedido manualmente' });
+  }
+};
+
 // ==========================================================================
 //  ACESSOS (ENTITLEMENTS) — quem pode ver cada material
 // ==========================================================================

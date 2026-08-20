@@ -53,6 +53,13 @@ export interface IMaterialOrder extends Document {
     barcode?: string;
   };
   metodoPagamento?: string;
+  // Ver `aprovacaoManual` em Order — mesmo mecanismo para materiais.
+  aprovacaoManual?: {
+    aprovadoPor?: mongoose.Types.ObjectId;
+    nomeAprovador: string;
+    motivo: string;
+    data: Date;
+  };
   // Entrega / fulfillment
   entitlement?: mongoose.Types.ObjectId;
   serialKeyCodigo?: string;   // chave amigável de acesso (convidado)
@@ -125,6 +132,12 @@ const MaterialOrderSchema = new Schema<IMaterialOrder>(
       barcode: { type: String }
     },
     metodoPagamento: { type: String },
+    aprovacaoManual: {
+      aprovadoPor: { type: Schema.Types.ObjectId, ref: 'User' },
+      nomeAprovador: { type: String },
+      motivo: { type: String },
+      data: { type: Date }
+    },
     entitlement: { type: Schema.Types.ObjectId, ref: 'MaterialEntitlement' },
     serialKeyCodigo: { type: String },
     accessToken: { type: String, index: true },

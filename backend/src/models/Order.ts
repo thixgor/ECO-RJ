@@ -54,6 +54,14 @@ export interface IOrder extends Document {
     barcode?: string;
   };
   metodoPagamento?: string; // pix / credit_card / boleto / etc
+  // Aprovação manual (admin liberou o acesso sem confirmação automática do MP —
+  // ex.: pagamento feito fora do checkout, comprovante conferido manualmente).
+  aprovacaoManual?: {
+    aprovadoPor?: mongoose.Types.ObjectId;
+    nomeAprovador: string;
+    motivo: string;
+    data: Date;
+  };
   // Entrega / fulfillment
   serialKeyGerada?: mongoose.Types.ObjectId;
   serialKeyCodigo?: string;
@@ -144,6 +152,12 @@ const OrderSchema = new Schema<IOrder>(
     },
     metodoPagamento: {
       type: String
+    },
+    aprovacaoManual: {
+      aprovadoPor: { type: Schema.Types.ObjectId, ref: 'User' },
+      nomeAprovador: { type: String },
+      motivo: { type: String },
+      data: { type: Date }
     },
     serialKeyGerada: {
       type: Schema.Types.ObjectId,

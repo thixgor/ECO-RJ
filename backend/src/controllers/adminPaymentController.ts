@@ -179,6 +179,51 @@ export const syncOrderWithMp = async (req: AuthRequest, res: Response) => {
   }
 };
 
+/**
+ * Aprova um pedido MANUALMENTE, sem confirmação do Mercado Pago — para quando
+ * o comprador pagou por fora do checkout (Pix direto, outra conta/aplicação do
+ * MP) e o "Verificar no Mercado Pago" não encontra nenhum pagamento vinculado
+ * ao pedido. Libera o acesso na hora (mesmo caminho de entrega dos pedidos
+ * pagos) e registra QUEM aprovou e POR QUÊ, para auditoria.
+ *
+ * Não mexe em nada do lado do Mercado Pago — é só a plataforma reconhecendo
+ * um pagamento que já aconteceu fora dela.
+ */
+// @desc    Aprovar pedido de curso manualmente (liberação sem confirmação do MP)
+// @route   POST /api/payments/admin/orders/:id/approve-manually
+// @access  Private/Admin
+export const approveOrderManually = async (req: AuthRequest, res: Response) => {
+  try {
+    const motivo = String(req.body?.motivo || '').trim();
+    if (motivo.length < 5) {
+      return res.status(400).json({ message: 'Descreva o motivo da liberação manual (mínimo 5 caracteres)' });
+    }
+
+    const order = await Order.findById(req.params.id);
+    if (!order) return res.status(404).json({ message: 'Pedido não encontrado' });
+    if (order.status === 'aprovado') {
+      return res.status(400).json({ message: 'Este pedido já está aprovado' });
+    }
+
+    order.status = 'aprovado';
+    if (!order.metodoPagamento) order.metodoPagamento = 'manual_admin';
+    order.aprovacaoManual = {
+      aprovadoPor: req.user?._id as any,
+      nomeAprovador: req.user?.nomeCompleto || req.user?.email || 'Admin',
+      motivo,
+      data: new Date()
+    };
+    await order.save();
+
+    await fulfillOrder((order._id as any).toString());
+    const atualizado = await Order.findById(order._id);
+    res.json({ message: 'Pedido aprovado manualmente e acesso liberado', order: atualizado });
+  } catch (error) {
+    console.error('Erro ao aprovar pedido manualmente:', error);
+    res.status(500).json({ message: 'Erro ao aprovar pedido manualmente' });
+  }
+};
+
 // @desc    Obter configuração de pagamento (Admin)
 // @route   GET /api/payments/admin/config
 // @access  Private/Admin

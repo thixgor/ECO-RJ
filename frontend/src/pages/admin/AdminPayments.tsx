@@ -42,6 +42,9 @@ const OrdersTab: React.FC = () => {
   const [syncing, setSyncing] = useState(false);
   const [syncingOrder, setSyncingOrder] = useState(false);
   const [mpDiagnostico, setMpDiagnostico] = useState<any>(null);
+  const [showApproveForm, setShowApproveForm] = useState(false);
+  const [approveMotivo, setApproveMotivo] = useState('');
+  const [approving, setApproving] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -72,6 +75,8 @@ const OrdersTab: React.FC = () => {
         : await paymentService.admin.getOrderById(o._id);
       setDetail({ ...res.data, origem: o.origem });
       setMpDiagnostico(null);
+      setShowApproveForm(false);
+      setApproveMotivo('');
     } catch {
       toast.error('Erro ao carregar pedido');
     }
@@ -107,6 +112,34 @@ const OrdersTab: React.FC = () => {
       toast.error(e.response?.data?.message || 'Erro ao consultar o Mercado Pago');
     } finally {
       setSyncingOrder(false);
+    }
+  };
+
+  /**
+   * Libera o acesso SEM confirmação do Mercado Pago — para quando o "Verificar
+   * no Mercado Pago" já mostrou que não há pagamento vinculado a este pedido
+   * (pago por fora do checkout) e o admin confirmou o pagamento por outro
+   * meio (comprovante, extrato). Exige um motivo, que fica salvo no pedido.
+   */
+  const approveManually = async () => {
+    if (!detail) return;
+    if (approveMotivo.trim().length < 5) {
+      toast.error('Descreva o motivo da liberação (mínimo 5 caracteres)');
+      return;
+    }
+    setApproving(true);
+    try {
+      if (detail.origem === 'material') await materialService.admin.approveManually(detail._id, approveMotivo.trim());
+      else await paymentService.admin.approveManually(detail._id, approveMotivo.trim());
+      toast.success('Pedido aprovado manualmente — acesso liberado');
+      setShowApproveForm(false);
+      setApproveMotivo('');
+      await openDetail({ _id: detail._id, origem: detail.origem });
+      await load();
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || 'Erro ao aprovar pedido manualmente');
+    } finally {
+      setApproving(false);
     }
   };
 
@@ -321,6 +354,12 @@ const OrdersTab: React.FC = () => {
                 Termos aceitos (v{detail.aceiteTermos.versao}) em {new Date(detail.aceiteTermos.dataAceite).toLocaleString('pt-BR')} · IP {detail.aceiteTermos.ip}
               </p>
             )}
+            {detail.aprovacaoManual?.motivo && (
+              <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-xs text-amber-800 dark:text-amber-300">
+                <strong>Liberado manualmente</strong> por {detail.aprovacaoManual.nomeAprovador} em{' '}
+                {new Date(detail.aprovacaoManual.data).toLocaleString('pt-BR')} — motivo: "{detail.aprovacaoManual.motivo}"
+              </div>
+            )}
             {detail.status === 'aprovado' && (
               <GlassButton variant="secondary" onClick={refulfill} isLoading={reprocessing} disabled={reprocessing} leftIcon={<RefreshCw className="w-4 h-4" />}>
                 Reprocessar entrega / reenviar e-mail
@@ -361,6 +400,46 @@ const OrdersTab: React.FC = () => {
                     )}
                   </div>
                 )}
+
+                <div className="pt-2 border-t border-[var(--glass-border)]">
+                  {!showApproveForm ? (
+                    <GlassButton
+                      variant="danger"
+                      onClick={() => setShowApproveForm(true)}
+                      leftIcon={<CheckCircle2 className="w-4 h-4" />}
+                      title="Libera o acesso sem confirmação do Mercado Pago — use só quando o pagamento foi confirmado por outro meio (comprovante, extrato)"
+                    >
+                      Aprovar manualmente (liberar acesso)
+                    </GlassButton>
+                  ) : (
+                    <div className="space-y-2 p-3 rounded-lg bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30">
+                      <p className="text-xs text-red-800 dark:text-red-300">
+                        Isso libera o acesso do comprador <strong>sem confirmação do Mercado Pago</strong>.
+                        Use apenas quando você já confirmou o pagamento por outro meio (comprovante, extrato bancário).
+                        Descreva o motivo — fica registrado no pedido.
+                      </p>
+                      <GlassTextarea
+                        value={approveMotivo}
+                        onChange={(e) => setApproveMotivo(e.target.value)}
+                        placeholder='Ex.: "Comprovante de Pix conferido por e-mail em 20/08, pagamento feito fora do checkout."'
+                        rows={2}
+                      />
+                      <div className="flex gap-2">
+                        <GlassButton
+                          variant="danger"
+                          onClick={approveManually}
+                          isLoading={approving}
+                          disabled={approving || approveMotivo.trim().length < 5}
+                        >
+                          Confirmar liberação
+                        </GlassButton>
+                        <GlassButton variant="secondary" onClick={() => { setShowApproveForm(false); setApproveMotivo(''); }} disabled={approving}>
+                          Cancelar
+                        </GlassButton>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
