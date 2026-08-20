@@ -561,6 +561,10 @@ export const paymentService = {
 
     refulfill: (id: string) => api.post(`/payments/admin/orders/${id}/refulfill`),
 
+    // Diagnóstico: consulta o Mercado Pago para ESTE pedido específico e mostra
+    // todos os pagamentos encontrados (útil quando "Sincronizar pendentes" não pega um caso).
+    syncOrderMp: (id: string) => api.post(`/payments/admin/orders/${id}/sync-mp`),
+
     getConfig: () => api.get('/payments/admin/config'),
 
     updateConfig: (data: any) => api.put('/payments/admin/config', data),
@@ -656,6 +660,7 @@ export const materialService = {
     getOrderById: (id: string) => api.get(`/materials/admin/orders/${id}`),
     getStats: () => api.get('/materials/admin/stats'),
     refulfill: (id: string) => api.post(`/materials/admin/orders/${id}/refulfill`),
+    syncOrderMp: (id: string) => api.post(`/materials/admin/orders/${id}/sync-mp`),
     deleteReview: (reviewId: string) => api.delete(`/materials/admin/reviews/${reviewId}`),
 
     // Acessos (quem pode ver o material)

@@ -7,7 +7,12 @@ import { AuthRequest } from '../middleware/auth';
 import { getPaymentConfig, setPaymentConfig, PaymentConfig, DEFAULT_PAYMENT_CONFIG } from '../config/paymentConfig';
 import { fulfillOrder } from '../services/fulfillmentService';
 import { isEmailConfigured } from '../services/emailService';
-import { isMercadoPagoConfigured } from '../services/mercadoPagoService';
+import {
+  isMercadoPagoConfigured,
+  collectOrderPayments,
+  pickRelevantPayment
+} from '../services/mercadoPagoService';
+import { applyPaymentToOrder } from './paymentController';
 
 // @desc    Listar pedidos (Admin)
 // @route   GET /api/payments/admin/orders
@@ -120,6 +125,57 @@ export const refulfillOrder = async (req: AuthRequest, res: Response) => {
   } catch (error) {
     console.error('Erro ao reprocessar pedido:', error);
     res.status(500).json({ message: 'Erro ao reprocessar pedido' });
+  }
+};
+
+/**
+ * Consulta o Mercado Pago para UM pedido específico e mostra o que foi
+ * encontrado — diagnóstico para quando "Sincronizar pendentes" não resolve
+ * um caso específico (ex.: o comprador diz ter pago, mas o pedido continua
+ * pendente). Devolve todos os pagamentos vistos pela busca por
+ * external_reference + payment_id, não só o aplicado, para o admin conseguir
+ * comparar com o que aparece no painel do Mercado Pago.
+ */
+// @desc    Sincronizar UM pedido de curso com o Mercado Pago (diagnóstico)
+// @route   POST /api/payments/admin/orders/:id/sync-mp
+// @access  Private/Admin
+export const syncOrderWithMp = async (req: AuthRequest, res: Response) => {
+  try {
+    const order = await Order.findById(req.params.id);
+    if (!order) return res.status(404).json({ message: 'Pedido não encontrado' });
+    if (!isMercadoPagoConfigured()) {
+      return res.status(503).json({ message: 'Mercado Pago não configurado no servidor' });
+    }
+
+    const statusAnterior = order.status;
+    const pagamentos = await collectOrderPayments(
+      (order._id as any).toString(),
+      order.mercadoPago?.paymentId
+    );
+    const pagamento = pickRelevantPayment(pagamentos);
+    if (pagamento) {
+      await applyPaymentToOrder(order, pagamento);
+    }
+    const atualizado = await Order.findById(order._id);
+
+    res.json({
+      statusAnterior,
+      statusAtual: atualizado?.status,
+      entregue: atualizado?.entregue,
+      pagamentosEncontrados: pagamentos.map((p) => ({
+        id: p.id,
+        status: p.status,
+        statusDetail: p.statusDetail,
+        transactionAmount: p.transactionAmount,
+        paymentMethodId: p.paymentMethodId,
+        dateApproved: p.dateApproved,
+        externalReference: p.externalReference
+      })),
+      order: atualizado
+    });
+  } catch (error) {
+    console.error('Erro ao sincronizar pedido com o Mercado Pago:', error);
+    res.status(500).json({ message: 'Erro ao consultar o Mercado Pago para este pedido' });
   }
 };
 

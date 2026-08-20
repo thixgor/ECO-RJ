@@ -16,6 +16,7 @@ import {
   getUnifiedStats,
   getUnifiedOrders,
   refulfillOrder,
+  syncOrderWithMp,
   getAdminPaymentConfig,
   updateAdminPaymentConfig,
   resetTerms,
@@ -56,5 +57,6 @@ router.get('/admin/courses-pricing', protect, adminOnly, getCoursesPricing);
 router.put('/admin/course/:id/pricing', protect, adminOnly, updateCoursePricing);
 router.get('/admin/orders/:id', protect, adminOnly, getOrderById);
 router.post('/admin/orders/:id/refulfill', protect, adminOnly, refulfillOrder);
+router.post('/admin/orders/:id/sync-mp', protect, adminOnly, syncOrderWithMp);
 
 export default router;

@@ -7,6 +7,12 @@ import User from '../models/User';
 import { AuthRequest } from '../middleware/auth';
 import { fulfillMaterialOrder } from '../services/materialFulfillmentService';
 import { sendMaterialGrantEmail } from '../services/emailService';
+import {
+  isMercadoPagoConfigured,
+  collectOrderPayments,
+  pickRelevantPayment
+} from '../services/mercadoPagoService';
+import { applyMaterialPayment } from './materialController';
 
 const TIPOS_CONTEUDO: ConteudoTipo[] = ['aula', 'pdf', 'arquivo'];
 
@@ -294,6 +300,50 @@ export const refulfillMaterialOrder = async (req: AuthRequest, res: Response) =>
   } catch (error) {
     console.error('Erro ao reprocessar pedido de material:', error);
     res.status(500).json({ message: 'Erro ao reprocessar pedido' });
+  }
+};
+
+/** Ver `syncOrderWithMp` em adminPaymentController — mesmo diagnóstico para materiais. */
+// @desc    Sincronizar UM pedido de material com o Mercado Pago (diagnóstico)
+// @route   POST /api/materials/admin/orders/:id/sync-mp
+// @access  Private/Admin
+export const syncMaterialOrderWithMp = async (req: AuthRequest, res: Response) => {
+  try {
+    const order = await MaterialOrder.findById(req.params.id);
+    if (!order) return res.status(404).json({ message: 'Pedido não encontrado' });
+    if (!isMercadoPagoConfigured()) {
+      return res.status(503).json({ message: 'Mercado Pago não configurado no servidor' });
+    }
+
+    const statusAnterior = order.status;
+    const pagamentos = await collectOrderPayments(
+      (order._id as any).toString(),
+      order.mercadoPago?.paymentId
+    );
+    const pagamento = pickRelevantPayment(pagamentos);
+    if (pagamento) {
+      await applyMaterialPayment(order, pagamento);
+    }
+    const atualizado = await MaterialOrder.findById(order._id);
+
+    res.json({
+      statusAnterior,
+      statusAtual: atualizado?.status,
+      entregue: atualizado?.entregue,
+      pagamentosEncontrados: pagamentos.map((p) => ({
+        id: p.id,
+        status: p.status,
+        statusDetail: p.statusDetail,
+        transactionAmount: p.transactionAmount,
+        paymentMethodId: p.paymentMethodId,
+        dateApproved: p.dateApproved,
+        externalReference: p.externalReference
+      })),
+      order: atualizado
+    });
+  } catch (error) {
+    console.error('Erro ao sincronizar pedido de material com o Mercado Pago:', error);
+    res.status(500).json({ message: 'Erro ao consultar o Mercado Pago para este pedido' });
   }
 };
 

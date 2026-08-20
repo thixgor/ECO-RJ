@@ -40,6 +40,8 @@ const OrdersTab: React.FC = () => {
   const [detail, setDetail] = useState<any>(null);
   const [reprocessing, setReprocessing] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [syncingOrder, setSyncingOrder] = useState(false);
+  const [mpDiagnostico, setMpDiagnostico] = useState<any>(null);
 
   const load = async () => {
     setLoading(true);
@@ -69,8 +71,42 @@ const OrdersTab: React.FC = () => {
         ? await materialService.admin.getOrderById(o._id)
         : await paymentService.admin.getOrderById(o._id);
       setDetail({ ...res.data, origem: o.origem });
+      setMpDiagnostico(null);
     } catch {
       toast.error('Erro ao carregar pedido');
+    }
+  };
+
+  /**
+   * Consulta o Mercado Pago diretamente para ESTE pedido — usado quando o
+   * comprador diz ter pago mas o pedido continua pendente mesmo depois de
+   * "Sincronizar pendentes". Mostra todos os pagamentos que o Mercado Pago
+   * conhece para o pedido, para comparar com o que aparece no painel do MP.
+   */
+  const syncOrderMp = async () => {
+    if (!detail) return;
+    setSyncingOrder(true);
+    try {
+      const res = detail.origem === 'material'
+        ? await materialService.admin.syncOrderMp(detail._id)
+        : await paymentService.admin.syncOrderMp(detail._id);
+      const diagnostico = res.data;
+      if (diagnostico.statusAtual === 'aprovado' && diagnostico.statusAnterior !== 'aprovado') {
+        toast.success('Pagamento encontrado e pedido aprovado!');
+      } else if (diagnostico.pagamentosEncontrados?.length > 0) {
+        toast('Pagamento(s) encontrado(s), mas o status não mudou — veja o diagnóstico abaixo.', { icon: 'ℹ️' });
+      } else {
+        toast.error('Nenhum pagamento encontrado no Mercado Pago para este pedido.');
+      }
+      // openDetail recarrega o pedido (e reseta o diagnóstico) — por isso o
+      // diagnóstico é aplicado DEPOIS, senão seria apagado na mesma hora.
+      await openDetail({ _id: detail._id, origem: detail.origem });
+      setMpDiagnostico(diagnostico);
+      await load();
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || 'Erro ao consultar o Mercado Pago');
+    } finally {
+      setSyncingOrder(false);
     }
   };
 
@@ -289,6 +325,43 @@ const OrdersTab: React.FC = () => {
               <GlassButton variant="secondary" onClick={refulfill} isLoading={reprocessing} disabled={reprocessing} leftIcon={<RefreshCw className="w-4 h-4" />}>
                 Reprocessar entrega / reenviar e-mail
               </GlassButton>
+            )}
+            {(detail.status === 'pendente' || detail.status === 'em_processo') && (
+              <div className="space-y-2">
+                <GlassButton
+                  variant="secondary"
+                  onClick={syncOrderMp}
+                  isLoading={syncingOrder}
+                  disabled={syncingOrder}
+                  leftIcon={<RefreshCcwDot className="w-4 h-4" />}
+                  title="Consulta o Mercado Pago diretamente para este pedido e mostra o que foi encontrado"
+                >
+                  Verificar no Mercado Pago
+                </GlassButton>
+                {mpDiagnostico && (
+                  <div className="p-3 rounded-lg bg-[var(--glass-bg)] border border-[var(--glass-border)] text-xs space-y-2">
+                    <p><strong>Status:</strong> {mpDiagnostico.statusAnterior} → {mpDiagnostico.statusAtual}</p>
+                    {mpDiagnostico.pagamentosEncontrados?.length > 0 ? (
+                      <div className="space-y-1">
+                        <p className="text-[var(--color-text-muted)]">Pagamentos encontrados no Mercado Pago para este pedido:</p>
+                        {mpDiagnostico.pagamentosEncontrados.map((p: any) => (
+                          <div key={p.id} className="font-mono p-2 rounded bg-black/5 dark:bg-white/5">
+                            id={p.id} · status={p.status}{p.statusDetail ? `/${p.statusDetail}` : ''} · valor={brl(p.transactionAmount)} · método={p.paymentMethodId || '-'}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-amber-600 dark:text-amber-400">
+                        Nenhum pagamento com este pedido como referência foi encontrado no Mercado Pago.
+                        Se o comprador mostrar um pagamento aprovado no aplicativo dele, confira se o
+                        <strong> Payment ID</strong> dele bate com algum acima — se não bater, esse pagamento
+                        não está vinculado a este pedido (pode ter sido feito fora do checkout da plataforma,
+                        ou em outra conta/aplicação do Mercado Pago).
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
             )}
           </div>
         )}

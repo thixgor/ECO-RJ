@@ -32,6 +32,7 @@ import {
   getMaterialOrderAdmin,
   getMaterialStats,
   refulfillMaterialOrder,
+  syncMaterialOrderWithMp,
   grantMaterialAccess,
   listMaterialEntitlements,
   updateEntitlement,
@@ -75,6 +76,7 @@ router.get('/admin/stats', protect, adminOnly, getMaterialStats);
 router.get('/admin/orders', protect, adminOnly, listMaterialOrders);
 router.get('/admin/orders/:id', protect, adminOnly, getMaterialOrderAdmin);
 router.post('/admin/orders/:id/refulfill', protect, adminOnly, refulfillMaterialOrder);
+router.post('/admin/orders/:id/sync-mp', protect, adminOnly, syncMaterialOrderWithMp);
 router.delete('/admin/reviews/:reviewId', protect, adminOnly, adminDeleteReview);
 router.put('/admin/entitlements/:id', protect, adminOnly, updateEntitlement);
 router.delete('/admin/entitlements/:id', protect, adminOnly, deleteEntitlement);
