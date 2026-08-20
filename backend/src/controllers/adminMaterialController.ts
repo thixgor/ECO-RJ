@@ -305,7 +305,7 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /** Base pública da aplicação (para montar os links de acesso). */
 function appBaseUrl(): string {
-  return (process.env.APP_BASE_URL || process.env.FRONTEND_URL || 'https://www.ecorj.com')
+  return (process.env.APP_BASE_URL || process.env.FRONTEND_URL || 'https://ecorj.com')
     .replace(/\/+$/, '');
 }
 

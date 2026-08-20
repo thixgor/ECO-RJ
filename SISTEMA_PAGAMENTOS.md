@@ -119,7 +119,7 @@ MP_PUBLIC_KEY=APP_USR-xxxxxxxx        # Chave pública — OBRIGATÓRIA (usada p
 MP_WEBHOOK_SECRET=xxxxxxxx            # Segredo de assinatura do webhook
 
 # URL pública da aplicação (back_urls, webhook e links de ativação)
-APP_BASE_URL=https://www.ecorj.com
+APP_BASE_URL=https://ecorj.com
 
 # Segredo da rotina agendada de reconciliação (cron-job.org) — ver seção própria
 CRON_SECRET=uma_chave_longa_e_aleatoria
@@ -407,7 +407,7 @@ entrega duas vezes e **não cobra ninguém de novo** (a rotina só consulta).
    *Sem essa variável o endpoint responde `503` e fica desligado — nunca aberto.*
 3. Em [cron-job.org](https://console.cron-job.org) → **Create cronjob**:
    - **Title**: `ECO RJ — Reconciliar pagamentos`
-   - **URL**: `https://www.ecorj.com/api/payments/cron/reconcile`
+   - **URL**: `https://ecorj.com/api/payments/cron/reconcile`
    - **Schedule**: a cada **15 minutos** (`Every 15 minutes`)
    - **Advanced → Request method**: `POST` (o `GET` também funciona)
    - **Advanced → Headers**: adicione
@@ -419,15 +419,25 @@ entrega duas vezes e **não cobra ninguém de novo** (a rotina só consulta).
 > aceita (útil em painéis que não deixam configurar headers), mas o valor fica
 > registrado no histórico de execuções do cron e nos logs de acesso.
 
+> ⚠️ **Use sempre o domínio sem `www.`** (`https://ecorj.com/...`). O
+> `www.ecorj.com` faz um **redirect 307** para `ecorj.com` na configuração de
+> domínios da Vercel — e a maioria dos clientes HTTP (inclusive o do
+> cron-job.org) **descarta o header `Authorization`** ao seguir um redirect
+> para outro host, mesmo sendo o mesmo site. O sintoma é um `401 Unauthorized`
+> genérico no *Test run*, mesmo com o `CRON_SECRET` certo. Isso vale também
+> para a URL do **webhook do Mercado Pago**: se ela estiver cadastrada com
+> `www.` no painel do MP, a assinatura do webhook pode se perder do mesmo
+> jeito — confira e recadastre sem `www.` se for o caso.
+
 ### Testando pelo terminal
 
 ```bash
 # Recomendado (segredo no header)
-curl -X POST "https://www.ecorj.com/api/payments/cron/reconcile" \
+curl -X POST "https://ecorj.com/api/payments/cron/reconcile" \
   -H "Authorization: Bearer SEU_CRON_SECRET"
 
 # Alternativa (segredo na URL)
-curl -X POST "https://www.ecorj.com/api/payments/cron/reconcile?token=SEU_CRON_SECRET"
+curl -X POST "https://ecorj.com/api/payments/cron/reconcile?token=SEU_CRON_SECRET"
 ```
 
 Parâmetros opcionais (query): `?dias=30` (janela de varredura, 1–180) e
