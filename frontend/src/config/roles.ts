@@ -89,3 +89,16 @@ export function getRoleInfo(cargo?: string): RoleInfo {
 export function hasAlunoAccess(cargo?: string): boolean {
   return CARGOS_COM_ACESSO.includes(cargo as Cargo);
 }
+
+/**
+ * Indica se o usuário tem acesso a conteúdo de aprendizado.
+ *
+ * O cargo global sozinho não basta: quem foi liberado em um curso pelo admin é
+ * aluno daquele curso mesmo continuando com o cargo "Visitante". Quem calcula
+ * isso é o backend, em `temAcessoAConteudo` (GET /auth/me) — aqui só lemos o
+ * campo, com o cargo como retaguarda para respostas antigas.
+ */
+export function hasContentAccess(user?: { cargo?: string; temAcessoAConteudo?: boolean } | null): boolean {
+  if (user?.temAcessoAConteudo !== undefined) return user.temAcessoAConteudo;
+  return hasAlunoAccess(user?.cargo);
+}

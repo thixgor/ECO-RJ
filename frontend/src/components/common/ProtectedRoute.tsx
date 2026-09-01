@@ -1,7 +1,7 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { hasAlunoAccess } from '../../config/roles';
+import { hasContentAccess } from '../../config/roles';
 import { LoadingPage } from './Loading';
 
 interface ProtectedRouteProps {
@@ -30,8 +30,10 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <Navigate to="/dashboard" replace />;
   }
 
+  // Quem foi matriculado em algum curso passa, mesmo que o cargo global ainda
+  // seja "Visitante" — o acesso a cada conteúdo é conferido no backend.
   if (requireAluno) {
-    if (!hasAlunoAccess(user?.cargo)) {
+    if (!hasContentAccess(user)) {
       return <Navigate to="/perfil" state={{ message: 'Este conteúdo é para Alunos. Compre um curso ou ative sua chave de acesso.' }} replace />;
     }
   }

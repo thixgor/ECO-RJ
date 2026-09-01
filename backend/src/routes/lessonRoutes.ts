@@ -13,7 +13,7 @@ import {
   updateLessonProgress,
   getLastWatchedLesson
 } from '../controllers/lessonController';
-import { protect, adminOnly, canViewLessons, optionalAuth } from '../middleware/auth';
+import { protect, adminOnly, optionalAuth } from '../middleware/auth';
 
 const router = Router();
 
@@ -24,7 +24,10 @@ router.get('/last-watched', protect, getLastWatchedLesson);
 
 // Rotas públicas (permite não logados verem estrutura)
 router.get('/course/:courseId', optionalAuth, getLessonsByCourse);
-router.get('/:id', protect, canViewLessons, getLessonById);
+// O acesso é decidido dentro do controller (vínculo com o curso + cargo
+// efetivo). Um filtro por cargo global aqui barraria quem foi matriculado
+// pelo admin e continua como "Visitante".
+router.get('/:id', protect, getLessonById);
 router.post('/:id/watched', protect, markAsWatched);
 router.post('/:id/update-progress', protect, updateLessonProgress);
 

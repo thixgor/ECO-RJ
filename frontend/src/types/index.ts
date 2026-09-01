@@ -28,6 +28,12 @@ export interface User {
   periodo?: string;
   dataNascimento?: string;
   cargo: 'Visitante' | 'Aluno' | 'Instrutor' | 'Administrador';
+  /**
+   * Calculado pelo backend (GET /auth/me): tem acesso a conteúdo de
+   * aprendizado — por cargo (Aluno+) ou por estar liberado em algum curso,
+   * mesmo continuando "Visitante". Use via `hasContentAccess`.
+   */
+  temAcessoAConteudo?: boolean;
   fotoPerfil?: string;
   bio?: string;
   cursosInscritos: string[] | Course[];
@@ -62,6 +68,14 @@ export interface Course {
   tipo: 'online' | 'presencial'; // Tipo do curso
   venda?: CourseVenda; // Configuração de venda (Sistema de Pagamentos)
   expirado?: boolean; // true se a data de término já foi atingida (retornado por getCourseById)
+  /** Backend decide o acesso ao conteúdo do curso (getCourseById). */
+  temAcessoConteudo?: boolean;
+  /** true se o usuário tem vínculo com o curso (inscrito ou autorizado pelo admin). */
+  matriculado?: boolean;
+  /** Motivo do bloqueio, quando `temAcessoConteudo` é false. */
+  motivoBloqueio?: 'nao_autenticado' | 'curso_encerrado' | 'sem_acesso';
+  /** Mensagem pronta para exibir quando o acesso está bloqueado. */
+  mensagemBloqueio?: string;
   createdAt: string;
 }
 
@@ -359,6 +373,12 @@ export interface Lesson {
   criadorId?: string;
   exerciciosAnexados: string[] | Exercise[];
   provasAnexadas: string[];
+  /**
+   * Calculado pelo backend em GET /lessons/course/:courseId — é o que define o
+   * cadeado na listagem do curso. Ausente em respostas antigas (fallback para
+   * `temAcessoConteudo` do curso).
+   */
+  bloqueada?: boolean;
   // Integração Zoom
   zoomMeetingId?: string;
   zoomMeetingPassword?: string;

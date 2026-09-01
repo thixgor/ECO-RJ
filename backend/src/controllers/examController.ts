@@ -4,6 +4,7 @@ import ExamAnswer from '../models/ExamAnswer';
 import Question from '../models/Question';
 import { AuthRequest } from '../middleware/auth';
 import { registrarAcesso, getClientIp } from './accessLogController';
+import { avaliarAcessoAoItem, cargosParaConsulta } from '../utils/courseAccess';
 
 // @desc    Listar provas (Admin ou provas publicadas para alunos)
 // @route   GET /api/exams
@@ -18,7 +19,10 @@ export const getExams = async (req: AuthRequest, res: Response) => {
     // Alunos só veem provas publicadas
     if (userCargo !== 'Administrador') {
       query.publicado = true;
-      query.cargosPermitidos = { $in: [userCargo] };
+      // Quem tem vínculo com algum curso enxerga também o que é de "Aluno",
+      // mesmo com cargo global "Visitante" (o acesso por curso é conferido
+      // ao abrir a prova).
+      query.cargosPermitidos = { $in: cargosParaConsulta(req.user) };
     } else {
       if (publicado !== undefined) query.publicado = publicado === 'true';
     }
@@ -27,16 +31,37 @@ export const getExams = async (req: AuthRequest, res: Response) => {
 
     const skip = (Number(page) - 1) * Number(limit);
 
-    const [exams, total] = await Promise.all([
-      Exam.find(query)
-        .populate('cursoId', 'titulo')
+    let exams: any[];
+    let total: number;
+
+    if (userCargo === 'Administrador') {
+      [exams, total] = await Promise.all([
+        Exam.find(query)
+          .populate('cursoId', 'titulo')
+          .populate('criadorId', 'nomeCompleto')
+          .select('-questoesRef -exerciciosRef')
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(Number(limit)),
+        Exam.countDocuments(query)
+      ]);
+    } else {
+      // Para não-admins o acesso depende do curso de cada prova, então o filtro
+      // é aplicado antes de paginar (evita listar prova de curso sem acesso e
+      // mantém o total coerente com o que a pessoa realmente vê).
+      const todas = await Exam.find(query)
+        .populate('cursoId', 'titulo acessoRestrito alunosAutorizados dataTermino')
         .populate('criadorId', 'nomeCompleto')
         .select('-questoesRef -exerciciosRef')
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(Number(limit)),
-      Exam.countDocuments(query)
-    ]);
+        .sort({ createdAt: -1 });
+
+      const permitidas = todas.filter(
+        (exam) => avaliarAcessoAoItem(exam.cursoId as any, req.user, exam.cargosPermitidos).permitido
+      );
+
+      total = permitidas.length;
+      exams = permitidas.slice(skip, skip + Number(limit));
+    }
 
     res.json({
       exams,
@@ -58,7 +83,7 @@ export const getExams = async (req: AuthRequest, res: Response) => {
 export const getExamById = async (req: AuthRequest, res: Response) => {
   try {
     const exam = await Exam.findById(req.params.id)
-      .populate('cursoId', 'titulo')
+      .populate('cursoId', 'titulo acessoRestrito alunosAutorizados dataTermino')
       .populate('criadorId', 'nomeCompleto')
       .populate('questoesRef');
 
@@ -74,8 +99,11 @@ export const getExamById = async (req: AuthRequest, res: Response) => {
       if (!exam.publicado) {
         return res.status(403).json({ message: 'Esta prova ainda não foi publicada' });
       }
-      if (!exam.cargosPermitidos.includes(userCargo)) {
-        return res.status(403).json({ message: 'Você não tem permissão para acessar esta prova' });
+      const acesso = avaliarAcessoAoItem(exam.cursoId as any, req.user, exam.cargosPermitidos);
+      if (!acesso.permitido) {
+        return res.status(403).json({
+          message: acesso.mensagem || 'Você não tem permissão para acessar esta prova'
+        });
       }
 
       // Verificar período
@@ -92,7 +120,7 @@ export const getExamById = async (req: AuthRequest, res: Response) => {
     if (userId) {
       registrarAcesso(userId.toString(), 'prova', req, {
         provaId: exam._id.toString(),
-        cursoId: exam.cursoId?.toString()
+        cursoId: (exam.cursoId as any)?._id?.toString()
       });
     }
 
@@ -237,21 +265,25 @@ export const deleteExam = async (req: Request, res: Response) => {
 // @access  Private
 export const startExam = async (req: AuthRequest, res: Response) => {
   try {
-    const exam = await Exam.findById(req.params.id).populate('questoesRef');
+    const exam = await Exam.findById(req.params.id)
+      .populate('questoesRef')
+      .populate('cursoId', 'titulo acessoRestrito alunosAutorizados dataTermino');
     if (!exam) {
       return res.status(404).json({ message: 'Prova não encontrada' });
     }
 
     const userId = req.user?._id;
-    const userCargo = req.user?.cargo || 'Visitante';
 
     // Verificações de acesso
     if (!exam.publicado) {
       return res.status(403).json({ message: 'Esta prova ainda não foi publicada' });
     }
 
-    if (!exam.cargosPermitidos.includes(userCargo) && userCargo !== 'Administrador') {
-      return res.status(403).json({ message: 'Você não tem permissão para fazer esta prova' });
+    const acesso = avaliarAcessoAoItem(exam.cursoId as any, req.user, exam.cargosPermitidos);
+    if (!acesso.permitido) {
+      return res.status(403).json({
+        message: acesso.mensagem || 'Você não tem permissão para fazer esta prova'
+      });
     }
 
     // Verificar período

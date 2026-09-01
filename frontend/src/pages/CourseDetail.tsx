@@ -52,9 +52,9 @@ const CourseDetail: React.FC = () => {
     (c) => (typeof c === 'string' ? c : c._id) === id
   );
 
-  // Administrador tem acesso irrestrito, outros precisam verificar
+  // Administrador tem acesso irrestrito; para os demais quem decide o acesso é
+  // o backend (`temAcessoConteudo` do curso e `bloqueada` de cada aula).
   const isAdmin = user?.cargo === 'Administrador';
-  const canViewLessons = isAdmin || ['Aluno', 'Instrutor'].includes(user?.cargo || '');
 
   // Toggle functions - MUST be defined before any conditional returns
   const toggleTopic = useCallback((e: React.MouseEvent, topicId: string) => {
@@ -161,7 +161,10 @@ const CourseDetail: React.FC = () => {
         updateMeta('twitter:image', courseResponse.data.imagemCapa);
       }
 
-      if (isAuthenticated && isEnrolled) {
+      // Progresso e certificado valem para quem tem acesso ao conteúdo — o que
+      // inclui quem foi matriculado pelo admin e ainda consta como "Visitante".
+      const temAcesso = !!courseResponse.data?.temAcessoConteudo;
+      if (isAuthenticated && temAcesso) {
         try {
           const progressResponse = await courseService.getProgress(id!);
           setProgress(progressResponse.data);
@@ -262,6 +265,12 @@ const CourseDetail: React.FC = () => {
 
   const instrutor = course.instrutor as UserType;
 
+  // Quem decide o acesso é o backend (`temAcessoConteudo`). `matriculado` é
+  // apenas vitrine: diz que o curso é do usuário ("Meus Cursos"), não que o
+  // conteúdo está liberado.
+  const temAcessoConteudo = isAdmin || !!course.temAcessoConteudo;
+  const cursoDoUsuario = isAdmin || !!course.matriculado || !!isEnrolled;
+
   // Curso com venda habilitada e preço 0 = adesão gratuita (mesmo fluxo, sem cobrança).
   const cursoGratuito = isGratuito(saleQuote ? saleQuote.subtotal : course.venda?.preco);
 
@@ -294,9 +303,14 @@ const CourseDetail: React.FC = () => {
   // Render a single lesson item
   const renderLessonItem = (lesson: Lesson, index: number, showNumber = true) => {
     const isWatched = user?.aulasAssistidas?.includes(lesson._id);
-    // Administrador tem acesso irrestrito (não precisa estar inscrito).
-    // Curso encerrado (data de término atingida) interrompe o acesso dos alunos.
-    const canAccess = isAdmin || (canViewLessons && isEnrolled && !course.expirado);
+    // O cadeado segue exatamente o que o backend libera: cada aula vem com
+    // `bloqueada` calculado lá (vínculo com o curso + cargo efetivo + cargos
+    // permitidos da aula). Assim a tela nunca bloqueia quem tem acesso — nem
+    // libera quem não tem. `temAcessoConteudo` é o fallback para respostas
+    // antigas em cache, que ainda não trazem o campo por aula.
+    const canAccess = isAdmin || (lesson.bloqueada === undefined
+      ? !!course.temAcessoConteudo
+      : !lesson.bloqueada);
 
     const lessonUrl = `/aulas/${lesson._id}`;
     const lessonContextMenuItems: ContextMenuItem[] = [
@@ -536,7 +550,7 @@ const CourseDetail: React.FC = () => {
                 {course.dataTermino ? ` em ${new Date(course.dataTermino).toLocaleDateString('pt-BR')}` : ''}.
               </p>
             </div>
-          ) : isEnrolled ? (
+          ) : temAcessoConteudo ? (
             <div>
               <div className="mb-4">
                 <div className="flex items-center justify-between text-sm mb-2">
@@ -656,12 +670,15 @@ const CourseDetail: React.FC = () => {
                 </div>
               )}
 
-              <button
-                onClick={handleUnenroll}
-                className="btn btn-outline w-full"
-              >
-                Cancelar Inscricao
-              </button>
+              {/* Só quem está de fato inscrito pode cancelar a inscrição */}
+              {cursoDoUsuario && (
+                <button
+                  onClick={handleUnenroll}
+                  className="btn btn-outline w-full"
+                >
+                  Cancelar Inscricao
+                </button>
+              )}
             </div>
           ) : course.venda?.disponivel ? (
             (() => {
@@ -718,7 +735,7 @@ const CourseDetail: React.FC = () => {
             <button
               onClick={handleEnroll}
               disabled={isEnrolling}
-              className={`btn btn-primary w-full ${!isEnrolling && (course as any).temAcessoConteudo ? 'animate-pulse-glow' : ''}`}
+              className={`btn btn-primary w-full ${!isEnrolling && temAcessoConteudo ? 'animate-pulse-glow' : ''}`}
             >
               {isEnrolling ? 'Inscrevendo...' : 'Inscrever-se'}
             </button>
@@ -849,8 +866,8 @@ const CourseDetail: React.FC = () => {
         )}
       </div>
 
-      {/* Info for non-enrolled users (both authenticated and not authenticated) */}
-      {(!isEnrolled && !isAdmin) && (
+      {/* Info para quem ainda não tem acesso ao conteúdo */}
+      {!temAcessoConteudo && (
         <div id="acquire-course-section" className="mt-8 space-y-6 animate-slide-up">
           {/* Main Warning */}
           <div className="p-4 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-xl flex items-start gap-4">
@@ -860,9 +877,7 @@ const CourseDetail: React.FC = () => {
             <div>
               <p className="text-amber-900 dark:text-amber-400 font-medium text-lg">
                 {isAuthenticated
-                  ? (!canViewLessons
-                    ? 'Você precisa ser um Aluno para acessar as aulas.'
-                    : 'Você precisa estar inscrito neste curso para acessar as aulas.')
+                  ? (course.mensagemBloqueio || 'Você precisa estar inscrito neste curso para acessar as aulas.')
                   : 'Faça login ou crie uma conta para acessar o conteúdo.'}
               </p>
               <p className="text-amber-800 dark:text-amber-400/80 mt-1">

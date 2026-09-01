@@ -142,7 +142,7 @@ const AdminCourses: React.FC = () => {
       await api.post(`/courses/${selectedCourse._id}/authorize`, { userId });
       const authRes = await api.get(`/courses/${selectedCourse._id}/authorized`);
       setAuthorizedUsers(authRes.data);
-      toast.success('Aluno autorizado!');
+      toast.success('Aluno adicionado ao curso!');
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Erro ao autorizar');
     }
@@ -153,7 +153,7 @@ const AdminCourses: React.FC = () => {
     try {
       await api.delete(`/courses/${selectedCourse._id}/authorize/${userId}`);
       setAuthorizedUsers(authorizedUsers.filter(u => u._id !== userId));
-      toast.success('Autorização removida!');
+      toast.success('Aluno removido do curso!');
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Erro ao remover');
     }
@@ -496,16 +496,14 @@ const AdminCourses: React.FC = () => {
                       <FolderOpen className="w-3 h-3" />
                       Tópicos
                     </button>
-                    {course.acessoRestrito && (
-                      <button
-                        onClick={() => openAuthorizedModal(course)}
-                        className="btn btn-outline py-1 px-3 text-sm flex items-center gap-1"
-                        title="Gerenciar alunos autorizados"
-                      >
-                        <Users className="w-3 h-3" />
-                        Alunos
-                      </button>
-                    )}
+                    <button
+                      onClick={() => openAuthorizedModal(course)}
+                      className="btn btn-outline py-1 px-3 text-sm flex items-center gap-1"
+                      title="Gerenciar alunos com acesso ao curso"
+                    >
+                      <Users className="w-3 h-3" />
+                      Alunos
+                    </button>
                     <button
                       onClick={() => handleToggleStatus(course)}
                       className="btn btn-outline py-1 px-3 text-sm"
@@ -690,8 +688,8 @@ const AdminCourses: React.FC = () => {
       <GlassModal
         isOpen={showAuthorizedModal && !!selectedCourse}
         onClose={() => setShowAuthorizedModal(false)}
-        title="Alunos Autorizados"
-        description={selectedCourse ? `${selectedCourse.titulo} — quem pode acessar este curso restrito` : undefined}
+        title="Alunos do Curso"
+        description={selectedCourse ? `${selectedCourse.titulo} — quem tem acesso ao conteúdo deste curso` : undefined}
         size="2xl"
         footer={
           <button onClick={() => setShowAuthorizedModal(false)} className="btn btn-outline w-full">
@@ -702,6 +700,10 @@ const AdminCourses: React.FC = () => {
         {/* Buscar e adicionar aluno */}
         <div className="mb-6">
           <label className="label">Adicionar Aluno</label>
+          <p className="text-sm text-[var(--color-text-muted)] mb-2">
+            O aluno adicionado é matriculado no curso e passa a acessar o conteúdo
+            na hora, mesmo que o cargo dele ainda seja "Visitante".
+          </p>
           <input
             type="text"
             value={searchUser}
@@ -733,7 +735,7 @@ const AdminCourses: React.FC = () => {
 
         {/* Lista de autorizados */}
         <div>
-          <label className="label">Alunos Autorizados ({authorizedUsers.length})</label>
+          <label className="label">Alunos com acesso ({authorizedUsers.length})</label>
           {authorizedUsers.length > 0 ? (
             <div className="space-y-2">
               {authorizedUsers.map((user) => (
@@ -756,7 +758,7 @@ const AdminCourses: React.FC = () => {
             </div>
           ) : (
             <p className="text-[var(--color-text-muted)] text-center py-4">
-              Nenhum aluno autorizado ainda
+              Nenhum aluno adicionado ainda
             </p>
           )}
         </div>

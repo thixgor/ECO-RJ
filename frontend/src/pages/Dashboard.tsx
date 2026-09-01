@@ -7,6 +7,7 @@ import { Course, Lesson, Announcement, LastWatchedLesson } from '../types';
 import { GlassCard, GlassButton, GlassProgress, GlassBadge, SkeletonCard, SkeletonCourseItem } from '../components/ui';
 import { formatDuration } from '../utils/formatDuration';
 import ResumeLastLessonCard from '../components/dashboard/ResumeLastLessonCard';
+import { hasContentAccess } from '../config/roles';
 import toast from 'react-hot-toast';
 
 // Interface para aulas ao vivo do dia
@@ -236,7 +237,9 @@ const Dashboard: React.FC = () => {
     });
   }, [liveLessonsToday, dismissedNotifications]);
 
-  const isVisitante = user?.cargo === 'Visitante';
+  // "Acesso limitado" é para quem não tem NENHUM curso vinculado — não basta o
+  // cargo ser "Visitante" (o admin pode ter matriculado a pessoa em um curso).
+  const isVisitante = !hasContentAccess(user);
   const firstName = user?.nomeCompleto ? (
     ['Prof.', 'Dr.', 'Dra.', 'Sr.', 'Sra.'].includes(user.nomeCompleto.split(' ')[0])
       ? user.nomeCompleto.split(' ').slice(0, 2).join(' ')

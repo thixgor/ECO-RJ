@@ -68,15 +68,19 @@ export const adminOnly = (req: AuthRequest, res: Response, next: NextFunction) =
   next();
 };
 
-// Middleware para verificar permissão de visualizar aulas
-export const canViewLessons = (req: AuthRequest, res: Response, next: NextFunction) => {
+/**
+ * Middleware de cargo "com acesso" (Aluno+). NÃO use para aulas/materiais de um
+ * curso: o acesso ao conteúdo depende do vínculo com o curso, não só do cargo
+ * global — veja `utils/courseAccess`.
+ */
+export const requireCargoComAcesso = (req: AuthRequest, res: Response, next: NextFunction) => {
   if (!req.user) {
     return res.status(401).json({ message: 'Não autorizado' });
   }
 
   if (!CARGOS_COM_ACESSO.includes(req.user.cargo as any)) {
     return res.status(403).json({
-      message: 'Você precisa ser Aluno para acessar as aulas. Compre um curso ou ative sua chave de acesso no perfil.'
+      message: 'Você precisa ser Aluno para acessar este recurso. Compre um curso ou ative sua chave de acesso no perfil.'
     });
   }
 

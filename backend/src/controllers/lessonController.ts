@@ -1,9 +1,14 @@
 import { Request, Response } from 'express';
 import Lesson from '../models/Lesson';
-import Course, { isCourseExpired } from '../models/Course';
+import Course from '../models/Course';
 import User from '../models/User';
 import { AuthRequest } from '../middleware/auth';
 import { registrarAcesso } from './accessLogController';
+import {
+  avaliarAcessoAoItem,
+  cargoEfetivoNoCurso,
+  cargoPermitido
+} from '../utils/courseAccess';
 
 // @desc    Listar aulas de um curso
 // @route   GET /api/lessons/course/:courseId
@@ -12,13 +17,25 @@ export const getLessonsByCourse = async (req: AuthRequest, res: Response) => {
   try {
     const { courseId } = req.params;
 
-    // Retornar todas as aulas do curso para visualização
-    // O controle de acesso é feito no frontend (aulas aparecem bloqueadas)
-    // e no endpoint individual getLessonById
-    const lessons = await Lesson.find({ cursoId: courseId })
-      .sort({ ordem: 1, createdAt: 1 });
+    // Todas as aulas são listadas (o aluno vê a estrutura do curso), mas cada
+    // aula vem com `bloqueada` calculado aqui. O cadeado do frontend passa a
+    // refletir exatamente o que o backend libera em getLessonById.
+    const [lessons, course] = await Promise.all([
+      Lesson.find({ cursoId: courseId }).sort({ ordem: 1, createdAt: 1 }),
+      Course.findById(courseId).select('acessoRestrito alunosAutorizados dataTermino')
+    ]);
 
-    res.json(lessons);
+    const lessonsComAcesso = lessons.map((lesson) => {
+      const lessonObj = lesson.toObject();
+      (lessonObj as any).bloqueada = !avaliarAcessoAoItem(
+        course,
+        req.user,
+        lesson.cargosPermitidos
+      ).permitido;
+      return lessonObj;
+    });
+
+    res.json(lessonsComAcesso);
   } catch (error) {
     console.error('Erro ao listar aulas:', error);
     res.status(500).json({ message: 'Erro ao listar aulas' });
@@ -39,37 +56,18 @@ export const getLessonById = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: 'Aula não encontrada' });
     }
 
-    // Verificar permissão por cargo
-    const userCargo = req.user?.cargo || 'Visitante';
     const userId = req.user?._id;
-
-    if (!lesson.cargosPermitidos.includes(userCargo) && userCargo !== 'Administrador') {
-      return res.status(403).json({
-        message: 'Você não tem permissão para acessar esta aula. Aplique uma serial key válida no seu perfil.'
-      });
-    }
-
     const curso = lesson.cursoId as any;
 
-    // Curso encerrado: acesso interrompido a partir da data de término
-    // (Administrador e Instrutor mantêm acesso para gestão do conteúdo)
-    if (isCourseExpired(curso) && userCargo !== 'Administrador' && userCargo !== 'Instrutor') {
+    // Acesso à aula: vínculo com o curso + cargo efetivo + cargosPermitidos.
+    // Regra única em utils/courseAccess — a mesma que gera o cadeado na
+    // listagem do curso, para que a tela e a API nunca discordem.
+    const acesso = avaliarAcessoAoItem(curso, req.user, lesson.cargosPermitidos);
+    if (!acesso.permitido) {
       return res.status(403).json({
-        message: 'Este curso foi encerrado e o acesso ao conteúdo não está mais disponível.',
-        cursoEncerrado: true
+        message: acesso.mensagem,
+        ...(acesso.motivo === 'curso_encerrado' ? { cursoEncerrado: true } : {})
       });
-    }
-
-    // Verificar acesso restrito do curso
-    if (curso?.acessoRestrito && userCargo !== 'Administrador') {
-      const autorizado = curso.alunosAutorizados?.some(
-        (id: any) => id.toString() === userId?.toString()
-      );
-      if (!autorizado) {
-        return res.status(403).json({
-          message: 'Você não tem autorização para acessar aulas deste curso.'
-        });
-      }
     }
 
     // Registrar acesso à aula
@@ -531,10 +529,10 @@ export const getLiveLessonsToday = async (req: AuthRequest, res: Response) => {
       .populate('cursoId', 'titulo imagemCapa')
       .sort({ dataHoraInicio: 1 });
 
-    // Filtrar por permissão de cargo
-    const userCargo = user.cargo || 'Visitante';
+    // Filtrar por permissão de cargo (as aulas já são dos cursos do usuário,
+    // então o cargo efetivo considera o vínculo com cada curso)
     const filteredLessons = lessons.filter(lesson =>
-      lesson.cargosPermitidos.includes(userCargo) || userCargo === 'Administrador'
+      cargoPermitido(lesson.cargosPermitidos, cargoEfetivoNoCurso(lesson.cursoId as any, user))
     );
 
     res.json({ lessons: filteredLessons });
@@ -576,9 +574,8 @@ export const getUpcomingLiveLessons = async (req: AuthRequest, res: Response) =>
       .sort({ dataHoraInicio: 1 })
       .limit(10);
 
-    const userCargo = user.cargo || 'Visitante';
     const filteredLessons = lessons.filter(lesson =>
-      lesson.cargosPermitidos.includes(userCargo) || userCargo === 'Administrador'
+      cargoPermitido(lesson.cargosPermitidos, cargoEfetivoNoCurso(lesson.cursoId as any, user))
     );
 
     res.json({ lessons: filteredLessons });

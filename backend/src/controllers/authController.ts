@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import User from '../models/User';
+import Course from '../models/Course';
+import { CARGOS_COM_ACESSO } from '../config/roles';
 import { validateCRM, validateUF } from '../utils/validators';
 import { ensureCriticalUserIndexes } from '../config/database-indexes';
 import { getJwtSecret } from '../config/jwt';
@@ -340,7 +342,18 @@ export const getMe = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: 'Usuário não encontrado' });
     }
 
-    res.json(user);
+    // Acesso a conteúdo não depende só do cargo: quem foi autorizado em algum
+    // curso pelo admin é aluno daquele curso mesmo continuando "Visitante".
+    // A interface usa este campo para não tratar essas pessoas como visitantes.
+    const cursosAutorizados = CARGOS_COM_ACESSO.includes(user.cargo as any)
+      ? 0
+      : await Course.countDocuments({ alunosAutorizados: user._id });
+
+    const userObj = user.toObject();
+    (userObj as any).temAcessoAConteudo =
+      CARGOS_COM_ACESSO.includes(user.cargo as any) || cursosAutorizados > 0;
+
+    res.json(userObj);
   } catch (error) {
     console.error('Erro ao buscar perfil:', error);
     res.status(500).json({ message: 'Erro ao buscar perfil' });

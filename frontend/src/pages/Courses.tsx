@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { BookOpen, Calendar, User, Search, Mail, Key, Lock, ChevronDown, Star, Sparkles, Clock, Monitor, MapPin, Award, CheckCircle, ExternalLink, Copy, Share2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { hasContentAccess } from '../config/roles';
 import { courseService, siteConfigService } from '../services/api';
 import { Course, User as UserType } from '../types';
 import { CoursesGridSkeleton } from '../components/common/Loading';
@@ -102,7 +103,9 @@ const Courses: React.FC = () => {
     window.scrollTo({ top: window.innerHeight * 0.5, behavior: 'smooth' });
   };
 
-  const isVisitor = user?.cargo === 'Visitante' || !isAuthenticated;
+  // Visitante para fins de aviso = sem nenhum curso vinculado. Quem foi
+  // matriculado pelo admin não deve ver "aplique uma serial key".
+  const isVisitor = !isAuthenticated || !hasContentAccess(user);
 
   if (isLoading) {
     return (

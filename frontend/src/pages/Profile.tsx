@@ -8,7 +8,7 @@ import { Certificate, User as UserType, Course, UserNote, GroupedNotesByCourse, 
 import { generateCertificatePDF } from '../utils/certificatePdfGenerator';
 import Loading from '../components/common/Loading';
 import { ESTADOS } from '../data/cadastroData';
-import { getRoleInfo } from '../config/roles';
+import { getRoleInfo, hasContentAccess } from '../config/roles';
 import toast from 'react-hot-toast';
 
 const Profile: React.FC = () => {
@@ -442,8 +442,8 @@ const Profile: React.FC = () => {
         </div>
       </div>
 
-      {/* Visitor Alert */}
-      {user?.cargo === 'Visitante' && (
+      {/* Visitor Alert — só para quem não tem nenhum curso liberado */}
+      {!hasContentAccess(user) && (
         <div className="bg-yellow-50 dark:bg-amber-500/10 border border-yellow-200 dark:border-amber-500/30 rounded-lg p-4 flex items-start gap-3">
           <AlertCircle className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" />
           <div>

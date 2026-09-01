@@ -5,6 +5,7 @@ import User from '../models/User';
 import { AuthRequest } from '../middleware/auth';
 import { registrarAcesso } from './accessLogController';
 import { sendCourseEndedEmail } from '../services/emailService';
+import { avaliarAcessoAoCurso, isCursoDoUsuario } from '../utils/courseAccess';
 
 // @desc    Listar todos os cursos
 // @route   GET /api/courses
@@ -66,7 +67,6 @@ export const getCourses = async (req: AuthRequest, res: Response) => {
 export const getCourseById = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?._id;
-    const userCargo = req.user?.cargo;
 
     const course = await Course.findById(req.params.id)
       .populate('instrutor', 'nomeCompleto fotoPerfil bio')
@@ -96,23 +96,12 @@ export const getCourseById = async (req: AuthRequest, res: Response) => {
       );
     }
 
-    // Verificar se usuário tem acesso ao conteúdo (para informar no frontend)
-    let temAcessoConteudo = false;
-    // Administrador tem acesso total a todos os cursos
-    if (userCargo === 'Administrador') {
-      temAcessoConteudo = true;
-    } else if (userCargo === 'Instrutor') {
-      temAcessoConteudo = true;
-    } else if (expirado) {
-      // Curso encerrado: acesso dos alunos é interrompido a partir da data de término
-      temAcessoConteudo = false;
-    } else if (course.acessoRestrito) {
-      // Curso restrito: precisa estar na lista de autorizados
-      temAcessoConteudo = userId ? course.alunosAutorizados.some((id) => id.toString() === userId.toString()) : false;
-    } else {
-      // Curso não restrito: qualquer aluno tem acesso
-      temAcessoConteudo = userCargo === 'Aluno';
-    }
+    // Acesso ao conteúdo: regra única em utils/courseAccess. Quem foi
+    // autorizado no curso vale como Aluno dele, mesmo que o cargo global ainda
+    // seja "Visitante". `matriculado` é só vitrine ("Meus Cursos").
+    const acesso = avaliarAcessoAoCurso(course, req.user);
+    const temAcessoConteudo = acesso.permitido;
+    const matriculado = isCursoDoUsuario(course, req.user);
 
     // Contar total de aulas e materiais
     const totalAulas = await Lesson.countDocuments({ cursoId: course._id });
@@ -132,6 +121,9 @@ export const getCourseById = async (req: AuthRequest, res: Response) => {
     // Retornar curso com info de acesso e contagens
     const courseObj = course.toObject();
     (courseObj as any).temAcessoConteudo = temAcessoConteudo;
+    (courseObj as any).matriculado = matriculado;
+    (courseObj as any).motivoBloqueio = acesso.motivo;
+    (courseObj as any).mensagemBloqueio = acesso.mensagem;
     (courseObj as any).expirado = expirado;
     (courseObj as any).totalAulas = totalAulas;
     (courseObj as any).totalMateriais = totalMateriais;
@@ -408,15 +400,27 @@ export const addAuthorizedStudent = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Usuário não encontrado' });
     }
 
-    // Verificar se já está autorizado
-    if (course.alunosAutorizados.some((id) => id.toString() === userId)) {
+    const courseIdStr = (course._id as any).toString();
+    const jaAutorizado = course.alunosAutorizados.some((id) => id.toString() === userId);
+    const jaInscrito = user.cursosInscritos.some((c) => c.toString() === courseIdStr);
+
+    if (jaAutorizado && jaInscrito) {
       return res.status(400).json({ message: 'Usuário já está autorizado para este curso' });
     }
 
-    course.alunosAutorizados.push(userId);
-    await course.save();
+    if (!jaAutorizado) {
+      course.alunosAutorizados.push(userId);
+      await course.save();
+    }
 
-    res.json({ message: 'Usuário autorizado com sucesso', course });
+    // Autorizar sem matricular deixava o curso fora de "Meus Cursos" e o aluno
+    // sem vínculo — o conteúdo aparecia bloqueado. Autorizar = dar acesso.
+    if (!jaInscrito) {
+      user.cursosInscritos.push(course._id as any);
+      await user.save();
+    }
+
+    res.json({ message: 'Usuário autorizado e matriculado com sucesso', course });
   } catch (error) {
     console.error('Erro ao autorizar aluno:', error);
     res.status(500).json({ message: 'Erro ao autorizar aluno' });
@@ -440,6 +444,14 @@ export const removeAuthorizedStudent = async (req: Request, res: Response) => {
     );
     await course.save();
 
+    // Remover a autorização também desfaz a matrícula: o vínculo com o curso é
+    // o que libera o conteúdo, então ele precisa cair junto.
+    const courseIdStr = (course._id as any).toString();
+    await User.updateOne(
+      { _id: userId },
+      { $pull: { cursosInscritos: course._id } }
+    ).catch((err) => console.error(`Erro ao remover inscrição do curso ${courseIdStr}:`, err));
+
     res.json({ message: 'Autorização removida com sucesso', course });
   } catch (error) {
     console.error('Erro ao remover autorização:', error);
@@ -447,19 +459,26 @@ export const removeAuthorizedStudent = async (req: Request, res: Response) => {
   }
 };
 
-// @desc    Listar alunos autorizados do curso (Admin)
+// @desc    Listar alunos com acesso ao curso — autorizados e/ou inscritos (Admin)
 // @route   GET /api/courses/:id/authorized
 // @access  Private/Admin
 export const getAuthorizedStudents = async (req: Request, res: Response) => {
   try {
-    const course = await Course.findById(req.params.id)
-      .populate('alunosAutorizados', 'nomeCompleto email cargo fotoPerfil');
+    const course = await Course.findById(req.params.id).select('alunosAutorizados');
 
     if (!course) {
       return res.status(404).json({ message: 'Curso não encontrado' });
     }
 
-    res.json(course.alunosAutorizados);
+    // Autorizados e matriculados são a mesma lista para o admin: as duas formas
+    // dão acesso ao conteúdo, então as duas precisam aparecer aqui.
+    const alunos = await User.find({
+      $or: [{ _id: { $in: course.alunosAutorizados } }, { cursosInscritos: course._id }]
+    })
+      .select('nomeCompleto email cargo fotoPerfil')
+      .sort({ nomeCompleto: 1 });
+
+    res.json(alunos);
   } catch (error) {
     console.error('Erro ao listar alunos autorizados:', error);
     res.status(500).json({ message: 'Erro ao listar alunos autorizados' });

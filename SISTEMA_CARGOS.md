@@ -55,8 +55,36 @@ automatizada de gerar e aplicar uma chave de Aluno.
 - **Cada chave é usada uma única vez** e tem validade (em dias).
 - **Chave vinculada a curso** também inscreve o usuário nesse curso automaticamente.
   Se o curso for de acesso restrito, o usuário entra na lista de autorizados.
-- O acesso às aulas de um **curso restrito** exige estar autorizado naquele curso; em
-  cursos **não restritos**, qualquer Aluno tem acesso.
+
+## O que realmente libera o conteúdo: o vínculo com o curso
+
+O cargo global **não é** a última palavra sobre acessar uma aula. Quem manda é o
+**vínculo com aquele curso**: estar na **lista de autorizados** do curso
+(`curso.alunosAutorizados`) — a lista que o admin e o fluxo de compra controlam.
+
+> **Quem está autorizado no curso vale como "Aluno" daquele curso**, mesmo que o cargo
+> global ainda seja "Visitante". É o que permite ao admin dar acesso a uma pessoa
+> específica sem precisar promovê-la a Aluno na plataforma inteira.
+
+Além disso, todo **Aluno** (cargo global) acessa qualquer curso **não restrito**, com
+ou sem inscrição — é o efeito da compra/serial key, que promove o cargo.
+
+⚠️ **Estar apenas inscrito não libera conteúdo.** `user.cursosInscritos` é vitrine
+("Meus Cursos", progresso): em curso não restrito qualquer usuário logado consegue se
+auto-inscrever, então tratar inscrição como acesso entregaria o curso de graça.
+
+Regras que continuam valendo por cima disso:
+
+- **Administrador e Instrutor** acessam qualquer curso (gestão de conteúdo).
+- **Curso encerrado** (data de término atingida) corta o acesso dos alunos.
+- O `cargosPermitidos` de cada aula/exercício/prova ainda restringe o item
+  (avaliado com o cargo **efetivo no curso**). Marcar "Visitante" em um item de
+  curso aberto continua servindo para liberar uma amostra a quem não tem vínculo.
+
+**Adicionar um aluno pelo admin** (Admin → Cursos → *Alunos*) autoriza **e** matricula
+a pessoa: o curso aparece em "Meus Cursos" e o conteúdo abre na hora. Remover desfaz
+as duas coisas. Para dados antigos (autorizados sem matrícula) existe o script
+`backend/src/scripts/syncAuthorizedEnrollments.ts`.
 
 ## Fonte única de verdade (código)
 
@@ -65,9 +93,18 @@ Para evitar divergências, os cargos são definidos em um único lugar em cada c
 - **Backend:** [`backend/src/config/roles.ts`](backend/src/config/roles.ts)
   — tipos, hierarquia (`CARGO_RANK`), descrições (`CARGO_DESCRICAO`),
   validação (`isCargoValido`) e promoção sem rebaixamento (`maiorCargo`).
+- **Backend (acesso a curso):** [`backend/src/utils/courseAccess.ts`](backend/src/utils/courseAccess.ts)
+  — vínculo com o curso (`temVinculoComCurso`), cargo efetivo no curso
+  (`cargoEfetivoNoCurso`) e as duas decisões de acesso: `avaliarAcessoAoCurso`
+  (o curso inteiro) e `avaliarAcessoAoItem` (aula, material, exercício, prova).
 - **Frontend:** [`frontend/src/config/roles.ts`](frontend/src/config/roles.ts)
-  — rótulos, resumos, descrições, classes de badge (`ROLE_INFO`, `getRoleInfo`)
-  e checagem de acesso (`hasAlunoAccess`).
+  — rótulos, resumos, descrições, classes de badge (`ROLE_INFO`, `getRoleInfo`),
+  checagem de cargo (`hasAlunoAccess`) e de acesso a conteúdo (`hasContentAccess`,
+  que lê `temAcessoAConteudo` — campo calculado pelo backend em `GET /auth/me`).
+
+O frontend **não recalcula** o acesso ao conteúdo: o cadeado de cada aula vem do
+backend em `bloqueada` (`GET /api/lessons/course/:courseId`) e o do curso em
+`temAcessoConteudo` (`GET /api/courses/:id`). Assim a tela e a API nunca discordam.
 
 Qualquer nova tela ou regra deve importar desses módulos em vez de repetir as listas
 `['Visitante', 'Aluno', ...]` no meio do código.

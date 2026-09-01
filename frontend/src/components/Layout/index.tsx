@@ -5,6 +5,7 @@ import Footer from './Footer';
 import Sidebar from './Sidebar';
 import { Menu, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { hasContentAccess } from '../../config/roles';
 import { useScrollToTop } from '../../hooks/useScrollToTop';
 import ErrorBoundary from '../common/ErrorBoundary';
 
@@ -34,6 +35,10 @@ export const AuthenticatedLayout: React.FC = () => {
     return saved !== null ? JSON.parse(saved) : true;
   });
   const { user } = useAuth();
+
+  // Quem já tem curso vinculado não é tratado como visitante, mesmo que o cargo
+  // global ainda seja "Visitante" (ex.: matriculado pelo admin).
+  const semAcessoAoConteudo = !hasContentAccess(user);
 
   // Scroll automático para o topo ao navegar
   useScrollToTop();
@@ -138,13 +143,13 @@ export const AuthenticatedLayout: React.FC = () => {
                   </h1>
                   <p className="text-[var(--color-text-secondary)] text-sm mt-1 flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                    {user?.cargo === 'Visitante'
+                    {semAcessoAoConteudo
                       ? 'Inicie sua jornada na Ecocardiografia hoje'
                       : `Conectado como ${user?.cargo}`}
                   </p>
                 </div>
 
-                {user?.cargo === 'Visitante' && (
+                {semAcessoAoConteudo && (
                   <Link
                     to="/perfil"
                     className="glass-btn-primary !py-2 !px-4 text-sm"
