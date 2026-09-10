@@ -65,7 +65,7 @@ const BlobUploadButton: React.FC<{
       </button>
       {uploading && (
         <div className="mt-2 h-1.5 w-full rounded-full bg-[var(--glass-border)] overflow-hidden">
-          <div className="h-full bg-primary-500 transition-all" style={{ width: `${progress}%` }} />
+          <div className="h-full bg-primary-500 transition-[width] duration-long ease-out" style={{ width: `${progress}%` }} />
         </div>
       )}
     </div>

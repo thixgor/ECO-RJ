@@ -9,12 +9,17 @@ interface GlassCardProps {
   animate?: boolean;
 }
 
+/**
+ * Superfície do sistema. Não é mais vidro: é papel com régua fina de 1px.
+ * O único sinal de hover é a borda escurecer — sem elevar, sem escalar,
+ * sem sombra colorida.
+ */
 const paddingClasses = {
   none: '',
   sm: 'p-3',
   md: 'p-4',
-  lg: 'p-6',
-  xl: 'p-8',
+  lg: 'p-5 sm:p-6',
+  xl: 'p-6 sm:p-8',
 };
 
 export const GlassCard: React.FC<GlassCardProps> = ({

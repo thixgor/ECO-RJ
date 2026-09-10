@@ -25,7 +25,7 @@ export const GlassInput = forwardRef<HTMLInputElement, GlassInputProps>(
 
         <div className="relative">
           {leftIcon && (
-            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]">
+            <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" aria-hidden="true">
               {leftIcon}
             </div>
           )}
@@ -37,27 +37,29 @@ export const GlassInput = forwardRef<HTMLInputElement, GlassInputProps>(
               glass-input
               ${leftIcon ? 'pl-11' : ''}
               ${rightIcon ? 'pr-11' : ''}
-              ${error ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''}
+              ${error ? 'input-error' : ''}
               ${className}
             `}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? `${inputId}-error` : helperText ? `${inputId}-help` : undefined}
             {...props}
           />
 
           {rightIcon && (
-            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]">
+            <div className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" aria-hidden="true">
               {rightIcon}
             </div>
           )}
         </div>
 
         {error && (
-          <p className="mt-1.5 text-sm text-red-500 animate-slide-down">
+          <p id={`${inputId}-error`} role="alert" className="error-message">
             {error}
           </p>
         )}
 
         {helperText && !error && (
-          <p className="mt-1.5 text-sm text-[var(--color-text-muted)]">
+          <p id={`${inputId}-help`} className="mt-1.5 text-sm text-[var(--color-text-muted)]">
             {helperText}
           </p>
         )}

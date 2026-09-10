@@ -517,10 +517,10 @@ const AdminLessons: React.FC = () => {
           </button>
         </div>
         <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${lesson.tipo === 'ao_vivo'
-          ? 'bg-gradient-to-br from-red-400/20 to-red-600/20'
+          ? 'bg-[var(--color-danger-soft)]'
           : lesson.tipo === 'material'
-            ? 'bg-gradient-to-br from-purple-400/20 to-purple-600/20'
-            : 'bg-gradient-to-br from-blue-400/20 to-blue-600/20'
+            ? 'bg-[var(--color-paper-3)]'
+            : 'bg-[var(--color-accent-soft)]'
           }`}>
           {lesson.tipo === 'ao_vivo' ? (
             <Video className="w-6 h-6 text-red-500" />
@@ -786,7 +786,7 @@ const AdminLessons: React.FC = () => {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start justify-center z-50 p-4 overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 flex items-start justify-center z-50 p-4 overflow-y-auto">
           <div className="glass-card-static w-full max-w-3xl my-8 animate-scale-in">
             <div className="p-6 border-b border-[var(--glass-border)] flex items-center justify-between">
               <h2 className="font-heading text-xl font-semibold text-[var(--color-text-primary)]">
@@ -1073,7 +1073,7 @@ const AdminLessons: React.FC = () => {
                       key={cargo}
                       type="button"
                       onClick={() => toggleCargo(cargo)}
-                      className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${formData.cargosPermitidos.includes(cargo)
+                      className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors duration-micro ${formData.cargosPermitidos.includes(cargo)
                         ? 'glass-btn-primary'
                         : 'glass-btn'
                         }`}

@@ -163,10 +163,10 @@ const NotesSidePanel: React.FC<NotesSidePanelProps> = ({
         className={`
           fixed top-0 right-0 h-full z-50
           w-full sm:w-96
-          bg-[var(--glass-bg)] backdrop-blur-xl
+          bg-[var(--glass-bg)]
           border-l border-[var(--glass-border)]
-          shadow-2xl
-          transform transition-transform duration-300 ease-out
+          shadow-raised
+          transform transition-transform duration-short ease-out
           flex flex-col
           ${isOpen ? 'translate-x-0' : 'translate-x-full'}
         `}

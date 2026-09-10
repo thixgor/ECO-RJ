@@ -1138,10 +1138,10 @@ const Profile: React.FC = () => {
 
       {/* Serial Key Quick Modal */}
       {showSerialKeyModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full shadow-2xl animate-slide-up overflow-hidden">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full shadow-raised animate-slide-up overflow-hidden">
             {/* Header */}
-            <div className="bg-gradient-to-r from-primary-500 to-primary-600 p-5 text-white">
+            <div className="bg-[var(--color-accent)] p-5 text-white">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
                   <Key className="w-5 h-5" />

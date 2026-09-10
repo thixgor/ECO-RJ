@@ -291,7 +291,7 @@ NÃO COMPARTILHE ESTE TOKEN COM NINGUÉM!
             <img
               src={isDark ? LOGO_DARK : LOGO_LIGHT}
               alt="ECO RJ"
-              className="h-16 w-auto drop-shadow-lg select-none pointer-events-none"
+              className="h-16 w-auto drop-shadow-whisper select-none pointer-events-none"
               loading="lazy"
               decoding="async"
               draggable={false}
@@ -339,7 +339,7 @@ NÃO COMPARTILHE ESTE TOKEN COM NINGUÉM!
                     key={tipo}
                     type="button"
                     onClick={() => handleSelectTipo(tipo)}
-                    className={`p-4 rounded-xl border-2 text-center transition-all ${
+                    className={`p-4 rounded-xl border-2 text-center transition-colors ${
                       tipoUsuario === tipo
                         ? 'border-primary-500 bg-primary-50 dark:bg-primary-500/10 text-primary-600 dark:text-primary-400'
                         : 'border-[var(--glass-border)] hover:border-primary-300 text-[var(--color-text-secondary)]'
@@ -613,10 +613,10 @@ NÃO COMPARTILHE ESTE TOKEN COM NINGUÉM!
 
       {/* Modal de Token de Recuperação */}
       {showTokenModal && recoveryData && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-lg w-full shadow-2xl animate-slide-up overflow-hidden max-h-[90vh] flex flex-col">
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-2 sm:p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-lg w-full shadow-raised animate-slide-up overflow-hidden max-h-[90vh] flex flex-col">
             {/* Header */}
-            <div className="bg-gradient-to-r from-amber-500 to-orange-500 p-4 sm:p-6 text-white flex-shrink-0">
+            <div className="bg-[var(--color-warning)] p-4 sm:p-6 text-white flex-shrink-0">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
                   <Key className="w-5 h-5 sm:w-6 sm:h-6" />

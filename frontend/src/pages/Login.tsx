@@ -140,7 +140,7 @@ const Login: React.FC = () => {
       <div className="max-w-md w-full animate-slide-up">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center mx-auto mb-6 shadow-lg shadow-primary-500/30">
+          <div className="w-20 h-20 rounded-2xl bg-[var(--color-accent-soft)] border border-[var(--color-accent-tint)] text-[var(--color-accent)] flex items-center justify-center mx-auto mb-6">
             <GraduationCap className="w-10 h-10 text-white" />
           </div>
           <h1 className="font-heading text-3xl font-bold text-[var(--color-text-primary)] mb-2">
@@ -267,10 +267,10 @@ const Login: React.FC = () => {
 
       {/* Recovery Modal */}
       {showRecoveryModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full shadow-2xl animate-slide-up overflow-hidden">
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full shadow-raised animate-slide-up overflow-hidden">
             {/* Header */}
-            <div className="bg-gradient-to-r from-primary-500 to-primary-600 p-6 text-white">
+            <div className="bg-[var(--color-accent)] p-6 text-white">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
                   <Key className="w-6 h-6" />

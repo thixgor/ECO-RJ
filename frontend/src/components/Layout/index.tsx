@@ -93,76 +93,68 @@ export const AuthenticatedLayout: React.FC = () => {
           <button
             onClick={() => setIsSidebarVisible(!isSidebarVisible)}
             className={`
-              hidden lg:flex fixed top-4 z-40 items-center justify-center
-              w-10 h-10 rounded-r-xl glass-card-static
-              border-l-0 border-[var(--glass-border)]
-              text-[var(--color-text-muted)] hover:text-primary-500
-              transition-all duration-500 ease-apple touch-target
+              hidden lg:flex fixed top-4 z-raised items-center justify-center
+              w-8 h-12
+              bg-[var(--color-paper)] border border-l-0 border-[var(--color-rule)]
+              text-[var(--color-neutral)] hover:text-[var(--color-accent)]
+              transition-[left,color] duration-short ease-out
               ${isSidebarVisible ? 'left-72' : 'left-0'}
             `}
             style={{ marginTop: '64px' }}
             title={isSidebarVisible ? "Ocultar Menu" : "Mostrar Menu"}
           >
             {isSidebarVisible ? (
-              <ChevronLeft className="w-5 h-5 transition-transform duration-500" />
+              <ChevronLeft className="w-4 h-4" aria-hidden="true" />
             ) : (
-              <ChevronRight className="w-5 h-5 transition-transform duration-500" />
+              <ChevronRight className="w-4 h-4" aria-hidden="true" />
             )}
           </button>
 
           {/* Mobile menu button - Better touch target */}
-          <div className="lg:hidden sticky top-0 z-30 p-3 sm:p-4 border-b border-[var(--glass-border)] glass-card-static !rounded-none">
+          <div className="lg:hidden sticky top-0 z-raised border-b border-[var(--color-rule)] bg-[var(--color-paper)]">
             <button
               onClick={() => setIsSidebarOpen(true)}
-              className="flex items-center gap-3 px-4 py-3 rounded-xl text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--glass-bg)] transition-all touch-target-lg w-full sm:w-auto"
+              className="flex items-center gap-2.5 px-4 py-3 text-sm text-[var(--color-muted)] hover:text-[var(--color-ink)] transition-colors duration-micro ease-out touch-target-lg"
             >
-              <Menu className="w-5 h-5" />
-              <span className="font-medium">Menu</span>
+              <Menu className="w-4 h-4" aria-hidden="true" />
+              <span className="label-caps">Menu</span>
             </button>
           </div>
 
-          {/* Welcome bar - Redesigned & Fixed collision */}
-          <div className={`
-            px-4 sm:px-6 py-4 sm:py-6 
-            transition-all duration-500 ease-apple
-            ${isSidebarVisible ? 'lg:pl-14' : 'lg:pl-14'} 
-          `}>
-            <div className="glass-card-static p-4 sm:p-6 border-none shadow-lg overflow-hidden relative">
-              {/* Background Accent */}
-              <div className="absolute top-0 right-0 w-32 h-32 bg-primary-500/10 rounded-full blur-3xl -mr-16 -mt-16" />
-              <div className="absolute bottom-0 left-0 w-24 h-24 bg-primary-400/5 rounded-full blur-2xl -ml-12 -mb-12" />
-
-              <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                  <h1 className="font-heading text-xl sm:text-2xl font-bold text-[var(--color-text-primary)] tracking-tight">
-                    <span className="text-primary-500">Olá,</span> {user?.nomeCompleto ? (
-                      ['Prof.', 'Dr.', 'Dra.', 'Sr.', 'Sra.'].includes(user.nomeCompleto.split(' ')[0])
-                        ? user.nomeCompleto.split(' ').slice(0, 2).join(' ')
-                        : user.nomeCompleto.split(' ')[0]
-                    ) : ''}!
-                  </h1>
-                  <p className="text-[var(--color-text-secondary)] text-sm mt-1 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                    {semAcessoAoConteudo
-                      ? 'Inicie sua jornada na Ecocardiografia hoje'
-                      : `Conectado como ${user?.cargo}`}
-                  </p>
-                </div>
-
+          {/* Cabeçalho da área do aluno.
+              Antes: cartão de vidro com dois blobs desfocados e um ponto verde
+              pulsando. Agora: régua, saudação em display e o estado da conta
+              dito por escrito — o estado é informação, não animação. */}
+          <div className="px-4 sm:px-6 lg:pl-14 pt-6 pb-5 border-b border-[var(--color-rule)]">
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+              <div className="min-w-0">
+                <p className="label-caps">
+                  {semAcessoAoConteudo ? 'Acesso pendente' : `Sessão · ${user?.cargo}`}
+                </p>
+                <h1 className="font-heading text-2xl sm:text-3xl font-medium tracking-display text-[var(--color-ink-deep)] mt-1">
+                  {user?.nomeCompleto ? (
+                    ['Prof.', 'Dr.', 'Dra.', 'Sr.', 'Sra.'].includes(user.nomeCompleto.split(' ')[0])
+                      ? user.nomeCompleto.split(' ').slice(0, 2).join(' ')
+                      : user.nomeCompleto.split(' ')[0]
+                  ) : 'Bem-vindo'}
+                </h1>
                 {semAcessoAoConteudo && (
-                  <Link
-                    to="/perfil"
-                    className="glass-btn-primary !py-2 !px-4 text-sm"
-                  >
-                    Ativar Serial Key
-                  </Link>
+                  <p className="text-sm text-[var(--color-muted)] mt-1.5 max-w-md">
+                    Sua conta ainda não tem acesso ao conteúdo. Ative uma serial key no perfil para liberar aulas, exercícios e fórum.
+                  </p>
                 )}
               </div>
+
+              {semAcessoAoConteudo && (
+                <Link to="/perfil" className="glass-btn-primary !py-2.5 !px-4 !text-xs flex-shrink-0">
+                  Ativar serial key
+                </Link>
+              )}
             </div>
           </div>
 
           {/* Main content - Responsive padding */}
-          <main className="flex-1 p-4 sm:p-6 bg-background dark:bg-dark-bg/50 safe-area-bottom">
+          <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6 sm:py-8 safe-area-bottom">
             <ErrorBoundary>
               <Outlet />
             </ErrorBoundary>
@@ -235,36 +227,36 @@ export const AdminLayout: React.FC = () => {
           <button
             onClick={() => setIsSidebarVisible(!isSidebarVisible)}
             className={`
-              hidden lg:flex fixed top-4 z-40 items-center justify-center
-              w-10 h-10 rounded-r-xl glass-card-static
-              border-l-0 border-[var(--glass-border)]
-              text-[var(--color-text-muted)] hover:text-primary-500
-              transition-all duration-500 ease-apple touch-target
+              hidden lg:flex fixed top-4 z-raised items-center justify-center
+              w-8 h-12
+              bg-[var(--color-paper)] border border-l-0 border-[var(--color-rule)]
+              text-[var(--color-neutral)] hover:text-[var(--color-accent)]
+              transition-[left,color] duration-short ease-out
               ${isSidebarVisible ? 'left-72' : 'left-0'}
             `}
             style={{ marginTop: '64px' }}
             title={isSidebarVisible ? "Ocultar Menu" : "Mostrar Menu"}
           >
             {isSidebarVisible ? (
-              <ChevronLeft className="w-5 h-5 transition-transform duration-500" />
+              <ChevronLeft className="w-4 h-4" aria-hidden="true" />
             ) : (
-              <ChevronRight className="w-5 h-5 transition-transform duration-500" />
+              <ChevronRight className="w-4 h-4" aria-hidden="true" />
             )}
           </button>
 
           {/* Mobile menu button - Better touch target */}
-          <div className="lg:hidden sticky top-0 z-30 p-3 sm:p-4 border-b border-[var(--glass-border)] glass-card-static !rounded-none">
+          <div className="lg:hidden sticky top-0 z-raised border-b border-[var(--color-rule)] bg-[var(--color-paper)]">
             <button
               onClick={() => setIsSidebarOpen(true)}
-              className="flex items-center gap-3 px-4 py-3 rounded-xl text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--glass-bg)] transition-all touch-target-lg w-full sm:w-auto"
+              className="flex items-center gap-2.5 px-4 py-3 text-sm text-[var(--color-muted)] hover:text-[var(--color-ink)] transition-colors duration-micro ease-out touch-target-lg"
             >
-              <Menu className="w-5 h-5" />
-              <span className="font-medium">Menu</span>
+              <Menu className="w-4 h-4" aria-hidden="true" />
+              <span className="label-caps">Menu</span>
             </button>
           </div>
 
           {/* Main content - Responsive padding */}
-          <main className="flex-1 p-4 sm:p-6 bg-background dark:bg-dark-bg/50 safe-area-bottom">
+          <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6 sm:py-8 safe-area-bottom">
             <ErrorBoundary>
               <Outlet />
             </ErrorBoundary>

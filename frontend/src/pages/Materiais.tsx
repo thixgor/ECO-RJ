@@ -158,22 +158,22 @@ const Materiais: React.FC = () => {
             <Link
               key={m._id}
               to={`/materiais/${m._id}`}
-              className="card overflow-hidden hover:-translate-y-1 transition-all duration-300 relative flex flex-col"
+              className="card !p-0 overflow-hidden border-[var(--color-rule)] hover:border-[var(--color-rule-strong)] transition-colors duration-short relative flex flex-col"
             >
               {m.adquirido && (
-                <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 bg-emerald-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
+                <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 bg-emerald-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-whisper">
                   <CheckCircle2 className="w-3.5 h-3.5" />
                   ADQUIRIDO
                 </div>
               )}
               {m.destaque && !m.adquirido && (
-                <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
+                <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 bg-[var(--color-warning)] text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-whisper">
                   <Star className="w-3.5 h-3.5 fill-white" />
                   DESTAQUE
                 </div>
               )}
 
-              <div className="h-44 bg-gradient-to-br from-primary-300 to-primary-500 flex items-center justify-center">
+              <div className="h-44 bg-[var(--color-paper-3)] flex items-center justify-center">
                 {m.capa ? (
                   <img
                     src={m.capa}

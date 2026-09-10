@@ -133,7 +133,7 @@ const PaymentStatus: React.FC = () => {
         {pendente && (
           <>
             <div className="w-16 h-16 rounded-full bg-amber-500/15 flex items-center justify-center mx-auto mb-4">
-              <Clock className="w-9 h-9 text-amber-500 animate-pulse" />
+              <Clock className="w-9 h-9 text-[var(--color-warning)]" aria-hidden="true" />
             </div>
             <h1 className="text-2xl font-heading font-bold mb-1">
               {order?.statusDetail === 'pending_challenge' ? 'Verificação do cartão pendente' : 'Aguardando pagamento'}

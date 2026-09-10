@@ -1211,9 +1211,9 @@ const Lesson: React.FC = () => {
             <div className="card overflow-hidden">
               {/* Tela de entrada (antes de conectar) ou tela de "já entrou externamente" */}
               {!isZoomJoined && !joinedExternally && !isZoomInitializing && (
-                <div className="w-full bg-gradient-to-br from-[#0a1628] to-[#1a2744] rounded-xl">
+                <div className="w-full bg-[var(--color-ink-deep)] rounded-xl">
                   <div className="flex flex-col items-center justify-center p-6 sm:p-8 text-center">
-                    <div className="w-14 h-14 sm:w-16 sm:h-16 mb-3 sm:mb-4 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-xl">
+                    <div className="w-14 h-14 sm:w-16 sm:h-16 mb-3 sm:mb-4 rounded-full bg-[var(--color-accent)] flex items-center justify-center shadow-raised">
                       <Video className="w-7 h-7 sm:w-8 sm:h-8 text-white" />
                     </div>
 
@@ -1242,7 +1242,7 @@ const Lesson: React.FC = () => {
                         <button
                           onClick={joinZoomMeeting}
                           disabled={isZoomConnecting}
-                          className="relative w-full flex flex-col items-center justify-center gap-0.5 px-4 py-2.5 sm:py-3 bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-600 hover:to-cyan-700 text-white rounded-xl font-bold transition-all shadow-lg hover:shadow-xl disabled:opacity-50 border border-cyan-400/50"
+                          className="relative w-full flex flex-col items-center justify-center gap-0.5 px-4 py-2.5 sm:py-3 bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-white rounded-xl font-bold transition-colors shadow-whisper hover:shadow-raised disabled:opacity-50 border border-cyan-400/50"
                         >
                           {isZoomConnecting ? (
                             <>
@@ -1266,7 +1266,7 @@ const Lesson: React.FC = () => {
                       {/* Opção 2: Abrir no App Zoom */}
                       <button
                         onClick={openZoomApp}
-                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-all shadow-md hover:shadow-lg text-sm"
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-colors shadow-whisper hover:shadow-whisper text-sm"
                       >
                         <Video className="w-4 h-4" />
                         Abrir no App Zoom
@@ -1275,7 +1275,7 @@ const Lesson: React.FC = () => {
                       {/* Opção 3: Abrir no Navegador */}
                       <button
                         onClick={openZoomBrowser}
-                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-600 hover:bg-gray-700 text-white rounded-xl font-semibold transition-all shadow-md hover:shadow-lg text-sm"
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-600 hover:bg-gray-700 text-white rounded-xl font-semibold transition-colors shadow-whisper hover:shadow-whisper text-sm"
                       >
                         <ExternalLink className="w-4 h-4" />
                         Abrir no Navegador
@@ -1287,9 +1287,9 @@ const Lesson: React.FC = () => {
 
               {/* Mensagem quando entrou externamente */}
               {!isZoomJoined && joinedExternally && (
-                <div className="w-full bg-gradient-to-br from-[#0a2818] to-[#1a4428] rounded-xl">
+                <div className="w-full bg-[var(--color-ink-deep)] rounded-xl">
                   <div className="flex flex-col items-center justify-center p-6 sm:p-8 text-center">
-                    <div className="w-16 h-16 sm:w-20 sm:h-20 mb-4 sm:mb-6 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-xl">
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 mb-4 sm:mb-6 rounded-full bg-[var(--color-success)] flex items-center justify-center shadow-raised">
                       <CheckCircle className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
                     </div>
 
@@ -1304,7 +1304,7 @@ const Lesson: React.FC = () => {
 
                     <button
                       onClick={() => setJoinedExternally(false)}
-                      className="px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-xl font-semibold transition-all shadow-md hover:shadow-lg"
+                      className="px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-xl font-semibold transition-colors shadow-whisper hover:shadow-whisper"
                     >
                       Voltar às Opções
                     </button>
@@ -1342,7 +1342,7 @@ const Lesson: React.FC = () => {
                     {/* Botão de Chat */}
                     <button
                       onClick={toggleChat}
-                      className={`px-4 py-2.5 rounded-lg font-semibold shadow-xl transition-all flex items-center gap-2 backdrop-blur-sm ${
+                      className={`px-4 py-2.5 rounded-lg font-semibold shadow-raised transition-colors flex items-center gap-2 ${
                         isChatOpen
                           ? 'bg-primary-500 hover:bg-primary-600 text-white'
                           : 'bg-gray-800/90 hover:bg-gray-700 text-white'
@@ -1356,7 +1356,7 @@ const Lesson: React.FC = () => {
                     {/* Botão Tela Cheia */}
                     <button
                       onClick={toggleFullscreen}
-                      className="px-4 py-2.5 bg-gray-800/90 hover:bg-gray-700 text-white rounded-lg font-semibold shadow-xl transition-all hover:shadow-2xl flex items-center gap-2 backdrop-blur-sm"
+                      className="px-4 py-2.5 bg-gray-800/90 hover:bg-gray-700 text-white rounded-lg font-semibold shadow-raised transition-colors hover:shadow-raised flex items-center gap-2"
                       title={isFullscreen ? 'Sair da tela cheia' : 'Tela cheia'}
                     >
                       {isFullscreen ? (
@@ -1375,7 +1375,7 @@ const Lesson: React.FC = () => {
                     {/* Botão Sair da Aula */}
                     <button
                       onClick={leaveZoomMeeting}
-                      className="px-4 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-lg font-bold shadow-xl transition-all hover:shadow-red-500/50 flex items-center gap-2"
+                      className="px-4 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-lg font-bold shadow-raised transition-colors hover: flex items-center gap-2"
                     >
                       <X className="w-4 h-4" />
                       <span className="hidden sm:inline">Sair</span>
@@ -1386,7 +1386,7 @@ const Lesson: React.FC = () => {
                 {/* Sugestão de tela cheia */}
                 {isZoomJoined && showFullscreenSuggestion && !isFullscreen && (
                   <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 z-[9999] animate-fade-in max-w-md">
-                    <div className="bg-gradient-to-r from-primary-500 to-primary-600 text-white px-6 py-4 rounded-xl shadow-2xl backdrop-blur-sm">
+                    <div className="bg-[var(--color-accent)] text-white px-6 py-4 rounded-xl shadow-raised">
                       <div className="flex items-center gap-3 mb-3">
                         <Maximize className="w-6 h-6 flex-shrink-0" />
                         <div className="flex-1">
@@ -1449,7 +1449,7 @@ const Lesson: React.FC = () => {
               {lesson.tipo === 'gravada' && (
                 <button
                   onClick={() => setShowNotesPanel(true)}
-                  className="absolute top-3 right-3 z-20 flex items-center gap-2 px-3 py-2 bg-black/60 hover:bg-black/80 text-white rounded-lg text-sm font-medium transition-all hover:scale-105 backdrop-blur-sm"
+                  className="absolute top-3 right-3 z-20 flex items-center gap-2 px-3 py-2 bg-black/60 hover:bg-black/80 text-white rounded-lg text-sm font-medium transition-colors"
                   title="Minhas Notas"
                 >
                   <StickyNote className="w-4 h-4" />
@@ -1539,9 +1539,9 @@ const Lesson: React.FC = () => {
                     href={btn.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-3 px-6 py-3 bg-white dark:bg-white/5 border-2 border-primary-500 rounded-xl text-primary-600 dark:text-primary-400 font-bold hover:bg-primary-50 dark:hover:bg-primary-500/10 hover:text-primary-700 dark:hover:text-primary-300 transition-all shadow-sm hover:shadow-md text-base group"
+                    className="inline-flex items-center gap-3 px-6 py-3 bg-white dark:bg-white/5 border-2 border-primary-500 rounded-xl text-primary-600 dark:text-primary-400 font-bold hover:bg-primary-50 dark:hover:bg-primary-500/10 hover:text-primary-700 dark:hover:text-primary-300 transition-colors shadow-whisper hover:shadow-whisper text-base group"
                   >
-                    <ExternalLink className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                    <ExternalLink className="w-5 h-5 group- transition-transform" />
                     {btn.nome}
                   </a>
                 ))}
@@ -1653,7 +1653,7 @@ const Lesson: React.FC = () => {
                   <Link
                     key={relatedLesson._id}
                     to={`/aulas/${relatedLesson._id}`}
-                    className="group block p-4 rounded-xl border border-[var(--glass-border)] hover:border-primary-300 dark:hover:border-primary-500/50 hover:bg-gray-50 dark:hover:bg-white/5 transition-all"
+                    className="group block p-4 rounded-xl border border-[var(--glass-border)] hover:border-primary-300 dark:hover:border-primary-500/50 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
                   >
                     <div className="flex items-start gap-3">
                       {/* Icon */}
@@ -1729,7 +1729,7 @@ const Lesson: React.FC = () => {
                       </div>
 
                       {/* Arrow */}
-                      <ChevronRight className="w-5 h-5 text-[var(--color-text-muted)] group-hover:text-primary-500 group-hover:translate-x-1 transition-all flex-shrink-0" />
+                      <ChevronRight className="w-5 h-5 text-[var(--color-text-muted)] group-hover:text-primary-500 group-hover:translate-x-1 transition-[color,transform] duration-micro ease-out flex-shrink-0" />
                     </div>
                   </Link>
                 );

@@ -342,7 +342,7 @@ const AdminCertificates: React.FC = () => {
 
       {/* Generate Modal */}
       {showGenerateModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="modal-content !max-w-lg">
             <div className="p-6 border-b border-[var(--glass-border)]">
               <h2 className="font-heading text-xl font-semibold text-[var(--color-text-primary)]">
@@ -490,7 +490,7 @@ const AdminCertificates: React.FC = () => {
 
       {/* Delete All Modal */}
       {showDeleteAllModal && userToDeleteAll && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="modal-content !max-w-md">
             <div className="p-6 text-center">
               <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-100 dark:bg-red-500/20 flex items-center justify-center">

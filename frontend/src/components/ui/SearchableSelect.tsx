@@ -133,7 +133,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
       </button>
 
       {open && (
-        <div className="absolute z-50 mt-1 w-full bg-white dark:bg-gray-800 border border-[var(--glass-border)] rounded-lg shadow-xl max-h-72 overflow-hidden flex flex-col animate-slide-down">
+        <div className="absolute z-50 mt-1 w-full bg-white dark:bg-gray-800 border border-[var(--glass-border)] rounded-lg shadow-raised max-h-72 overflow-hidden flex flex-col animate-slide-down">
           <div className="p-2 border-b border-[var(--glass-border)] sticky top-0 bg-white dark:bg-gray-800">
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />

@@ -121,7 +121,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isVisible = true }) 
       {/* Overlay for mobile - Higher z-index and better touch handling */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 lg:hidden animate-fade-in"
+          className="fixed inset-0 bg-[oklch(15%_0.02_250_/_0.5)] z-40 lg:hidden animate-fade-in"
           onClick={onClose}
           onTouchEnd={(e) => {
             e.preventDefault();
@@ -141,16 +141,16 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isVisible = true }) 
           fixed lg:sticky inset-y-0 lg:top-0 lg:inset-y-auto left-0 z-50
           lg:h-auto lg:self-stretch lg:max-h-[calc(100vh-4rem)]
           glass-sidebar
-          transform transition-all duration-300 ease-out
+          transform transition-transform duration-short ease-out
           lg:transform-none
           ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
           ${isVisible ? 'w-[85vw] sm:w-80 lg:w-72 opacity-100' : 'lg:w-0 lg:opacity-0 lg:pointer-events-none lg:overflow-hidden'}
           safe-area-top safe-area-left
         `}
       >
-        <div className={`flex flex-col h-full transition-opacity duration-300 ${isVisible ? 'opacity-100' : 'lg:opacity-0'}`}>
+        <div className={`flex flex-col h-full transition-opacity duration-short ${isVisible ? 'opacity-100' : 'lg:opacity-0'}`}>
           {/* Header - Mobile */}
-          <div className="flex items-center justify-between p-4 sm:p-5 border-b border-[var(--glass-border)] lg:hidden">
+          <div className="flex items-center justify-between p-4 sm:p-5 border-b border-[var(--color-rule)] lg:hidden">
             <div className="flex items-center gap-3">
               <img
                 src={isDark ? LOGO_DARK : LOGO_LIGHT}
@@ -162,11 +162,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isVisible = true }) 
                 onContextMenu={(e) => e.preventDefault()}
                 onDragStart={(e) => e.preventDefault()}
               />
-              <span className="font-heading font-bold text-lg text-gradient">ECO RJ</span>
+              <span className="font-heading text-lg font-semibold tracking-display text-[var(--color-ink-deep)]">ECO&nbsp;RJ</span>
             </div>
             <button
               onClick={onClose}
-              className="p-3 rounded-xl text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--glass-bg)] transition-all duration-200 touch-target"
+              className="p-3 rounded-xl text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--glass-bg)] transition-colors duration-micro touch-target"
               aria-label="Fechar menu"
             >
               <X className="w-6 h-6" />
@@ -174,39 +174,39 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isVisible = true }) 
           </div>
 
           {/* Logo - Desktop */}
-          <div className="hidden lg:flex items-center gap-3 p-6 border-b border-[var(--glass-border)]">
+          <div className="hidden lg:flex items-center gap-3 p-6 border-b border-[var(--color-rule)]">
             <img
               src={isDark ? LOGO_DARK : LOGO_LIGHT}
               alt="ECO RJ"
-              className="h-10 w-auto drop-shadow-lg select-none pointer-events-none"
+              className="h-10 w-auto drop-shadow-whisper select-none pointer-events-none"
               loading="lazy"
               decoding="async"
               draggable={false}
               onContextMenu={(e) => e.preventDefault()}
               onDragStart={(e) => e.preventDefault()}
             />
-            <div>
-              <h2 className="font-heading font-bold text-gradient">ECO RJ</h2>
-              <p className="text-xs text-[var(--color-text-muted)]">Centro de Treinamento em Ecocardiografia</p>
+            <div className="min-w-0">
+              <p className="font-heading text-base font-semibold tracking-display text-[var(--color-ink-deep)]">ECO&nbsp;RJ</p>
+              <p className="label-caps mt-0.5 leading-tight">Centro de Treinamento<br />em Ecocardiografia</p>
             </div>
           </div>
 
           {/* User info - Mobile only */}
           {user && (
-            <div className="lg:hidden p-4 border-b border-[var(--glass-border)] bg-[var(--glass-bg)]">
+            <div className="lg:hidden p-4 border-b border-[var(--color-rule)] bg-[var(--color-paper-2)]">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-400/20 to-primary-600/20 flex items-center justify-center overflow-hidden">
+                <div className="w-11 h-11 rounded-xs border border-[var(--color-rule)] bg-[var(--color-paper-3)] flex items-center justify-center overflow-hidden flex-shrink-0">
                   {user.fotoPerfil ? (
-                    <img src={user.fotoPerfil} alt="" className="w-12 h-12 object-cover" loading="lazy" decoding="async" />
+                    <img src={user.fotoPerfil} alt="" className="w-11 h-11 object-cover" loading="lazy" decoding="async" />
                   ) : (
-                    <User className="w-6 h-6 text-primary-500" />
+                    <User className="w-5 h-5 text-[var(--color-neutral)]" aria-hidden="true" />
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-[var(--color-text-primary)] truncate">
                     {user.nomeCompleto}
                   </p>
-                  <span className="inline-block mt-1 px-2 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-600 dark:bg-primary-500/20 dark:text-primary-400">
+                  <span className="inline-block mt-1 px-1.5 py-0.5 rounded-xs border border-primary-200 dark:border-primary-700 text-2xs font-medium bg-primary-100 dark:bg-primary-900 text-primary-600 dark:text-primary-300">
                     {user.cargo}
                   </span>
                 </div>
@@ -219,9 +219,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isVisible = true }) 
           <nav className="h-full p-3 sm:p-4 space-y-1 overflow-y-auto overscroll-contain scroll-container-y">
             {/* Main Section */}
             <div className="mb-4">
-              <p className="px-4 mb-2 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">
-                Principal
-              </p>
+              <p className="label-caps px-4 mb-2">Principal</p>
 
               <NavLink to="/dashboard" className={navLinkClass} onClick={onClose}>
                 <LayoutDashboard className="w-5 h-5 flex-shrink-0" />
@@ -265,9 +263,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isVisible = true }) 
 
             {/* Account Section */}
             <div className="mb-4">
-              <p className="px-4 mb-2 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">
-                Conta
-              </p>
+              <p className="label-caps px-4 mb-2">Conta</p>
 
               <NavLink to="/perfil" className={navLinkClass} onClick={onClose}>
                 <User className="w-5 h-5 flex-shrink-0" />
@@ -278,19 +274,15 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isVisible = true }) 
             {/* Admin Section — todos os itens ficam sempre visíveis (nada é escondido
                 atrás de menus colapsáveis); os grupos apenas organizam a leitura. */}
             {isAdmin && (
-              <div className="mb-2">
+              <div className="mb-2 pt-3 border-t border-[var(--color-rule)]">
                 <div className="flex items-center gap-2 px-4 mb-2">
-                  <Shield className="w-3.5 h-3.5 text-primary-500" />
-                  <p className="text-xs font-semibold text-primary-500 uppercase tracking-wider">
-                    Administração
-                  </p>
+                  <Shield className="w-3.5 h-3.5 text-[var(--color-accent)]" aria-hidden="true" />
+                  <p className="label-caps !text-[var(--color-accent)]">Administração</p>
                 </div>
 
                 {ADMIN_GROUPS.map((group) => (
                   <div key={group.titulo} className="mb-3 last:mb-0">
-                    <p className="px-4 mb-1 text-[10px] font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">
-                      {group.titulo}
-                    </p>
+                    <p className="label-caps px-4 mb-1 opacity-80">{group.titulo}</p>
                     {group.itens.map((item) => (
                       <NavLink
                         key={item.to}
@@ -310,13 +302,15 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isVisible = true }) 
           </nav>
 
           {/* Degradê inferior: indica que a lista continua rolando */}
-          <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-[var(--color-bg-primary)] to-transparent opacity-80" />
+          {/* Sinaliza que a lista continua rolando. Único gradiente do sistema,
+              e ele é funcional: é uma máscara de leitura, não decoração. */}
+          <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-5 bg-gradient-to-t from-[var(--color-paper)] to-transparent" />
           </div>
 
           {/* Footer with Theme Switch */}
-          <div className="p-4 border-t border-[var(--glass-border)] safe-area-bottom">
+          <div className="p-4 border-t border-[var(--color-rule)] safe-area-bottom">
             <div className="flex items-center justify-between px-2 py-1">
-              <span className="text-sm text-[var(--color-text-muted)]">Tema</span>
+              <span className="label-caps">Tema</span>
               <ThemeSwitch />
             </div>
           </div>

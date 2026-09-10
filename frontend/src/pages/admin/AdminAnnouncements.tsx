@@ -403,7 +403,7 @@ const AdminAnnouncements: React.FC = () => {
 
       {/* Create/Edit Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="modal-content !max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-[var(--glass-border)]">
               <h2 className="font-heading text-xl font-semibold text-[var(--color-text-primary)]">
@@ -569,7 +569,7 @@ const AdminAnnouncements: React.FC = () => {
 
       {/* Delete All Modal */}
       {showDeleteAllModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="modal-content !max-w-md">
             <div className="p-6 text-center">
               <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-100 dark:bg-red-500/20 flex items-center justify-center">

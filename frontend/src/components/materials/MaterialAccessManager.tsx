@@ -291,7 +291,7 @@ const MaterialAccessManager: React.FC<Props> = ({ material, onClose }) => {
             placeholder="pessoa@email.com (Enter para adicionar vários)"
           />
           {suggestions.length > 0 && (
-            <div className="absolute z-20 left-0 right-0 mt-1 rounded-xl border border-[var(--glass-border)] bg-[var(--color-bg-elevated,var(--glass-bg))] backdrop-blur-xl shadow-lg overflow-hidden">
+            <div className="absolute z-20 left-0 right-0 mt-1 rounded-xl border border-[var(--glass-border)] bg-[var(--color-bg-elevated,var(--glass-bg))] shadow-whisper overflow-hidden">
               {suggestions.map((u) => (
                 <button
                   key={u._id}

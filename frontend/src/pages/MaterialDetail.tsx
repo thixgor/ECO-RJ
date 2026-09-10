@@ -132,7 +132,7 @@ const MaterialDetail: React.FC = () => {
         {/* Coluna principal */}
         <div className="lg:col-span-2 space-y-6">
           <GlassCard className="overflow-hidden">
-            <div className="h-56 bg-gradient-to-br from-primary-300 to-primary-500 flex items-center justify-center">
+            <div className="h-56 bg-[var(--color-paper-3)] flex items-center justify-center">
               {material.capa ? (
                 <img src={material.capa} alt={material.titulo} className="w-full h-full object-cover select-none" onContextMenu={(e) => e.preventDefault()} />
               ) : (

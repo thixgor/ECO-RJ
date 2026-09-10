@@ -112,12 +112,12 @@ const Courses: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fade-in">
         {/* Header skeleton */}
         <div className="mb-6">
-          <div className="h-9 bg-gray-200 dark:bg-gray-700 rounded w-48 mb-2 animate-pulse" />
-          <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-72 animate-pulse" />
+          <div className="h-9 skeleton h-9 w-48 mb-2" />
+          <div className="h-5 skeleton h-5 w-72" />
         </div>
         {/* Search skeleton */}
         <div className="mb-6">
-          <div className="h-11 bg-gray-200 dark:bg-gray-700 rounded-lg max-w-md animate-pulse" />
+          <div className="h-11 skeleton h-11 max-w-md" />
         </div>
         {/* Grid skeleton */}
         <CoursesGridSkeleton count={6} />
@@ -155,7 +155,7 @@ const Courses: React.FC = () => {
             placeholder={`Buscar cursos ${activeTab === 'online' ? 'online' : 'presenciais'}...`}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="input pl-10 bg-white dark:bg-white/5 border-gray-200 dark:border-white/10 text-[var(--color-text-primary)] transition-all"
+            className="input pl-10 bg-white dark:bg-white/5 border-gray-200 dark:border-white/10 text-[var(--color-text-primary)] transition-colors"
           />
         </div>
       </div>
@@ -227,8 +227,8 @@ const Courses: React.FC = () => {
               <ContextMenu key={course._id} items={contextMenuItems}>
               <Link
                 to={`/cursos/${course._id}`}
-                className={`card overflow-hidden hover:-translate-y-1 transition-all duration-300 relative ${isFeatured
-                  ? 'ring-2 ring-amber-500/50 shadow-lg shadow-amber-500/20'
+                className={`card !p-0 overflow-hidden border-[var(--color-rule)] hover:border-[var(--color-rule-strong)] transition-colors duration-short relative ${isFeatured
+                  ? 'ring-2 ring-amber-500/50'
                   : ''
                   } ${isEnrolled ? 'ring-2 ring-primary-500/30' : ''}`}
                 style={isFeatured ? {
@@ -237,7 +237,7 @@ const Courses: React.FC = () => {
               >
                 {/* Enrolled Badge */}
                 {isEnrolled && (
-                  <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 bg-primary-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
+                  <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 bg-primary-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-whisper">
                     <CheckCircle className="w-3.5 h-3.5" />
                     INSCRITO
                   </div>
@@ -245,7 +245,7 @@ const Courses: React.FC = () => {
 
                 {/* Featured Badge */}
                 {isFeatured && !isEnrolled && (
-                  <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg animate-pulse">
+                  <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 bg-[var(--color-warning)] text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-whisper animate-pulse">
                     <Star className="w-3.5 h-3.5 fill-white" />
                     DESTAQUE
                     <Sparkles className="w-3.5 h-3.5" />
@@ -255,14 +255,14 @@ const Courses: React.FC = () => {
                 {/* Certificate Badge - Improved visibility */}
                 {(course.certificadoDisponivel !== false) && (
                   <div className={`absolute ${(isFeatured && !isEnrolled) || isEnrolled ? 'top-12' : 'top-3'} left-3 z-10`}>
-                    <div className="flex items-center gap-1.5 bg-gradient-to-r from-emerald-500 via-emerald-400 to-teal-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg shadow-emerald-500/30 border border-white/20">
+                    <div className="flex items-center gap-1.5 bg-[var(--color-success)] text-white text-xs font-bold px-3 py-1.5 rounded-full border border-white/20">
                       <Award className="w-4 h-4 drop-shadow" />
                       <span className="tracking-wide">CERTIFICADO</span>
                     </div>
                   </div>
                 )}
 
-                <div className={`h-48 bg-gradient-to-br from-primary-300 to-primary-500 flex items-center justify-center ${isFeatured ? 'ring-1 ring-amber-500/30' : ''
+                <div className={`h-48 bg-[var(--color-paper-3)] flex items-center justify-center ${isFeatured ? 'ring-1 ring-amber-500/30' : ''
                   }`}>
                   {course.imagemCapa ? (
                     <img
@@ -404,7 +404,7 @@ const Courses: React.FC = () => {
       {showScrollHint && filteredCourses.length > 2 && (
         <button
           onClick={scrollToContent}
-          className="fixed bottom-6 right-6 w-12 h-12 bg-primary-500 text-white rounded-full shadow-lg shadow-primary-500/30 flex items-center justify-center animate-bounce sm:hidden z-40"
+          className="fixed bottom-6 right-6 w-12 h-12 bg-primary-500 text-white rounded-full flex items-center justify-center animate-bounce sm:hidden z-40"
           aria-label="Rolar para baixo"
         >
           <ChevronDown className="w-6 h-6" />

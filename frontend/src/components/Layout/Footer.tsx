@@ -1,99 +1,72 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Mail, MapPin } from 'lucide-react';
-import { useTheme } from '../../contexts/ThemeContext';
 
-// Logos ECO RJ
-const LOGO_DARK = 'https://i.imgur.com/qBXnSUD.png';
-const LOGO_LIGHT = 'https://i.imgur.com/B1SnAtD.png';
-
+/**
+ * Rodapé — arquétipo Ft4 "dense typographic colophon".
+ *
+ * Um bloco denso de colofão, no lugar das quatro colunas de links com fileira
+ * de ícones sociais (o "AI footer"). Um rodapé institucional fecha a página
+ * declarando quem assina, onde fica e sob que termos — não cataloga um mapa
+ * do site que a plataforma não tem.
+ */
 const Footer: React.FC = () => {
-  const { isDark } = useTheme();
+  const ano = new Date().getFullYear();
 
   return (
-    <footer className="bg-white dark:bg-black/40 border-t border-[var(--glass-border)] transition-colors duration-300">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {/* Logo e Info */}
-          <div>
-            <div className="flex items-center gap-3 mb-4">
-              <img
-                src={isDark ? LOGO_DARK : LOGO_LIGHT}
-                alt="ECO RJ"
-                className="h-10 w-auto drop-shadow-lg select-none pointer-events-none"
-                loading="lazy"
-                decoding="async"
-                draggable={false}
-                onContextMenu={(e) => e.preventDefault()}
-                onDragStart={(e) => e.preventDefault()}
-              />
-              <span className="font-heading font-bold text-xl text-[var(--color-text-primary)]">ECO RJ</span>
-            </div>
-            <p className="text-[var(--color-text-secondary)] text-sm mb-4">
-              Centro de Treinamento em Ecocardiografia. Atualize-se em ecocardiografia com integração de conceitos clínicos e de imagem.
-            </p>
-            <p className="text-[var(--color-text-muted)] text-xs">
-              CNPJ: 21.847.609/0001-70
-            </p>
-          </div>
+    <footer className="border-t border-[var(--color-rule)] bg-[var(--color-paper)]">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-10 sm:py-12">
+        {/* Assinatura: a linha que o cliente pediu, por extenso. */}
+        <p className="font-heading text-lg sm:text-xl font-medium tracking-display text-[var(--color-ink-deep)] max-w-2xl">
+          ECO RJ — Centro de Treinamento em Ecocardiografia
+        </p>
+        <p className="mt-2 text-sm text-[var(--color-muted)] max-w-2xl">
+          Atualização em ecocardiografia com integração de conceitos clínicos e de imagem.
+          Coordenação do Prof. Ronaldo Campos Rodrigues, Mestre em Cardiologia.
+        </p>
 
-          {/* Contato */}
-          <div>
-            <h3 className="font-heading font-semibold text-lg mb-4 text-[var(--color-text-primary)]">Contato</h3>
-            <div className="space-y-3">
-              <div className="flex items-start gap-3 text-[var(--color-text-secondary)]">
-                <MapPin className="w-5 h-5 mt-0.5 flex-shrink-0 text-primary-500" />
-                <p className="text-sm">
-                  Avenida das Américas 19.019<br />
-                  Recreio Shopping - Sala 336<br />
-                  Recreio dos Bandeirantes - RJ
-                </p>
-              </div>
-              <a
-                href="mailto:contato@cursodeecocardiografia.com"
-                className="flex items-center gap-3 text-[var(--color-text-secondary)] hover:text-primary-500 transition-colors"
-              >
-                <Mail className="w-5 h-5 text-primary-500" />
-                <span className="text-sm">contato@cursodeecocardiografia.com</span>
-              </a>
-            </div>
-          </div>
+        <hr className="rule my-8" />
 
-          {/* Links */}
-          <div>
-            <h3 className="font-heading font-semibold text-lg mb-4 text-[var(--color-text-primary)]">Links Úteis</h3>
-            <div className="space-y-2">
-              <Link to="/cursos" className="block text-[var(--color-text-secondary)] hover:text-primary-500 transition-colors text-sm">
-                Nossos Cursos
-              </Link>
-              <Link to="/termos" className="block text-[var(--color-text-secondary)] hover:text-primary-500 transition-colors text-sm">
-                Termos de Serviço
-              </Link>
-              <Link to="/privacidade" className="block text-[var(--color-text-secondary)] hover:text-primary-500 transition-colors text-sm">
-                Política de Privacidade
-              </Link>
-            </div>
+        {/* Colofão: dados institucionais em mono — o papel do mono é dado. */}
+        <div className="grid gap-6 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] sm:gap-10">
+          <address className="not-italic font-mono text-xs leading-relaxed text-[var(--color-neutral)]">
+            Avenida das Américas 19.019 · Recreio Shopping · Sala 336<br />
+            Recreio dos Bandeirantes · Rio de Janeiro · RJ<br />
+            CNPJ 21.847.609/0001-70<br />
+            <a
+              href="mailto:contato@cursodeecocardiografia.com"
+              className="text-[var(--color-accent)] underline underline-offset-2 decoration-1 hover:decoration-2 transition-[text-decoration-thickness] duration-micro ease-out break-all"
+            >
+              contato@cursodeecocardiografia.com
+            </a>
+          </address>
 
-            {/* Social */}
-            <div className="mt-6">
-              <p className="text-[var(--color-text-muted)] text-sm">
-                {new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
-              </p>
-              <p className="text-[var(--color-text-primary)] font-semibold text-sm mt-1">
-                ECO RJ - Desde 2016
-              </p>
-            </div>
-          </div>
+          <nav aria-label="Institucional" className="font-mono text-xs leading-relaxed">
+            <Link
+              to="/cursos"
+              className="block text-[var(--color-neutral)] hover:text-[var(--color-accent)] transition-colors duration-micro ease-out whitespace-nowrap"
+            >
+              Cursos
+            </Link>
+            <Link
+              to="/termos"
+              className="block text-[var(--color-neutral)] hover:text-[var(--color-accent)] transition-colors duration-micro ease-out whitespace-nowrap"
+            >
+              Termos de serviço
+            </Link>
+            <Link
+              to="/privacidade"
+              className="block text-[var(--color-neutral)] hover:text-[var(--color-accent)] transition-colors duration-micro ease-out whitespace-nowrap"
+            >
+              Política de privacidade
+            </Link>
+          </nav>
         </div>
 
-        <div className="border-t border-[var(--glass-border)] mt-8 pt-8 text-center">
-          <p className="text-[var(--color-text-muted)] text-sm">
-            © {new Date().getFullYear()} ECO RJ - Centro de Treinamento em Ecocardiografia · CNPJ: 21.847.609/0001-70
-          </p>
-          <p className="text-[var(--color-text-muted)] text-xs mt-2 opacity-50 uppercase tracking-widest">
-            Todos os Direitos Reservados
-          </p>
-        </div>
+        <hr className="rule my-8" />
+
+        <p className="label-caps">
+          © {ano} Centro de Treinamento em Ecocardiografia · Todos os direitos reservados
+        </p>
       </div>
     </footer>
   );

@@ -476,7 +476,7 @@ const AdminSiteConfig: React.FC = () => {
                     onChange={(e) => handleFeaturedCourseChange('enabled', e.target.checked)}
                     className="sr-only peer"
                   />
-                  <div className="w-11 h-6 bg-gray-200 dark:bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"></div>
+                  <div className="w-11 h-6 bg-gray-200 dark:bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-transform after:duration-short after:ease-in-out peer-checked:bg-primary-500"></div>
                   <span className="ms-3 text-sm font-medium text-[var(--color-text-secondary)]">
                     {config.featuredCourse.enabled ? 'Ativado' : 'Desativado'}
                   </span>
@@ -562,7 +562,7 @@ const AdminSiteConfig: React.FC = () => {
                     onChange={(e) => handleTestimonialsEnabledChange(e.target.checked)}
                     className="sr-only peer"
                   />
-                  <div className="w-11 h-6 bg-gray-200 dark:bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"></div>
+                  <div className="w-11 h-6 bg-gray-200 dark:bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-transform after:duration-short after:ease-in-out peer-checked:bg-primary-500"></div>
                   <span className="ms-3 text-sm font-medium text-[var(--color-text-secondary)]">
                     {config.testimonials.enabled ? 'Ativado' : 'Desativado'}
                   </span>
@@ -764,7 +764,7 @@ const AdminSiteConfig: React.FC = () => {
                     onChange={(e) => handleDemoVideoChange('enabled', e.target.checked)}
                     className="sr-only peer"
                   />
-                  <div className="w-11 h-6 bg-gray-200 dark:bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"></div>
+                  <div className="w-11 h-6 bg-gray-200 dark:bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-transform after:duration-short after:ease-in-out peer-checked:bg-primary-500"></div>
                   <span className="ms-3 text-sm font-medium text-[var(--color-text-secondary)]">
                     {config.demoVideo.enabled ? 'Ativado' : 'Desativado'}
                   </span>
@@ -843,7 +843,7 @@ const AdminSiteConfig: React.FC = () => {
                     onChange={(e) => handleWatermarkChange('enabled', e.target.checked)}
                     className="sr-only peer"
                   />
-                  <div className="w-11 h-6 bg-gray-200 dark:bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"></div>
+                  <div className="w-11 h-6 bg-gray-200 dark:bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-transform after:duration-short after:ease-in-out peer-checked:bg-primary-500"></div>
                   <span className="ms-3 text-sm font-medium text-[var(--color-text-secondary)]">
                     {config.watermark?.enabled ? 'Ativado' : 'Desativado'}
                   </span>
@@ -888,7 +888,7 @@ const AdminSiteConfig: React.FC = () => {
                         onChange={(e) => handleWatermarkChange('showForAdmins', e.target.checked)}
                         className="sr-only peer"
                       />
-                      <div className="w-11 h-6 bg-gray-200 dark:bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"></div>
+                      <div className="w-11 h-6 bg-gray-200 dark:bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-transform after:duration-short after:ease-in-out peer-checked:bg-primary-500"></div>
                     </label>
                   </div>
 
@@ -951,7 +951,7 @@ const AdminSiteConfig: React.FC = () => {
                     onChange={(e) => handleZoomNativeChange('enabled', e.target.checked)}
                     className="sr-only peer"
                   />
-                  <div className="w-11 h-6 bg-gray-200 dark:bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"></div>
+                  <div className="w-11 h-6 bg-gray-200 dark:bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-transform after:duration-short after:ease-in-out peer-checked:bg-primary-500"></div>
                   <span className="ms-3 text-sm font-medium text-[var(--color-text-secondary)]">
                     {config.zoomNative?.enabled ? 'Habilitado' : 'Desabilitado'}
                   </span>
@@ -1047,7 +1047,7 @@ const AdminSiteConfig: React.FC = () => {
                         onChange={(e) => handleAppDownloadChange('windows', 'comingSoon', e.target.checked)}
                         className="sr-only peer"
                       />
-                      <div className="w-11 h-6 bg-gray-200 dark:bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+                      <div className="w-11 h-6 bg-gray-200 dark:bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-transform after:duration-short after:ease-in-out peer-checked:bg-amber-500"></div>
                       <span className="ms-3 text-sm font-medium text-[var(--color-text-secondary)]">
                         {config.appDownload?.windows?.comingSoon ? 'Em breve' : 'Disponivel'}
                       </span>
@@ -1086,7 +1086,7 @@ const AdminSiteConfig: React.FC = () => {
                         onChange={(e) => handleAppDownloadChange('ios', 'comingSoon', e.target.checked)}
                         className="sr-only peer"
                       />
-                      <div className="w-11 h-6 bg-gray-200 dark:bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+                      <div className="w-11 h-6 bg-gray-200 dark:bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-transform after:duration-short after:ease-in-out peer-checked:bg-amber-500"></div>
                       <span className="ms-3 text-sm font-medium text-[var(--color-text-secondary)]">
                         {config.appDownload?.ios?.comingSoon ? 'Em breve' : 'Disponivel'}
                       </span>
@@ -1110,7 +1110,7 @@ const AdminSiteConfig: React.FC = () => {
                 <div className="p-4 bg-gray-50 dark:bg-white/5 rounded-xl border border-[var(--glass-border)]">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gradient-to-br from-green-400 via-blue-500 to-purple-500 rounded-lg flex items-center justify-center">
+                      <div className="w-10 h-10 bg-[var(--color-accent-soft)] border border-[var(--color-accent-tint)] rounded-lg flex items-center justify-center">
                         <svg viewBox="0 0 24 24" className="w-5 h-5 text-white" fill="currentColor">
                           <path d="M3.609 1.814L13.792 12 3.61 22.186a.996.996 0 0 1-.61-.92V2.734a1 1 0 0 1 .609-.92zm10.89 10.893l2.302 2.302-10.937 6.333 8.635-8.635zm3.199-3.198l2.807 1.626a1 1 0 0 1 0 1.73l-2.808 1.626L15.206 12l2.492-2.491zM5.864 2.658L16.8 9.99l-2.302 2.302-8.634-8.634z"/>
                         </svg>
@@ -1127,7 +1127,7 @@ const AdminSiteConfig: React.FC = () => {
                         onChange={(e) => handleAppDownloadChange('android', 'comingSoon', e.target.checked)}
                         className="sr-only peer"
                       />
-                      <div className="w-11 h-6 bg-gray-200 dark:bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+                      <div className="w-11 h-6 bg-gray-200 dark:bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-transform after:duration-short after:ease-in-out peer-checked:bg-amber-500"></div>
                       <span className="ms-3 text-sm font-medium text-[var(--color-text-secondary)]">
                         {config.appDownload?.android?.comingSoon ? 'Em breve' : 'Disponivel'}
                       </span>

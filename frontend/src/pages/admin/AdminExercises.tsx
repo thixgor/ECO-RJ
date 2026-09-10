@@ -295,13 +295,13 @@ const AdminExercises: React.FC = () => {
             </div>
 
             {/* Filters & Search */}
-            <div className="bg-white dark:bg-white/5 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-white/10">
+            <div className="bg-white dark:bg-white/5 p-4 rounded-xl shadow-whisper border border-gray-200 dark:border-white/10">
                 <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <input
                         type="text"
                         placeholder="Buscar por título ou aula..."
-                        className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
+                        className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-colors"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
@@ -309,7 +309,7 @@ const AdminExercises: React.FC = () => {
             </div>
 
             {/* List */}
-            <div className="bg-white dark:bg-white/5 rounded-xl shadow-sm border border-gray-200 dark:border-white/10 overflow-hidden">
+            <div className="bg-white dark:bg-white/5 rounded-xl shadow-whisper border border-gray-200 dark:border-white/10 overflow-hidden">
                 {isLoading ? (
                     <div className="p-12">
                         <Loading />
@@ -377,7 +377,7 @@ const AdminExercises: React.FC = () => {
 
             {/* CRUD Modal */}
             {showModal && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+                <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 overflow-y-auto">
                     <div className="modal-content !max-w-4xl !my-8 !flex !flex-col !max-h-[90vh] p-0 overflow-hidden">
                         <div className="p-6 border-b border-[var(--glass-border)] flex items-center justify-between">
                             <h2 className="text-xl font-bold flex items-center gap-2 text-[var(--color-text-primary)]">
@@ -488,7 +488,7 @@ const AdminExercises: React.FC = () => {
                                         <button
                                             type="button"
                                             onClick={() => setShowImportModal(true)}
-                                            className="btn btn-outline py-1 px-3 text-sm flex items-center gap-1 text-blue-600 border-blue-200 hover:bg-blue-50/50 hover:border-blue-300 transition-all"
+                                            className="btn btn-outline py-1 px-3 text-sm flex items-center gap-1 text-blue-600 border-blue-200 hover:bg-blue-50/50 hover:border-blue-300 transition-colors"
                                             title="Importar questões em massa"
                                         >
                                             <Upload className="w-4 h-4" />
@@ -627,8 +627,8 @@ const AdminExercises: React.FC = () => {
                 </div>
             )}
             {showImportModal && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col animate-fade-in">
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-xl shadow-raised w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col animate-fade-in">
                         <div className="flex items-center justify-between p-6 border-b">
                             <h3 className="text-xl font-bold text-gray-900">Importar Questões</h3>
                             <button onClick={() => setShowImportModal(false)} className="text-gray-400 hover:text-gray-600">
