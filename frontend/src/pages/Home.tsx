@@ -141,7 +141,7 @@ const Home: React.FC = () => {
     <div>
       {/* ── HERÓI · díptico 7/5 ────────────────────────────────────────────
           A altura é a do conteúdo, não a da viewport. Alinhado à esquerda. */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 pt-12 sm:pt-16 lg:pt-20 pb-10 sm:pb-14">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 pt-10 sm:pt-12 lg:pt-14 pb-16 sm:pb-20 lg:pb-24">
         <div className="grid lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] gap-10 lg:gap-16 items-center">
           <div className="reveal" style={{ ['--i' as string]: 0 }}>
             <p className="label-caps">Desde 2016 · Rio de Janeiro</p>

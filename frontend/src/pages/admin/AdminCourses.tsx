@@ -423,7 +423,7 @@ const AdminCourses: React.FC = () => {
                     <button
                       onClick={() => moveCourse(index, 'up')}
                       disabled={index === 0}
-                      className={`p-1 rounded ${index === 0 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:text-primary-500 hover:bg-primary-50'}`}
+                      className={`p-1 rounded ${index === 0 ? 'text-gray-300 cursor-not-allowed' : 'text-[var(--color-neutral)] hover:text-primary-500 hover:bg-primary-50'}`}
                       title="Mover para cima"
                     >
                       <ChevronUp className="w-4 h-4" />
@@ -432,7 +432,7 @@ const AdminCourses: React.FC = () => {
                     <button
                       onClick={() => moveCourse(index, 'down')}
                       disabled={index === courses.length - 1}
-                      className={`p-1 rounded ${index === courses.length - 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:text-primary-500 hover:bg-primary-50'}`}
+                      className={`p-1 rounded ${index === courses.length - 1 ? 'text-gray-300 cursor-not-allowed' : 'text-[var(--color-neutral)] hover:text-primary-500 hover:bg-primary-50'}`}
                       title="Mover para baixo"
                     >
                       <ChevronDown className="w-4 h-4" />
@@ -448,7 +448,7 @@ const AdminCourses: React.FC = () => {
                   <div className="flex-1 min-w-0">
                     <h3 className="font-medium text-[var(--color-text-primary)]">{course.titulo}</h3>
                     <p className="text-sm text-[var(--color-text-muted)] line-clamp-1">{course.descricao}</p>
-                    <div className="flex items-center flex-wrap gap-2 mt-2 text-xs text-gray-400">
+                    <div className="flex items-center flex-wrap gap-2 mt-2 text-xs text-[var(--color-neutral)]">
                       <span>Início: {formatDate(course.dataInicio)}</span>
                       {course.dataTermino && (
                         <span className={`px-2 py-0.5 rounded flex items-center gap-1 ${
@@ -512,13 +512,13 @@ const AdminCourses: React.FC = () => {
                     </button>
                     <button
                       onClick={() => openModal(course)}
-                      className="p-2 text-gray-400 hover:text-primary-500"
+                      className="p-2 text-[var(--color-neutral)] hover:text-primary-500"
                     >
                       <Edit className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => handleDelete(course._id)}
-                      className="p-2 text-gray-400 hover:text-red-500"
+                      className="p-2 text-[var(--color-neutral)] hover:text-red-500"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -528,7 +528,7 @@ const AdminCourses: React.FC = () => {
             })}
           </div>
         ) : (
-          <div className="p-8 text-center text-gray-500">
+          <div className="p-8 text-center text-[var(--color-neutral)]">
             <BookOpen className="w-12 h-12 mx-auto mb-4 text-gray-300" />
             <p>Nenhum curso criado ainda</p>
             <button onClick={() => openModal()} className="btn btn-primary mt-4">
@@ -839,14 +839,14 @@ const AdminCourses: React.FC = () => {
                             <button
                               onClick={() => moveTopic(index, 'up')}
                               disabled={index === 0}
-                              className={`p-0.5 rounded ${index === 0 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:text-primary-500'}`}
+                              className={`p-0.5 rounded ${index === 0 ? 'text-gray-300 cursor-not-allowed' : 'text-[var(--color-neutral)] hover:text-primary-500'}`}
                             >
                               <ChevronUp className="w-3 h-3" />
                             </button>
                             <button
                               onClick={() => moveTopic(index, 'down')}
                               disabled={index === topics.length - 1}
-                              className={`p-0.5 rounded ${index === topics.length - 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:text-primary-500'}`}
+                              className={`p-0.5 rounded ${index === topics.length - 1 ? 'text-gray-300 cursor-not-allowed' : 'text-[var(--color-neutral)] hover:text-primary-500'}`}
                             >
                               <ChevronDown className="w-3 h-3" />
                             </button>
@@ -875,7 +875,7 @@ const AdminCourses: React.FC = () => {
 
                           <button
                             onClick={() => openSubtopicsForTopic(topic)}
-                            className={`p-2 rounded transition-colors ${selectedTopic?._id === topic._id ? 'bg-primary-100 dark:bg-primary-500/20 text-primary-500' : 'text-gray-400 hover:text-primary-500 hover:bg-gray-100 dark:hover:bg-white/10'}`}
+                            className={`p-2 rounded transition-colors ${selectedTopic?._id === topic._id ? 'bg-primary-100 dark:bg-primary-500/20 text-primary-500' : 'text-[var(--color-neutral)] hover:text-primary-500 hover:bg-gray-100 dark:hover:bg-white/10'}`}
                             title="Gerenciar subtópicos"
                           >
                             <Layers className="w-4 h-4" />
@@ -885,13 +885,13 @@ const AdminCourses: React.FC = () => {
                               setEditingTopic(topic);
                               setTopicFormData({ titulo: topic.titulo, descricao: topic.descricao || '' });
                             }}
-                            className="p-2 text-gray-400 hover:text-primary-500"
+                            className="p-2 text-[var(--color-neutral)] hover:text-primary-500"
                           >
                             <Edit className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => handleDeleteTopic(topic._id)}
-                            className="p-2 text-gray-400 hover:text-red-500"
+                            className="p-2 text-[var(--color-neutral)] hover:text-red-500"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -956,14 +956,14 @@ const AdminCourses: React.FC = () => {
                                         <button
                                           onClick={() => moveSubtopic(subIndex, 'up')}
                                           disabled={subIndex === 0}
-                                          className={`p-0.5 rounded ${subIndex === 0 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:text-primary-500'}`}
+                                          className={`p-0.5 rounded ${subIndex === 0 ? 'text-gray-300 cursor-not-allowed' : 'text-[var(--color-neutral)] hover:text-primary-500'}`}
                                         >
                                           <ChevronUp className="w-2.5 h-2.5" />
                                         </button>
                                         <button
                                           onClick={() => moveSubtopic(subIndex, 'down')}
                                           disabled={subIndex === subtopics.length - 1}
-                                          className={`p-0.5 rounded ${subIndex === subtopics.length - 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:text-primary-500'}`}
+                                          className={`p-0.5 rounded ${subIndex === subtopics.length - 1 ? 'text-gray-300 cursor-not-allowed' : 'text-[var(--color-neutral)] hover:text-primary-500'}`}
                                         >
                                           <ChevronDown className="w-2.5 h-2.5" />
                                         </button>
@@ -985,13 +985,13 @@ const AdminCourses: React.FC = () => {
                                           setEditingSubtopic(subtopic);
                                           setSubtopicFormData({ titulo: subtopic.titulo, descricao: subtopic.descricao || '' });
                                         }}
-                                        className="p-1.5 text-gray-400 hover:text-primary-500"
+                                        className="p-1.5 text-[var(--color-neutral)] hover:text-primary-500"
                                       >
                                         <Edit className="w-3.5 h-3.5" />
                                       </button>
                                       <button
                                         onClick={() => handleDeleteSubtopic(subtopic._id)}
-                                        className="p-1.5 text-gray-400 hover:text-red-500"
+                                        className="p-1.5 text-[var(--color-neutral)] hover:text-red-500"
                                       >
                                         <Trash2 className="w-3.5 h-3.5" />
                                       </button>

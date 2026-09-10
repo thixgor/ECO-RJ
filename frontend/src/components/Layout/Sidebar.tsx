@@ -121,7 +121,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isVisible = true }) 
       {/* Overlay for mobile - Higher z-index and better touch handling */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-[oklch(15%_0.02_250_/_0.5)] z-40 lg:hidden animate-fade-in"
+          className="fixed inset-0 bg-[var(--color-scrim)] z-40 lg:hidden animate-fade-in"
           onClick={onClose}
           onTouchEnd={(e) => {
             e.preventDefault();

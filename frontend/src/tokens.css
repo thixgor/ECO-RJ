@@ -63,14 +63,18 @@
 
   /* ---------- PROFUNDIDADE ----------
      Hierarquia é peso e escala, não sombra. Duas sombras no sistema inteiro. */
-  --shadow-whisper: 0 1px 2px oklch(22% 0.02 250 / 0.06);
-  --shadow-raised: 0 4px 16px oklch(22% 0.02 250 / 0.1);
+  --color-shadow: oklch(22% 0.02 250 / 0.06);
+  --color-shadow-strong: oklch(22% 0.02 250 / 0.1);
+  --color-scrim: oklch(15% 0.02 250 / 0.55);
+  --shadow-whisper: 0 1px 2px var(--color-shadow);
+  --shadow-raised: 0 4px 16px var(--color-shadow-strong);
 
   /* ---------- CAMADAS ---------- seis níveis nomeados, sem z-index solto */
   --z-base: 1;
   --z-raised: 10;
   --z-dropdown: 100;
   --z-sticky: 200;
+  --z-sticky-nav: 300; /* a nav do topo sempre pinta por cima de sticky interno */
   --z-modal: 400;
   --z-toast: 500;
   --z-tooltip: 600;
@@ -165,8 +169,9 @@
   --color-selection: oklch(35% 0.06 250);
   --color-selection-ink: oklch(97% 0.006 250);
 
-  --shadow-whisper: 0 1px 2px oklch(0% 0 0 / 0.4);
-  --shadow-raised: 0 4px 16px oklch(0% 0 0 / 0.5);
+  --color-shadow: oklch(5% 0.01 250 / 0.45);
+  --color-shadow-strong: oklch(5% 0.01 250 / 0.6);
+  --color-scrim: oklch(8% 0.012 250 / 0.7);
 }
 
 @media (min-width: 640px) {

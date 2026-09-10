@@ -52,17 +52,14 @@ export const GlassInput = forwardRef<HTMLInputElement, GlassInputProps>(
           )}
         </div>
 
-        {error && (
-          <p id={`${inputId}-error`} role="alert" className="error-message">
-            {error}
-          </p>
-        )}
-
-        {helperText && !error && (
-          <p id={`${inputId}-help`} className="mt-1.5 text-sm text-[var(--color-text-muted)]">
-            {helperText}
-          </p>
-        )}
+        {/* Slot único e reservado: a altura não muda quando o erro aparece. */}
+        <p
+          id={error ? `${inputId}-error` : `${inputId}-help`}
+          role={error ? 'alert' : undefined}
+          className={`field-message ${error ? 'text-[var(--color-danger)]' : 'text-[var(--color-neutral)]'}`}
+        >
+          {error || helperText || '\u00A0'}
+        </p>
       </div>
     );
   }

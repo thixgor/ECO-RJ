@@ -41,7 +41,7 @@ const StarPicker: React.FC<{ value: number; onChange?: (n: number) => void; size
         >
           <Star
             style={{ width: size, height: size }}
-            className={i <= (hover || value) ? 'text-amber-400 fill-amber-400' : 'text-gray-300 dark:text-gray-600'}
+            className={i <= (hover || value) ? 'text-amber-400 fill-amber-400' : 'text-gray-300 dark:text-[var(--color-muted)]'}
           />
         </button>
       ))}

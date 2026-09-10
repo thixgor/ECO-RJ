@@ -310,14 +310,14 @@ const AdminCertificates: React.FC = () => {
                         <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={() => openDeleteAllModal(aluno)}
-                            className="p-2 text-gray-400 hover:text-orange-500"
+                            className="p-2 text-[var(--color-neutral)] hover:text-orange-500"
                             title="Excluir todos do aluno"
                           >
                             <UserIcon className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => handleDelete(cert._id)}
-                            className="p-2 text-gray-400 hover:text-red-500"
+                            className="p-2 text-[var(--color-neutral)] hover:text-red-500"
                             title="Excluir certificado"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -331,7 +331,7 @@ const AdminCertificates: React.FC = () => {
             </table>
 
             {filteredCertificates.length === 0 && (
-              <div className="p-8 text-center text-gray-500">
+              <div className="p-8 text-center text-[var(--color-neutral)]">
                 <Award className="w-12 h-12 mx-auto mb-4 text-gray-300" />
                 <p>Nenhum certificado encontrado</p>
               </div>

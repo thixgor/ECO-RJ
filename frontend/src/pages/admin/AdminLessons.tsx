@@ -501,7 +501,7 @@ const AdminLessons: React.FC = () => {
           <button
             onClick={() => moveLesson(lesson, 'up')}
             disabled={isFirst}
-            className={`p-1 rounded ${isFirst ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:text-primary-500 hover:bg-primary-50'}`}
+            className={`p-1 rounded ${isFirst ? 'text-gray-300 cursor-not-allowed' : 'text-[var(--color-neutral)] hover:text-primary-500 hover:bg-primary-50'}`}
             title="Mover para cima"
           >
             <ChevronUp className="w-4 h-4" />
@@ -510,7 +510,7 @@ const AdminLessons: React.FC = () => {
           <button
             onClick={() => moveLesson(lesson, 'down')}
             disabled={isLast}
-            className={`p-1 rounded ${isLast ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:text-primary-500 hover:bg-primary-50'}`}
+            className={`p-1 rounded ${isLast ? 'text-gray-300 cursor-not-allowed' : 'text-[var(--color-neutral)] hover:text-primary-500 hover:bg-primary-50'}`}
             title="Mover para baixo"
           >
             <ChevronDown className="w-4 h-4" />
@@ -536,14 +536,14 @@ const AdminLessons: React.FC = () => {
             <span>{curso?.titulo || 'Curso'}</span>
             {!filterCurso && topico && (
               <>
-                <span className="text-gray-400">•</span>
+                <span className="text-[var(--color-neutral)]">•</span>
                 <span className="flex items-center gap-1 text-primary-500">
                   <FolderOpen className="w-3 h-3" />
                   {topico.titulo}
                 </span>
                 {subtopico && (
                   <>
-                    <span className="text-gray-400">/</span>
+                    <span className="text-[var(--color-neutral)]">/</span>
                     <span className="flex items-center gap-1 text-amber-500">
                       <Layers className="w-3 h-3" />
                       {subtopico.titulo}
@@ -554,7 +554,7 @@ const AdminLessons: React.FC = () => {
             )}
             {filterCurso && subtopico && (
               <>
-                <span className="text-gray-400">•</span>
+                <span className="text-[var(--color-neutral)]">•</span>
                 <span className="flex items-center gap-1 text-amber-500">
                   <Layers className="w-3 h-3" />
                   {subtopico.titulo}
@@ -794,7 +794,7 @@ const AdminLessons: React.FC = () => {
               </h2>
               <button
                 onClick={() => setShowModal(false)}
-                className="p-2 hover:bg-white/10 rounded-full text-gray-400"
+                className="p-2 hover:bg-white/10 rounded-full text-[var(--color-neutral)]"
               >
                 <X className="w-5 h-5" />
               </button>

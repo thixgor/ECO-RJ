@@ -25,7 +25,7 @@ const Stars: React.FC<{ value: number; total?: number; size?: number }> = ({ val
         <Star
           key={i}
           style={{ width: size, height: size }}
-          className={i <= Math.round(value) ? 'text-amber-400 fill-amber-400' : 'text-gray-300 dark:text-gray-600'}
+          className={i <= Math.round(value) ? 'text-amber-400 fill-amber-400' : 'text-gray-300 dark:text-[var(--color-muted)]'}
         />
       ))}
     </span>

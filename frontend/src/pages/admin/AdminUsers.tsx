@@ -143,7 +143,7 @@ const AdminUsers: React.FC = () => {
       <div className="card p-4">
         <form onSubmit={handleSearch} className="flex flex-col md:flex-row md:flex-wrap gap-4">
           <div className="flex-1 min-w-[220px] relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--color-neutral)]" />
             <input
               type="text"
               placeholder="Buscar por nome, email, CRM, hospital, instituição..."
@@ -262,7 +262,7 @@ const AdminUsers: React.FC = () => {
                         <option value="Administrador">Administrador</option>
                       </select>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
+                    <td className="px-6 py-4 text-sm text-[var(--color-neutral)]">
                       {user.ultimoLogin ? formatDate(user.ultimoLogin) : 'Nunca'}
                     </td>
                     <td className="px-6 py-4">
@@ -280,14 +280,14 @@ const AdminUsers: React.FC = () => {
                       <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={() => viewUser(user._id)}
-                          className="p-2 text-gray-400 hover:text-primary-500"
+                          className="p-2 text-[var(--color-neutral)] hover:text-primary-500"
                           title="Ver detalhes"
                         >
                           <Eye className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => handleDelete(user._id)}
-                          className="p-2 text-gray-400 hover:text-red-500"
+                          className="p-2 text-[var(--color-neutral)] hover:text-red-500"
                           title="Deletar"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -304,7 +304,7 @@ const AdminUsers: React.FC = () => {
         {/* Pagination */}
         {pagination.pages > 1 && (
           <div className="px-6 py-4 border-t flex items-center justify-between">
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-[var(--color-neutral)]">
               Página {pagination.page} de {pagination.pages}
             </p>
             <div className="flex gap-2">

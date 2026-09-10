@@ -298,7 +298,7 @@ const Login: React.FC = () => {
                   <div>
                     <label className="label">E-mail da conta</label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--color-neutral)]" />
                       <input
                         type="email"
                         value={recoveryEmail}
@@ -343,7 +343,7 @@ const Login: React.FC = () => {
                   <div>
                     <label className="label">Token de Recuperação</label>
                     <div className="relative">
-                      <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                      <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--color-neutral)]" />
                       <input
                         type="text"
                         value={recoveryToken}
@@ -385,7 +385,7 @@ const Login: React.FC = () => {
                   <div>
                     <label className="label">Nova Senha</label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--color-neutral)]" />
                       <input
                         type="password"
                         value={newPassword}
@@ -400,7 +400,7 @@ const Login: React.FC = () => {
                   <div>
                     <label className="label">Confirmar Nova Senha</label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--color-neutral)]" />
                       <input
                         type="password"
                         value={confirmNewPassword}

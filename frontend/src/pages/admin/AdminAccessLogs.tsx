@@ -133,7 +133,7 @@ const AdminAccessLogs: React.FC = () => {
       exercicio: 'bg-orange-100 text-orange-700',
       prova: 'bg-red-100 text-red-700'
     };
-    return colors[tipo] || 'bg-gray-100 text-gray-700';
+    return colors[tipo] || 'bg-gray-100 text-[var(--color-muted)]';
   };
 
   const getTipoIcon = (tipo: string) => {

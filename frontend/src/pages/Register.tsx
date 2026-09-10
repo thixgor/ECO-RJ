@@ -313,7 +313,7 @@ NÃO COMPARTILHE ESTE TOKEN COM NINGUÉM!
             <div>
               <label htmlFor="estado" className="label">Estado *</label>
               <div className="relative">
-                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 z-10" />
+                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--color-neutral)] z-10" />
                 <select
                   id="estado"
                   name="estado"
@@ -374,7 +374,7 @@ NÃO COMPARTILHE ESTE TOKEN COM NINGUÉM!
                   <div>
                     <label htmlFor="crm" className="label">
                       Número do CRM *
-                      <span className="text-xs text-gray-500 font-normal ml-1">(apenas números)</span>
+                      <span className="text-xs text-[var(--color-neutral)] font-normal ml-1">(apenas números)</span>
                     </label>
                     <input
                       id="crm"
@@ -510,7 +510,7 @@ NÃO COMPARTILHE ESTE TOKEN COM NINGUÉM!
             <div>
               <label htmlFor="nomeCompleto" className="label">Nome Completo *</label>
               <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--color-neutral)]" />
                 <input
                   id="nomeCompleto"
                   name="nomeCompleto"
@@ -527,7 +527,7 @@ NÃO COMPARTILHE ESTE TOKEN COM NINGUÉM!
             <div>
               <label htmlFor="email" className="label">E-mail *</label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--color-neutral)]" />
                 <input
                   id="email"
                   name="email"
@@ -546,7 +546,7 @@ NÃO COMPARTILHE ESTE TOKEN COM NINGUÉM!
               <div>
                 <label htmlFor="password" className="label">Senha *</label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--color-neutral)]" />
                   <input
                     id="password"
                     name="password"
@@ -559,7 +559,7 @@ NÃO COMPARTILHE ESTE TOKEN COM NINGUÉM!
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-neutral)] hover:text-[var(--color-muted)]"
                   >
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
@@ -569,7 +569,7 @@ NÃO COMPARTILHE ESTE TOKEN COM NINGUÉM!
               <div>
                 <label htmlFor="confirmPassword" className="label">Confirmar Senha *</label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--color-neutral)]" />
                   <input
                     id="confirmPassword"
                     name="confirmPassword"
@@ -585,7 +585,7 @@ NÃO COMPARTILHE ESTE TOKEN COM NINGUÉM!
             </div>
 
             {/* Terms */}
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-[var(--color-neutral)]">
               Ao criar uma conta, você concorda com nossos{' '}
               <Link to="/termos" className="link">Termos de Serviço</Link> e{' '}
               <Link to="/privacidade" className="link">Política de Privacidade</Link>.
@@ -601,7 +601,7 @@ NÃO COMPARTILHE ESTE TOKEN COM NINGUÉM!
           </form>
 
           <div className="mt-6 text-center">
-            <p className="text-gray-600">
+            <p className="text-[var(--color-muted)]">
               Já tem uma conta?{' '}
               <Link to="/login" className="link font-medium">
                 Entrar
@@ -650,19 +650,19 @@ NÃO COMPARTILHE ESTE TOKEN COM NINGUÉM!
               {/* Account Info */}
               <div className="bg-gray-50 dark:bg-white/5 rounded-xl p-3 sm:p-4 space-y-2 sm:space-y-3">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 flex-shrink-0">ID da Conta:</span>
+                  <span className="text-xs sm:text-sm text-gray-500 dark:text-[var(--color-neutral)] flex-shrink-0">ID da Conta:</span>
                   <code className="text-xs sm:text-sm font-mono bg-gray-200 dark:bg-white/10 px-2 py-1 rounded truncate">
                     {recoveryData.id}
                   </code>
                 </div>
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 flex-shrink-0">E-mail:</span>
+                  <span className="text-xs sm:text-sm text-gray-500 dark:text-[var(--color-neutral)] flex-shrink-0">E-mail:</span>
                   <span className="text-xs sm:text-sm font-medium text-[var(--color-text-primary)] truncate">
                     {recoveryData.email}
                   </span>
                 </div>
                 <div className="border-t border-gray-200 dark:border-white/10 pt-2 sm:pt-3">
-                  <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 block mb-2">Token de Recuperação:</span>
+                  <span className="text-xs sm:text-sm text-gray-500 dark:text-[var(--color-neutral)] block mb-2">Token de Recuperação:</span>
                   <code className="block w-full text-center text-base sm:text-lg font-mono bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 px-2 sm:px-3 py-2 sm:py-3 rounded-lg break-all font-bold tracking-wider">
                     {recoveryData.tokenRecuperacao}
                   </code>

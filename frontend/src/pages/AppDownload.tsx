@@ -186,7 +186,7 @@ const AppDownload: React.FC = () => {
 
 // Play Store Icon Component
 const PlayStoreIcon: React.FC = () => (
-  <svg viewBox="0 0 24 24" className="w-8 h-8" fill="currentColor">
+  <svg viewBox="0 0 24 24" className="w-8 h-8" fill="currentColor" aria-hidden="true">
     <path d="M3.609 1.814L13.792 12 3.61 22.186a.996.996 0 0 1-.61-.92V2.734a1 1 0 0 1 .609-.92zm10.89 10.893l2.302 2.302-10.937 6.333 8.635-8.635zm3.199-3.198l2.807 1.626a1 1 0 0 1 0 1.73l-2.808 1.626L15.206 12l2.492-2.491zM5.864 2.658L16.8 9.99l-2.302 2.302-8.634-8.634z"/>
   </svg>
 );
@@ -230,7 +230,7 @@ const DownloadButton: React.FC<DownloadButtonProps> = ({
           </div>
         )}
         <div className="text-center">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-xl bg-gray-200 dark:bg-white/10 flex items-center justify-center text-gray-400 dark:text-gray-500">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-xl bg-gray-200 dark:bg-white/10 flex items-center justify-center text-gray-400 dark:text-[var(--color-neutral)]">
             {icon}
           </div>
           <h3 className="font-semibold text-[var(--color-text-primary)] mb-1">{platform}</h3>

@@ -357,7 +357,7 @@ const Dashboard: React.FC = () => {
                       <Bell className={`w-5 h-5 ${
                         isHighPriority ? 'text-red-500' :
                         isNormalPriority ? 'text-amber-500' :
-                        'text-gray-500'
+                        'text-[var(--color-neutral)]'
                       }`} />
                     </div>
 
@@ -461,7 +461,7 @@ const Dashboard: React.FC = () => {
                     }`}>
                       {isLive ? (
                         <div className="flex items-center gap-1">
-                          <span className="w-2 h-2 bg-white rounded-full animate-ping" />
+                          <span className="w-1.5 h-1.5 bg-white rounded-full" aria-hidden="true" />
                           <Video className="w-5 h-5 text-white" />
                         </div>
                       ) : (

@@ -382,6 +382,7 @@ export default {
         raised: '10',
         dropdown: '100',
         sticky: '200',
+        'sticky-nav': '300',
         modal: '400',
         toast: '500',
         tooltip: '600',

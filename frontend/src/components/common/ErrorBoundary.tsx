@@ -45,7 +45,7 @@ class ErrorBoundary extends Component<Props, State> {
                             Ops! Algo deu errado.
                         </h1>
 
-                        <p className="text-gray-500 dark:text-gray-400 mb-8">
+                        <p className="text-gray-500 dark:text-[var(--color-neutral)] mb-8">
                             Desculpe, encontramos um erro inesperado ao carregar a página. Tente atualizar ou voltar para o início.
                         </p>
 
@@ -73,7 +73,7 @@ class ErrorBoundary extends Component<Props, State> {
                                     <summary className="text-xs font-mono text-red-500 cursor-pointer hover:underline mb-2">
                                         Ver detalhes do erro
                                     </summary>
-                                    <pre className="text-xs font-mono text-gray-600 dark:text-gray-400 overflow-auto whitespace-pre-wrap max-h-40">
+                                    <pre className="text-xs font-mono text-gray-600 dark:text-[var(--color-neutral)] overflow-auto whitespace-pre-wrap max-h-40">
                                         {this.state.error.toString()}
                                     </pre>
                                 </details>

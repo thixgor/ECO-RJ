@@ -81,7 +81,7 @@ const Header: React.FC = () => {
     : '';
 
   return (
-    <header className="sticky top-0 z-sticky bg-[var(--color-paper)]">
+    <header className="sticky top-0 z-sticky-nav bg-[var(--color-paper)]">
       {/* Faixa 1 — linha institucional. É onde o nome completo vive. */}
       <div className="border-b border-[var(--color-rule)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">

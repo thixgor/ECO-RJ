@@ -1221,7 +1221,7 @@ const Lesson: React.FC = () => {
                       Aula ao Vivo via Zoom
                     </h3>
 
-                    <p className="text-gray-400 text-xs sm:text-sm mb-2 sm:mb-3">
+                    <p className="text-gray-300 text-xs sm:text-sm mb-2 sm:mb-3">
                       Escolha como deseja participar da aula.
                     </p>
 
@@ -1472,7 +1472,7 @@ const Lesson: React.FC = () => {
                   )}
                   {(lesson as any).subtopicoId && (
                     <>
-                      <span className="text-gray-400 text-xs">/</span>
+                      <span className="text-[var(--color-neutral)] text-xs">/</span>
                       <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-500 uppercase tracking-wider">
                         <Layers className="w-3 h-3" />
                         {(lesson as any).subtopicoId.titulo || (lesson as any).subtopicoId}

@@ -5,6 +5,9 @@
  * type: Newsreader (display) + IBM Plex Sans (body) + IBM Plex Mono (dado)
  * enrichment: none — tipografia apenas
  * pre-emit critique: P5 H5 E4 S5 R5 V4
+ * slop test: 58/58 · contrast: pass (40-41) · slop: pass (42-45)
+ * honest: pass (46) · chrome: pass (47) · tokens: pass (48)
+ * responsive: pass (49) · icons: pass (30) · mobile: pass (34, 49, 50-57)
  *
  * ECO RJ — Centro de Treinamento em Ecocardiografia.
  * Os tokens vivem em tokens.css. Nenhuma cor e nenhuma fonte é escrita
@@ -341,8 +344,23 @@
     border-color: var(--color-accent);
   }
 
+  /* Desabilitado em três canais: opacidade, cursor e o atributo nativo.
+     Só opacidade não comunica nada a quem usa leitor de tela. */
   .input:disabled,
-  .glass-input:disabled { background: var(--color-paper-2); opacity: 0.6; }
+  .glass-input:disabled {
+    background: var(--color-paper-2);
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  /* O slot de mensagem fica reservado mesmo vazio: um erro que aparece não
+     empurra o resto do formulário para baixo. */
+  .field-message {
+    display: block;
+    min-height: 1lh;
+    margin-top: var(--space-2xs);
+    font-size: var(--text-sm);
+  }
 
   .input-error { border-color: var(--color-danger); }
   .input-error:focus { outline-color: var(--color-danger); border-color: var(--color-danger); }
@@ -448,7 +466,7 @@
     align-items: center;
     justify-content: center;
     padding: var(--space-md);
-    background: oklch(15% 0.02 250 / 0.55);
+    background: var(--color-scrim);
     backdrop-filter: blur(2px);
     -webkit-backdrop-filter: blur(2px);
     animation: fade-in var(--dur-short) var(--ease-out);

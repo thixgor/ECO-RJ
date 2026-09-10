@@ -986,7 +986,7 @@ const AdminSiteConfig: React.FC = () => {
                   </div>
                 ) : (
                   <div className="p-4 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg">
-                    <div className="flex items-center gap-2 text-gray-700 dark:text-gray-400">
+                    <div className="flex items-center gap-2 text-gray-700 dark:text-[var(--color-neutral)]">
                       <Settings className="w-5 h-5" />
                       <span className="font-medium">Zoom Nativo Desabilitado</span>
                     </div>
@@ -1111,7 +1111,7 @@ const AdminSiteConfig: React.FC = () => {
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-[var(--color-accent-soft)] border border-[var(--color-accent-tint)] rounded-lg flex items-center justify-center">
-                        <svg viewBox="0 0 24 24" className="w-5 h-5 text-white" fill="currentColor">
+                        <svg viewBox="0 0 24 24" className="w-5 h-5 text-white" fill="currentColor" aria-hidden="true">
                           <path d="M3.609 1.814L13.792 12 3.61 22.186a.996.996 0 0 1-.61-.92V2.734a1 1 0 0 1 .609-.92zm10.89 10.893l2.302 2.302-10.937 6.333 8.635-8.635zm3.199-3.198l2.807 1.626a1 1 0 0 1 0 1.73l-2.808 1.626L15.206 12l2.492-2.491zM5.864 2.658L16.8 9.99l-2.302 2.302-8.634-8.634z"/>
                         </svg>
                       </div>

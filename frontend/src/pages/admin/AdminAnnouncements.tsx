@@ -203,7 +203,7 @@ const AdminAnnouncements: React.FC = () => {
 
   const getPrioridadeBadge = (prioridade: string) => {
     const styles: Record<string, string> = {
-      baixa: 'bg-gray-100 text-gray-700 dark:bg-gray-500/20 dark:text-gray-400',
+      baixa: 'bg-gray-100 text-gray-700 dark:bg-gray-500/20 dark:text-[var(--color-neutral)]',
       normal: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400',
       alta: 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400'
     };
@@ -327,7 +327,7 @@ const AdminAnnouncements: React.FC = () => {
                         <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium ${
                           announcement.ativo
                             ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400'
-                            : 'bg-gray-100 text-gray-700 dark:bg-gray-500/20 dark:text-gray-400'
+                            : 'bg-gray-100 text-gray-700 dark:bg-gray-500/20 dark:text-[var(--color-neutral)]'
                         }`}>
                           {announcement.ativo ? (
                             <>
@@ -358,8 +358,8 @@ const AdminAnnouncements: React.FC = () => {
                             onClick={() => handleToggle(announcement._id)}
                             className={`p-2 rounded-lg transition-colors ${
                               announcement.ativo
-                                ? 'text-gray-400 hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-500/10'
-                                : 'text-gray-400 hover:text-green-500 hover:bg-green-50 dark:hover:bg-green-500/10'
+                                ? 'text-[var(--color-neutral)] hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-500/10'
+                                : 'text-[var(--color-neutral)] hover:text-green-500 hover:bg-green-50 dark:hover:bg-green-500/10'
                             }`}
                             title={announcement.ativo ? 'Ocultar aviso' : 'Exibir aviso'}
                           >
@@ -367,14 +367,14 @@ const AdminAnnouncements: React.FC = () => {
                           </button>
                           <button
                             onClick={() => openEditModal(announcement)}
-                            className="p-2 text-gray-400 hover:text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-500/10 rounded-lg transition-colors"
+                            className="p-2 text-[var(--color-neutral)] hover:text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-500/10 rounded-lg transition-colors"
                             title="Editar"
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => handleDelete(announcement._id)}
-                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors"
+                            className="p-2 text-[var(--color-neutral)] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors"
                             title="Deletar"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -388,8 +388,8 @@ const AdminAnnouncements: React.FC = () => {
             </table>
 
             {announcements.length === 0 && (
-              <div className="p-8 text-center text-gray-500">
-                <Bell className="w-12 h-12 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
+              <div className="p-8 text-center text-[var(--color-neutral)]">
+                <Bell className="w-12 h-12 mx-auto mb-4 text-gray-300 dark:text-[var(--color-muted)]" />
                 <p>Nenhum aviso encontrado</p>
                 <button onClick={openCreateModal} className="btn btn-primary mt-4">
                   <Plus className="w-4 h-4" />

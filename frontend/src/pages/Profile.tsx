@@ -596,7 +596,7 @@ const Profile: React.FC = () => {
               ) : (
                 <div className="grid gap-6 md:grid-cols-2">
                   <div className="flex items-center gap-3">
-                    <Mail className="w-5 h-5 text-gray-400" />
+                    <Mail className="w-5 h-5 text-[var(--color-neutral)]" />
                     <div>
                       <p className="text-sm text-[var(--color-text-muted)]">E-mail</p>
                       <p className="font-medium text-[var(--color-text-primary)]">{user?.email}</p>
@@ -605,7 +605,7 @@ const Profile: React.FC = () => {
 
                   {/* Estado */}
                   <div className="flex items-center gap-3">
-                    <MapPin className="w-5 h-5 text-gray-400" />
+                    <MapPin className="w-5 h-5 text-[var(--color-neutral)]" />
                     <div>
                       <p className="text-sm text-[var(--color-text-muted)]">Estado</p>
                       <p className="font-medium text-[var(--color-text-primary)]">
@@ -616,7 +616,7 @@ const Profile: React.FC = () => {
 
                   {/* Tipo de perfil */}
                   <div className="flex items-center gap-3">
-                    <BadgeCheck className="w-5 h-5 text-gray-400" />
+                    <BadgeCheck className="w-5 h-5 text-[var(--color-neutral)]" />
                     <div>
                       <p className="text-sm text-[var(--color-text-muted)]">Tipo de Perfil</p>
                       <p className="font-medium text-[var(--color-text-primary)]">{user?.tipoUsuario || 'Não informado'}</p>
@@ -627,14 +627,14 @@ const Profile: React.FC = () => {
                   {user?.tipoUsuario === 'Médico' && (
                     <>
                       <div className="flex items-center gap-3">
-                        <Stethoscope className="w-5 h-5 text-gray-400" />
+                        <Stethoscope className="w-5 h-5 text-[var(--color-neutral)]" />
                         <div>
                           <p className="text-sm text-[var(--color-text-muted)]">Especialidade</p>
                           <p className="font-medium text-[var(--color-text-primary)]">{user?.especialidade || 'Não informada'}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        <User className="w-5 h-5 text-gray-400" />
+                        <User className="w-5 h-5 text-[var(--color-neutral)]" />
                         <div>
                           <p className="text-sm text-[var(--color-text-muted)]">CRM</p>
                           <p className="font-medium text-[var(--color-text-primary)]">
@@ -649,21 +649,21 @@ const Profile: React.FC = () => {
                   {user?.tipoUsuario === 'Residente' && (
                     <>
                       <div className="flex items-center gap-3">
-                        <Award className="w-5 h-5 text-gray-400" />
+                        <Award className="w-5 h-5 text-[var(--color-neutral)]" />
                         <div>
                           <p className="text-sm text-[var(--color-text-muted)]">Área da Residência</p>
                           <p className="font-medium text-[var(--color-text-primary)]">{user?.areaResidencia || '-'}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        <Building2 className="w-5 h-5 text-gray-400" />
+                        <Building2 className="w-5 h-5 text-[var(--color-neutral)]" />
                         <div>
                           <p className="text-sm text-[var(--color-text-muted)]">Hospital</p>
                           <p className="font-medium text-[var(--color-text-primary)]">{user?.hospital || '-'}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        <Calendar className="w-5 h-5 text-gray-400" />
+                        <Calendar className="w-5 h-5 text-[var(--color-neutral)]" />
                         <div>
                           <p className="text-sm text-[var(--color-text-muted)]">Ano da Residência</p>
                           <p className="font-medium text-[var(--color-text-primary)]">
@@ -679,14 +679,14 @@ const Profile: React.FC = () => {
                   {user?.tipoUsuario === 'Acadêmico de Medicina' && (
                     <>
                       <div className="flex items-center gap-3">
-                        <GraduationCap className="w-5 h-5 text-gray-400" />
+                        <GraduationCap className="w-5 h-5 text-[var(--color-neutral)]" />
                         <div>
                           <p className="text-sm text-[var(--color-text-muted)]">Instituição</p>
                           <p className="font-medium text-[var(--color-text-primary)]">{user?.instituicao || '-'}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        <Calendar className="w-5 h-5 text-gray-400" />
+                        <Calendar className="w-5 h-5 text-[var(--color-neutral)]" />
                         <div>
                           <p className="text-sm text-[var(--color-text-muted)]">Período</p>
                           <p className="font-medium text-[var(--color-text-primary)]">{user?.periodo || '-'}</p>
@@ -697,7 +697,7 @@ const Profile: React.FC = () => {
 
                   {/* CPF — vinculado à compra (checkout) */}
                   <div className="flex items-center gap-3">
-                    <CreditCard className="w-5 h-5 text-gray-400" />
+                    <CreditCard className="w-5 h-5 text-[var(--color-neutral)]" />
                     <div>
                       <p className="text-sm text-[var(--color-text-muted)]">CPF (da compra)</p>
                       <p className="font-medium text-[var(--color-text-primary)]">
@@ -707,7 +707,7 @@ const Profile: React.FC = () => {
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <Calendar className="w-5 h-5 text-gray-400" />
+                    <Calendar className="w-5 h-5 text-[var(--color-neutral)]" />
                     <div>
                       <p className="text-sm text-[var(--color-text-muted)]">Membro desde</p>
                       <p className="font-medium text-[var(--color-text-primary)]">
@@ -735,7 +735,7 @@ const Profile: React.FC = () => {
                 <Loading />
               ) : certificates.length === 0 ? (
                 <div className="text-center py-12">
-                  <Award className="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
+                  <Award className="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-[var(--color-muted)]" />
                   <h3 className="text-lg font-medium text-[var(--color-text-primary)] mb-2">
                     Nenhum certificado encontrado
                   </h3>
@@ -940,7 +940,7 @@ const Profile: React.FC = () => {
                 <div>
                   <label className="label">Serial Key</label>
                   <div className="relative">
-                    <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--color-neutral)]" />
                     <input
                       type="text"
                       value={serialKey}
@@ -985,7 +985,7 @@ const Profile: React.FC = () => {
                 <Loading />
               ) : userNotes.length === 0 ? (
                 <div className="text-center py-12">
-                  <StickyNote className="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
+                  <StickyNote className="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-[var(--color-muted)]" />
                   <h3 className="text-lg font-medium text-[var(--color-text-primary)] mb-2">
                     Nenhuma nota encontrada
                   </h3>
@@ -1048,7 +1048,7 @@ const Profile: React.FC = () => {
                                   <button
                                     onClick={() => handleDeleteNote(note._id)}
                                     disabled={isDeletingNote === note._id}
-                                    className="flex-shrink-0 p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded transition-colors opacity-0 group-hover:opacity-100"
+                                    className="flex-shrink-0 p-1.5 text-[var(--color-neutral)] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded transition-colors opacity-0 group-hover:opacity-100"
                                     title="Excluir nota"
                                   >
                                     {isDeletingNote === note._id ? (
@@ -1087,7 +1087,7 @@ const Profile: React.FC = () => {
               <div>
                 <label className="label">Senha Atual</label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--color-neutral)]" />
                   <input
                     type="password"
                     value={passwordData.senhaAtual}
@@ -1100,7 +1100,7 @@ const Profile: React.FC = () => {
               <div>
                 <label className="label">Nova Senha</label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--color-neutral)]" />
                   <input
                     type="password"
                     value={passwordData.novaSenha}
@@ -1114,7 +1114,7 @@ const Profile: React.FC = () => {
               <div>
                 <label className="label">Confirmar Nova Senha</label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--color-neutral)]" />
                   <input
                     type="password"
                     value={passwordData.confirmarSenha}
@@ -1170,7 +1170,7 @@ const Profile: React.FC = () => {
                 <div>
                   <label className="label">Serial Key</label>
                   <div className="relative">
-                    <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--color-neutral)]" />
                     <input
                       type="text"
                       value={serialKey}
