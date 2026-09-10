@@ -29,8 +29,10 @@ import {
   sanitizePayerAddress,
   resolveInstallments
 } from '../services/paymentMethodService';
-import { isEmailConfigured } from '../services/emailService';
+import { isEmailConfigured, sendPurchaseEmail } from '../services/emailService';
 import { fulfillOrder } from '../services/fulfillmentService';
+import User from '../models/User';
+import { consumirLimite } from '../services/rateLimitService';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const KEY_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -73,7 +75,8 @@ function getClientIp(req: Request): string {
 }
 
 function getBaseUrl(): string {
-  return process.env.APP_BASE_URL || process.env.FRONTEND_URL || 'https://ecorj.com';
+  // Remove a barra final para não gerar links com "//" (ver fulfillmentService).
+  return (process.env.APP_BASE_URL || process.env.FRONTEND_URL || 'https://ecorj.com').replace(/\/+$/, '');
 }
 
 async function generateNumeroPedido(): Promise<string> {
@@ -181,12 +184,73 @@ export const getQuote = async (req: Request, res: Response) => {
   }
 };
 
+/** Mascara um e-mail para confirmação visual sem expor o endereço inteiro. */
+function mascararEmail(email: string): string {
+  const [usuario, dominio] = String(email || '').split('@');
+  if (!usuario || !dominio) return '***';
+  const visivel = usuario.length <= 2 ? usuario.charAt(0) : usuario.substring(0, 2);
+  return `${visivel}${'*'.repeat(Math.max(2, usuario.length - visivel.length))}@${dominio}`;
+}
+
+/** Mascara o nome: mostra o primeiro nome e as iniciais do resto. */
+function mascararNome(nome: string): string {
+  const partes = String(nome || '').trim().split(/\s+/).filter(Boolean);
+  if (!partes.length) return '';
+  const [primeiro, ...resto] = partes;
+  return [primeiro, ...resto.map((p) => `${p.charAt(0).toUpperCase()}.`)].join(' ');
+}
+
+// @desc    Verificar se o e-mail informado no checkout já tem conta
+// @route   POST /api/payments/check-email
+// @access  Public (rate limited)
+//
+// Serve para oferecer as duas opções de entrega a quem compra SEM login:
+// liberar o acesso na conta que já existe, ou receber a serial key por e-mail.
+//
+// Nota de privacidade: a resposta revela se um e-mail tem conta. A plataforma
+// já expunha isso no cadastro ("Este e-mail já está cadastrado"), então não há
+// vazamento novo — ainda assim o endpoint é limitado por IP para impedir
+// varredura de listas de e-mails.
+export const checkBuyerEmail = async (req: AuthRequest, res: Response) => {
+  try {
+    const email = String(req.body?.email || '').trim().toLowerCase();
+    if (!EMAIL_REGEX.test(email)) {
+      return res.status(400).json({ message: 'E-mail inválido' });
+    }
+
+    const ip = getClientIp(req);
+    const limite = await consumirLimite(`check-email:ip:${ip}`, 30, 10 * 60);
+    if (!limite.permitido) {
+      return res.status(429).json({
+        message: 'Muitas verificações. Aguarde alguns minutos e tente novamente.',
+        retryAfter: limite.retryAfter
+      });
+    }
+
+    const user = await User.findOne({ email }).select('nomeCompleto ativo');
+    if (!user || !user.ativo) {
+      return res.json({ contaExistente: false });
+    }
+
+    return res.json({
+      contaExistente: true,
+      nomeMascarado: mascararNome(user.nomeCompleto),
+      emailMascarado: mascararEmail(email)
+    });
+  } catch (error) {
+    console.error('Erro ao verificar e-mail do comprador:', error);
+    // Falhar "fechado" aqui atrapalharia a compra: seguimos como se não houvesse
+    // conta e o comprador recebe a chave por e-mail (caminho sempre válido).
+    return res.json({ contaExistente: false });
+  }
+};
+
 // @desc    Criar checkout (pedido + preferência Mercado Pago)
 // @route   POST /api/payments/checkout
 // @access  Public (optionalAuth)
 export const createCheckout = async (req: AuthRequest, res: Response) => {
   try {
-    const { cursoId, cupom, comprador, aceiteTermos } = req.body;
+    const { cursoId, cupom, comprador, aceiteTermos, entregaModo } = req.body;
 
     const config = await getPaymentConfig();
     if (!config.vendasAtivas) {
@@ -263,11 +327,35 @@ export const createCheckout = async (req: AuthRequest, res: Response) => {
     const ip = getClientIp(req);
     const numeroPedido = await generateNumeroPedido();
 
+    // ---- Compra sem login com e-mail que já tem conta ----
+    // O comprador escolhe entre:
+    //   'conta' -> liberamos o acesso direto na conta existente (o pedido nasce
+    //              vinculado a ela e a chave é consumida na entrega);
+    //   'email' -> mandamos a serial key por e-mail, para ele ativar onde quiser.
+    // O padrão é 'conta': é o que evita a chave perdida na caixa de entrada.
+    // (Quem já está logado não escolhe nada: o acesso vai para a própria conta.)
+    let compradorId: any = req.user?._id || undefined;
+    let vinculadoAContaExistente = false;
+    let modoEntrega: 'conta' | 'email' | undefined;
+
+    if (!req.user) {
+      const contaExistente = await User.findOne({ email }).select('_id ativo');
+      if (contaExistente && contaExistente.ativo) {
+        modoEntrega = entregaModo === 'email' ? 'email' : 'conta';
+        if (modoEntrega === 'conta') {
+          compradorId = contaExistente._id;
+          vinculadoAContaExistente = true;
+        }
+      }
+    }
+
     const orderData: any = {
       numeroPedido,
       curso: course._id,
       cursoTitulo: course.titulo,
-      comprador: req.user?._id || undefined,
+      comprador: compradorId,
+      entregaModo: modoEntrega,
+      vinculadoAContaExistente,
       compradorDados: { nome, email, telefone, cpf: cpfDigitos },
       valores: {
         precoBase: breakdown.precoBase,
@@ -300,6 +388,8 @@ export const createCheckout = async (req: AuthRequest, res: Response) => {
       return res.status(201).json({
         numeroPedido: order.numeroPedido,
         gratuito: true,
+        entregaModo: modoEntrega,
+        vinculadoAContaExistente,
         redirectUrl: `${getBaseUrl()}/compra/status?pedido=${order.numeroPedido}`
       });
     }
@@ -323,7 +413,9 @@ export const createCheckout = async (req: AuthRequest, res: Response) => {
       amount: breakdown.total,
       payer: { nome, email, firstName, lastName, cpf: cpfDigitos },
       metodos: config.metodos,
-      parcelasMaximas: config.parcelasMaximas
+      parcelasMaximas: config.parcelasMaximas,
+      entregaModo: modoEntrega,
+      vinculadoAContaExistente
     });
   } catch (error) {
     console.error('Erro ao criar checkout:', error);
@@ -390,7 +482,14 @@ export async function applyPaymentToOrder(order: any, payment: {
   order.status = novoStatus;
   await order.save();
   if (novoStatus === 'aprovado' && valorConfere) {
-    await fulfillOrder((order._id as any).toString());
+    // A entrega é reprocessável (o claim é devolvido em caso de falha), então
+    // um erro aqui não pode virar erro na resposta do pagamento: o dinheiro já
+    // entrou e o /sync, o webhook seguinte ou o admin reprocessam a entrega.
+    try {
+      await fulfillOrder((order._id as any).toString());
+    } catch (err) {
+      console.error(`Entrega do pedido ${order.numeroPedido} falhou — será reprocessada:`, err);
+    }
   }
   return novoStatus;
 }
@@ -630,6 +729,10 @@ export const getOrderStatus = async (req: Request, res: Response) => {
       compradorNome: order.compradorDados.nome,
       createdAt: order.createdAt,
       isGuest,
+      // Como o acesso foi/será entregue (o front explica isso ao comprador)
+      entregaModo: order.entregaModo,
+      vinculadoAContaExistente: !!order.vinculadoAContaExistente,
+      emailEnviado: order.emailEnviado,
       // Pix / boleto pendente — exibidos para o cliente concluir o pagamento
       pix: pendente && isPix && mp.pixQrCode ? {
         qrCode: mp.pixQrCode,
@@ -646,6 +749,86 @@ export const getOrderStatus = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Erro ao obter status do pedido:', error);
     res.status(500).json({ message: 'Erro ao obter status do pedido' });
+  }
+};
+
+// @desc    Reenviar o e-mail de compra (comprovante + chave de ativação)
+// @route   POST /api/payments/order/:numeroPedido/resend-email
+// @access  Public (rate limited)
+//
+// Rede de segurança para o maior risco da compra sem login: o e-mail com a
+// serial key não chegar (SMTP fora do ar, caixa cheia, spam). O comprador está
+// na página de status do próprio pedido e pede o reenvio — o e-mail vai SEMPRE
+// para o endereço gravado no pedido, nunca para um endereço informado agora,
+// então o endpoint não pode ser usado para redirecionar a chave de outra pessoa.
+export const resendOrderEmail = async (req: Request, res: Response) => {
+  try {
+    const order = await Order.findOne({ numeroPedido: req.params.numeroPedido });
+    if (!order) return res.status(404).json({ message: 'Pedido não encontrado' });
+
+    if (order.status !== 'aprovado') {
+      return res.status(400).json({ message: 'O e-mail de compra só é enviado após a aprovação do pagamento.' });
+    }
+    if (!isEmailConfigured()) {
+      return res.status(503).json({
+        message: 'O envio de e-mails está indisponível no momento. Guarde a chave exibida nesta página ou fale com o suporte.'
+      });
+    }
+
+    // Dois limites: por pedido (evita repetição) e por IP (evita usar a
+    // plataforma como disparador de e-mails).
+    const porPedido = await consumirLimite(`resend-order:${order.numeroPedido}`, 3, 30 * 60);
+    if (!porPedido.permitido) {
+      return res.status(429).json({
+        message: 'Já reenviamos este e-mail algumas vezes. Verifique também a caixa de spam e tente novamente mais tarde.',
+        retryAfter: porPedido.retryAfter
+      });
+    }
+    const porIp = await consumirLimite(`resend-order:ip:${getClientIp(req)}`, 10, 30 * 60);
+    if (!porIp.permitido) {
+      return res.status(429).json({
+        message: 'Muitas solicitações de reenvio. Aguarde alguns minutos.',
+        retryAfter: porIp.retryAfter
+      });
+    }
+
+    // Se o pedido foi pago mas a entrega não completou (chave não gerada),
+    // reprocessa antes de enviar — um e-mail sem chave não serve para nada.
+    let pedido = order;
+    if (!order.entregue || !order.serialKeyCodigo) {
+      try {
+        await fulfillOrder((order._id as any).toString());
+      } catch (err) {
+        console.error('Falha ao reprocessar entrega antes do reenvio de e-mail:', err);
+      }
+      pedido = (await Order.findById(order._id)) || order;
+    }
+
+    const isGuest = !pedido.comprador;
+    const enviado = await sendPurchaseEmail(pedido, {
+      serialKeyCodigo: pedido.serialKeyCodigo,
+      activationLink: `${getBaseUrl()}/ativar?codigo=${encodeURIComponent(pedido.serialKeyCodigo || '')}`,
+      isGuest,
+      vinculadoAContaExistente: !!pedido.vinculadoAContaExistente,
+      loginLink: `${getBaseUrl()}/login`
+    });
+
+    await Order.updateOne(
+      { _id: order._id },
+      enviado
+        ? { $set: { emailEnviado: true, emailEnviadoEm: new Date() }, $inc: { emailTentativas: 1 }, $unset: { ultimoEmailErro: '' } }
+        : { $inc: { emailTentativas: 1 }, $set: { ultimoEmailErro: 'Falha no reenvio solicitado pelo comprador' } }
+    );
+
+    if (!enviado) {
+      return res.status(502).json({
+        message: 'Não conseguimos reenviar o e-mail agora. Guarde a chave exibida nesta página e, se precisar, fale com o suporte.'
+      });
+    }
+    return res.json({ message: 'E-mail reenviado! Verifique sua caixa de entrada e também o spam.' });
+  } catch (error) {
+    console.error('Erro ao reenviar e-mail do pedido:', error);
+    return res.status(500).json({ message: 'Erro ao reenviar e-mail' });
   }
 };
 

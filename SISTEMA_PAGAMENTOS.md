@@ -160,9 +160,30 @@ No **Vercel**, cadastre essas variáveis em *Project → Settings → Environmen
    - **Serial key** de ativação,
    - **Link de ativação** (`/ativar?codigo=...`),
    - **Comprovante de compra**.
-5. Na página de retorno (`/compra/status`), a serial key também é exibida.
+5. Na página de retorno (`/compra/status`), a serial key também é exibida, com um
+   botão de **reenviar o e-mail** (rede de segurança se a mensagem não chegar).
 6. Para acessar: cria a conta (ou faz login) e a chave é **aplicada automaticamente**
    (guardada em `sessionStorage` e ativada no `/ativar`).
+
+### B.1) Convidado cujo **e-mail já tem conta** — duas opções
+
+Enquanto o e-mail é digitado, o checkout consulta
+`POST /api/payments/check-email` (limitado por IP). Se **já existir conta** com
+aquele endereço, o comprador escolhe como quer receber o acesso:
+
+| Opção | `entregaModo` | O que acontece |
+|-------|---------------|----------------|
+| **Liberar na conta que já existe** (padrão) | `conta` | O pedido nasce vinculado àquela conta (`comprador` preenchido, `vinculadoAContaExistente: true`). Na aprovação, o curso é liberado direto na conta — **sem chave para digitar**. O e-mail confirma a liberação e a página de status manda para o login. |
+| **Receber a chave por e-mail** | `email` | Fluxo de convidado normal: a serial key vai por e-mail e pode ser ativada em qualquer conta (útil para presentear). |
+
+Detalhes de implementação:
+
+- A escolha é resolvida **no servidor** (`createCheckout`); o front só envia a preferência.
+- Se a conta for apagada entre o checkout e a aprovação, o `fulfillOrder` **desfaz o
+  vínculo** e entrega como convidado — ninguém fica sem acesso e sem chave.
+- Compra vinculada **não grava o CPF do pagador** na conta de destino: quem pagou
+  pode não ser o titular, e o CPF alimenta a marca d'água dos vídeos.
+- A loja de **materiais** tem exatamente o mesmo comportamento.
 
 ### C) Webhook (confirmação de pagamento)
 - O Mercado Pago chama `POST /api/payments/webhook`.
@@ -234,6 +255,21 @@ Por isso, quando `isEmailConfigured()` é `false`:
 
 Usuários **logados** continuam comprando normalmente: o acesso é liberado direto
 na conta, sem depender de e-mail.
+
+### Garantias contra "paguei e não recebi"
+
+A entrega **nunca depende do e-mail sair**:
+
+1. A serial key é gerada e gravada no pedido **antes** de qualquer tentativa de envio.
+2. O envio tem **timeout** (`SMTP_TIMEOUT_MS`, padrão 15s): em ambiente serverless
+   uma conexão SMTP pendurada consumia todo o tempo da função e matava a entrega.
+3. Falha de envio é **registrada no pedido** (`emailEnviado`, `emailTentativas`,
+   `ultimoEmailErro`) para o admin ver o motivo.
+4. Se a entrega falhar no meio (queda do banco, timeout), o pedido é **reaberto**
+   (`entregue: false`) para que o webhook seguinte, o `/sync` ou o cron reprocessem.
+   Antes disso o pedido ficava travado como "entregue" sem chave e sem e-mail.
+5. O comprador pode **reenviar o e-mail** pela própria página de status, e o admin
+   pode reprocessar em *Admin → Pagamentos*.
 
 ---
 
@@ -313,6 +349,8 @@ Nova aba **"Minhas Compras"**:
 | ALL | `/api/payments/webhook` | Webhook do Mercado Pago |
 | GET | `/api/payments/order/:numeroPedido` | Status público do pedido |
 | POST | `/api/payments/order/:numeroPedido/sync` | Reconsulta o pagamento (fallback) |
+| POST | `/api/payments/check-email` | Informa se o e-mail do checkout já tem conta (para as duas opções de entrega). Limitado por IP |
+| POST | `/api/payments/order/:numeroPedido/resend-email` | Reenvia comprovante + chave **para o e-mail do pedido**. Limitado por pedido e por IP |
 
 ### Rotina agendada (cron externo)
 | Método | Rota | Descrição |

@@ -326,7 +326,7 @@ export const quoteMaterial = async (req: Request, res: Response) => {
 // @access  Public (optionalAuth)
 export const createMaterialCheckout = async (req: AuthRequest, res: Response) => {
   try {
-    const { materialId, cupom, comprador, aceiteTermos } = req.body;
+    const { materialId, cupom, comprador, aceiteTermos, entregaModo } = req.body;
 
     const config = await getPaymentConfig();
     if (!config.vendasAtivas) {
@@ -392,12 +392,34 @@ export const createMaterialCheckout = async (req: AuthRequest, res: Response) =>
 
     const ip = getClientIp(req);
     const numeroPedido = await generateNumeroPedido();
+
+    // ---- Compra sem login com e-mail que já tem conta ----
+    // Mesma escolha do checkout de cursos (ver createCheckout):
+    //   'conta' -> o material é liberado direto em "Meus Materiais" da conta;
+    //   'email' -> o código/link de acesso vai por e-mail, sem vincular a conta.
+    let compradorId: any = req.user?._id || undefined;
+    let vinculadoAContaExistente = false;
+    let modoEntrega: 'conta' | 'email' | undefined;
+
+    if (!req.user) {
+      const contaExistente = await User.findOne({ email }).select('_id ativo');
+      if (contaExistente && contaExistente.ativo) {
+        modoEntrega = entregaModo === 'email' ? 'email' : 'conta';
+        if (modoEntrega === 'conta') {
+          compradorId = contaExistente._id;
+          vinculadoAContaExistente = true;
+        }
+      }
+    }
+
     const orderData: any = {
       numeroPedido,
       material: material._id,
       materialTitulo: material.titulo,
       materialTipo: material.tipo,
-      comprador: req.user?._id || undefined,
+      comprador: compradorId,
+      entregaModo: modoEntrega,
+      vinculadoAContaExistente,
       compradorDados: { nome, email, telefone, cpf: cpfDigitos },
       valores: {
         precoBase: breakdown.precoBase,
@@ -424,6 +446,8 @@ export const createMaterialCheckout = async (req: AuthRequest, res: Response) =>
       return res.status(201).json({
         numeroPedido: order.numeroPedido,
         gratuito: true,
+        entregaModo: modoEntrega,
+        vinculadoAContaExistente,
         redirectUrl: `${getBaseUrl()}/materiais/compra/status?pedido=${order.numeroPedido}`
       });
     }
@@ -445,7 +469,9 @@ export const createMaterialCheckout = async (req: AuthRequest, res: Response) =>
       amount: breakdown.total,
       payer: { nome, email, firstName, lastName, cpf: cpfDigitos },
       metodos: config.metodos,
-      parcelasMaximas: config.parcelasMaximas
+      parcelasMaximas: config.parcelasMaximas,
+      entregaModo: modoEntrega,
+      vinculadoAContaExistente
     });
   } catch (error) {
     console.error('Erro ao criar checkout de material:', error);
@@ -503,7 +529,14 @@ export async function applyMaterialPayment(order: any, payment: {
   order.status = novoStatus;
   await order.save();
   if (novoStatus === 'aprovado' && valorConfere) {
-    await fulfillMaterialOrder((order._id as any).toString());
+    // Ver comentário equivalente em applyPaymentToOrder: a entrega é
+    // reprocessável, então uma falha aqui não vira erro na resposta do
+    // pagamento — o dinheiro já entrou.
+    try {
+      await fulfillMaterialOrder((order._id as any).toString());
+    } catch (err) {
+      console.error(`Entrega do material ${order.numeroPedido} falhou — será reprocessada:`, err);
+    }
   }
   return novoStatus;
 }
@@ -722,6 +755,8 @@ export const getMaterialOrderStatus = async (req: Request, res: Response) => {
       compradorEmail: order.compradorDados.email,
       createdAt: order.createdAt,
       isGuest,
+      entregaModo: order.entregaModo,
+      vinculadoAContaExistente: !!order.vinculadoAContaExistente,
       pix: pendente && isPix && mp.pixQrCode ? {
         qrCode: mp.pixQrCode,
         qrCodeBase64: mp.pixQrCodeBase64,
@@ -1099,6 +1134,17 @@ export const claimMaterialAccess = async (req: AuthRequest, res: Response) => {
     if (!ent) return res.status(404).json({ message: 'Acesso não encontrado' });
     if (!isEntitlementValid(ent)) {
       return res.status(403).json({ message: 'Este acesso expirou ou foi revogado.' });
+    }
+
+    // Um acesso já vinculado pertence a quem o vinculou: sem esta checagem,
+    // qualquer pessoa com o código (repassado, vazado num print) transferiria
+    // para si o material de outro comprador.
+    const donoAtual = ent.user ? String(ent.user) : '';
+    const solicitante = String(req.user?._id || '');
+    if (donoAtual && donoAtual !== solicitante) {
+      return res.status(403).json({
+        message: 'Este acesso já está vinculado a outra conta. Se você comprou este material, entre com a conta usada na compra ou fale com o suporte.'
+      });
     }
 
     ent.user = req.user?._id as any;

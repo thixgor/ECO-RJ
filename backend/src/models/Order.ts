@@ -68,6 +68,19 @@ export interface IOrder extends Document {
   entregue: boolean;
   entregueEm?: Date;
   emailEnviado: boolean;
+  emailEnviadoEm?: Date;
+  emailTentativas: number;      // auditoria: quantas vezes tentamos enviar
+  ultimoEmailErro?: string;     // motivo da última falha (o admin precisa saber)
+  /**
+   * Como o comprador pediu para receber o acesso quando comprou SEM estar logado
+   * e o e-mail informado já tinha conta na plataforma:
+   *   'conta' -> liberar direto na conta existente (padrão)
+   *   'email' -> mandar a serial key por e-mail para ele ativar onde quiser
+   * Fica indefinido nas compras feitas com login (não há escolha a fazer).
+   */
+  entregaModo?: 'conta' | 'email';
+  /** Marca que o pedido foi vinculado a uma conta existente sem login. */
+  vinculadoAContaExistente?: boolean;
   cupomContabilizado: boolean; // idempotência do incremento de uso do cupom
   loteContabilizado: boolean;  // idempotência do incremento do lote
   // Compliance / auditoria
@@ -174,6 +187,24 @@ const OrderSchema = new Schema<IOrder>(
       type: Date
     },
     emailEnviado: {
+      type: Boolean,
+      default: false
+    },
+    emailEnviadoEm: {
+      type: Date
+    },
+    emailTentativas: {
+      type: Number,
+      default: 0
+    },
+    ultimoEmailErro: {
+      type: String
+    },
+    entregaModo: {
+      type: String,
+      enum: ['conta', 'email']
+    },
+    vinculadoAContaExistente: {
       type: Boolean,
       default: false
     },

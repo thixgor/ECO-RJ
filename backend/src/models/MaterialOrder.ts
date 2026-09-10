@@ -69,6 +69,9 @@ export interface IMaterialOrder extends Document {
   emailEnviado: boolean;
   emailTentativas: number;    // contador de tentativas de envio (auditoria)
   ultimoEmailErro?: string;
+  /** Ver `entregaModo` em Order — mesma escolha para materiais. */
+  entregaModo?: 'conta' | 'email';
+  vinculadoAContaExistente?: boolean;
   cupomContabilizado: boolean;
   vendaContabilizada: boolean; // idempotência do incremento de vendas do material
   // Compliance / auditoria
@@ -146,6 +149,8 @@ const MaterialOrderSchema = new Schema<IMaterialOrder>(
     emailEnviado: { type: Boolean, default: false },
     emailTentativas: { type: Number, default: 0 },
     ultimoEmailErro: { type: String },
+    entregaModo: { type: String, enum: ['conta', 'email'] },
+    vinculadoAContaExistente: { type: Boolean, default: false },
     cupomContabilizado: { type: Boolean, default: false },
     vendaContabilizada: { type: Boolean, default: false },
     aceiteTermos: {

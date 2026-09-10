@@ -329,14 +329,18 @@ const Profile: React.FC = () => {
       return;
     }
 
-    if (passwordData.novaSenha.length < 6) {
-      toast.error('A nova senha deve ter no mínimo 6 caracteres');
+    // Mesma política do servidor: 8+ caracteres, com letra e número.
+    if (passwordData.novaSenha.length < 8 || !/[A-Za-zÀ-ÿ]/.test(passwordData.novaSenha) || !/\d/.test(passwordData.novaSenha)) {
+      toast.error('A senha deve ter no mínimo 8 caracteres, incluindo pelo menos uma letra e um número.');
       return;
     }
 
     setIsChangingPassword(true);
     try {
-      await authService.changePassword(passwordData.senhaAtual, passwordData.novaSenha);
+      const res = await authService.changePassword(passwordData.senhaAtual, passwordData.novaSenha);
+      // Trocar a senha invalida as sessões antigas no servidor; o token novo que
+      // vem na resposta mantém ESTA sessão funcionando.
+      if (res.data?.token) localStorage.setItem('token', res.data.token);
       setPasswordData({ senhaAtual: '', novaSenha: '', confirmarSenha: '' });
       toast.success('Senha alterada com sucesso!');
     } catch (error: any) {

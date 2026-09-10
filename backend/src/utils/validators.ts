@@ -72,3 +72,44 @@ export function sanitizeString(str: string): string {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#x27;');
 }
+
+/**
+ * Política de força de senha usada nos fluxos sensíveis (recuperação por
+ * e-mail e troca de senha autenticada).
+ *
+ * Regra: mínimo de 8 caracteres, com pelo menos uma letra e um número, e sem
+ * conter o e-mail/nome de usuário. Senhas óbvias ("12345678", "senha123") são
+ * bloqueadas por lista curta — não substitui um dicionário completo, mas corta
+ * os casos mais explorados em ataques de credential stuffing.
+ *
+ * O cadastro continua aceitando 6 caracteres (regra histórica do schema) para
+ * não invalidar contas existentes; quem redefine a senha passa a usar a regra
+ * forte.
+ */
+export const SENHA_POLITICA_TEXTO =
+  'A senha deve ter no mínimo 8 caracteres, incluindo pelo menos uma letra e um número.';
+
+const SENHAS_PROIBIDAS = [
+  '12345678', '123456789', '1234567890', 'senha123', 'password', 'password1',
+  'password123', 'qwerty123', 'admin123', 'abc12345', '11111111', 'ecorj123'
+];
+
+export function validarForcaSenha(senha: unknown, email?: string): string | null {
+  if (typeof senha !== 'string') return SENHA_POLITICA_TEXTO;
+  if (senha.length < 8) return SENHA_POLITICA_TEXTO;
+  if (senha.length > 128) return 'A senha deve ter no máximo 128 caracteres.';
+  if (!/[A-Za-zÀ-ÿ]/.test(senha)) return SENHA_POLITICA_TEXTO;
+  if (!/\d/.test(senha)) return SENHA_POLITICA_TEXTO;
+
+  const normalizada = senha.toLowerCase();
+  if (SENHAS_PROIBIDAS.includes(normalizada)) {
+    return 'Esta senha é muito comum. Escolha uma senha diferente.';
+  }
+  if (email) {
+    const usuarioDoEmail = String(email).toLowerCase().split('@')[0];
+    if (usuarioDoEmail.length >= 3 && normalizada.includes(usuarioDoEmail)) {
+      return 'A senha não pode conter o seu e-mail.';
+    }
+  }
+  return null;
+}

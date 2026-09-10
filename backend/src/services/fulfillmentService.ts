@@ -6,7 +6,7 @@ import Course from '../models/Course';
 import User from '../models/User';
 import Coupon from '../models/Coupon';
 import PriceLot from '../models/PriceLot';
-import { sendPurchaseEmail } from './emailService';
+import { sendPurchaseEmail, ultimoErroEnvio } from './emailService';
 
 const KEY_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 
@@ -27,7 +27,10 @@ async function generateUniqueKey(): Promise<string> {
 }
 
 function getBaseUrl(): string {
-  return process.env.APP_BASE_URL || process.env.FRONTEND_URL || 'https://ecorj.com';
+  // A barra final precisa ser removida: com APP_BASE_URL="https://ecorj.com/"
+  // o link de ativação saía como "https://ecorj.com//ativar?codigo=..." e
+  // alguns clientes de e-mail quebravam esse endereço.
+  return (process.env.APP_BASE_URL || process.env.FRONTEND_URL || 'https://ecorj.com').replace(/\/+$/, '');
 }
 
 /**
@@ -38,9 +41,10 @@ function getBaseUrl(): string {
  * Fluxo:
  *   1. Gera (uma única vez) a serial key da compra.
  *   2. Contabiliza uso de cupom e lote de forma atômica e idempotente.
- *   3. Se o comprador estava logado: libera o acesso automaticamente na conta.
- *      Caso contrário (convidado): a chave fica pendente para ativação futura.
- *   4. Envia o e-mail com comprovante + chave + link de ativação.
+ *   3. Libera o acesso na conta quando há conta vinculada (comprador logado ou
+ *      convidado que escolheu "liberar na conta que já existe com este e-mail").
+ *      Caso contrário: a chave fica pendente para ativação futura.
+ *   4. Envia o e-mail com comprovante + chave/aviso de liberação.
  */
 export async function fulfillOrder(orderId: string): Promise<void> {
   // CLAIM ATÔMICO: garante que apenas UMA execução processe a entrega,
@@ -52,6 +56,25 @@ export async function fulfillOrder(orderId: string): Promise<void> {
   );
   if (!claimed) return; // já entregue por outra execução ou não aprovado
 
+  try {
+    await executarEntrega(claimed);
+  } catch (err) {
+    // O claim marcou `entregue: true` ANTES de processar. Se algo falhar no meio
+    // (queda do banco, timeout da função), o pedido ficaria "entregue" sem chave
+    // e sem e-mail — e nada mais reprocessaria, porque tanto o webhook quanto o
+    // /sync só reprocessam pedidos NÃO entregues. Devolver o claim é o que
+    // permite a próxima tentativa consertar o pedido sozinha.
+    console.error(`Falha na entrega do pedido ${claimed.numeroPedido} — reabrindo para nova tentativa:`, err);
+    await Order.updateOne(
+      { _id: claimed._id },
+      { $set: { entregue: false }, $unset: { entregueEm: '' } }
+    ).catch((e) => console.error('Não foi possível reabrir o pedido para reprocessamento:', e));
+    throw err;
+  }
+}
+
+/** Corpo da entrega. Cada etapa é individualmente idempotente. */
+async function executarEntrega(claimed: any): Promise<void> {
   const order = claimed;
 
   // 1) Gerar serial key (se ainda não existir)
@@ -107,15 +130,31 @@ export async function fulfillOrder(orderId: string): Promise<void> {
   }
 
   // 4) Liberar acesso
+  //    `order.comprador` existe quando a compra foi feita logada OU quando o
+  //    convidado escolheu liberar o acesso na conta que já existia com o e-mail
+  //    informado (entregaModo === 'conta').
   let isGuest = true;
   if (order.comprador) {
     const user = await User.findById(order.comprador);
-    if (user) {
+    if (!user) {
+      // A conta foi apagada entre o checkout e a confirmação do pagamento.
+      // Sem desfazer o vínculo, o comprador ficaria sem acesso E sem a chave
+      // (a página de status esconde a chave de quem tem conta vinculada).
+      console.warn(`Pedido ${order.numeroPedido}: conta vinculada não existe mais — entregando como convidado.`);
+      order.comprador = undefined;
+      order.vinculadoAContaExistente = false;
+      order.entregaModo = 'email';
+      await order.save();
+    } else {
       isGuest = false;
       // Vincula o CPF da compra ao usuário (usado na marca d'água dos vídeos).
       // O CPF não é mais coletado no cadastro; passa a ser o CPF utilizado no checkout.
+      //
+      // Exceção: compra feita SEM login e apenas direcionada a uma conta pelo
+      // e-mail. Aí quem pagou pode não ser o titular (compra-presente), e gravar
+      // o CPF de terceiro na conta corromperia a marca d'água dos vídeos.
       const cpfCompra = (order.compradorDados?.cpf || '').replace(/[^\d]/g, '');
-      if (cpfCompra && cpfCompra.length === 11 && !user.cpf) {
+      if (cpfCompra && cpfCompra.length === 11 && !user.cpf && !order.vinculadoAContaExistente) {
         // Evita conflito de índice único: só vincula se nenhum outro usuário tiver esse CPF.
         const cpfEmUso = await User.findOne({ cpf: cpfCompra, _id: { $ne: user._id } }).select('_id');
         if (!cpfEmUso) {
@@ -154,19 +193,32 @@ export async function fulfillOrder(orderId: string): Promise<void> {
   // 5) (entrega já marcada atomicamente no início — claim). Persiste vínculos.
   await order.save();
 
-  // 6) Enviar e-mail com comprovante + chave + link de ativação
-  const activationLink = `${getBaseUrl()}/ativar?codigo=${serialKeyCodigo}`;
+  // 6) Enviar e-mail com comprovante + chave / aviso de liberação.
+  //    Best-effort: o acesso e a chave JÁ estão persistidos, então uma falha de
+  //    e-mail nunca faz o comprador perder o que pagou — ele ainda vê a chave na
+  //    página de status, pode pedir o reenvio e o admin pode reprocessar.
+  const activationLink = `${getBaseUrl()}/ativar?codigo=${encodeURIComponent(serialKeyCodigo || '')}`;
+  const loginLink = `${getBaseUrl()}/login`;
   try {
+    order.emailTentativas = (order.emailTentativas || 0) + 1;
     const enviado = await sendPurchaseEmail(order, {
       serialKeyCodigo,
       activationLink,
-      isGuest
+      isGuest,
+      vinculadoAContaExistente: !!order.vinculadoAContaExistente,
+      loginLink
     });
     if (enviado) {
       order.emailEnviado = true;
-      await order.save();
+      order.emailEnviadoEm = new Date();
+      order.ultimoEmailErro = undefined;
+    } else {
+      order.ultimoEmailErro = ultimoErroEnvio || 'E-mail não enviado (SMTP indisponível ou falha no envio)';
     }
-  } catch (err) {
+    await order.save();
+  } catch (err: any) {
+    order.ultimoEmailErro = String(err?.message || err).substring(0, 500);
+    try { await order.save(); } catch { /* noop */ }
     console.error('Erro ao enviar e-mail de compra (pedido segue entregue):', err);
   }
 }

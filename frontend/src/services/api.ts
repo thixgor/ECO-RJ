@@ -89,7 +89,25 @@ export const authService = {
     api.put('/auth/password', { senhaAtual, novaSenha }),
 
   resetPassword: (email: string, tokenRecuperacao: string, novaSenha: string) =>
-    api.post('/auth/reset-password', { email, tokenRecuperacao, novaSenha })
+    api.post('/auth/reset-password', { email, tokenRecuperacao, novaSenha }),
+
+  // ---- Recuperação de senha por e-mail (link de uso único) ----
+  // Quais opções de recuperação estão disponíveis (depende do SMTP do servidor)
+  getRecoveryOptions: () => api.get('/auth/recovery-options'),
+
+  // Dispara o e-mail com o link. A resposta é sempre genérica: o servidor não
+  // revela se o e-mail informado tem conta.
+  forgotPassword: (email: string) =>
+    api.post('/auth/forgot-password', { email }),
+
+  // Verifica se o link ainda vale antes de mostrar o formulário de nova senha
+  validateResetToken: (token: string) =>
+    api.post('/auth/reset-password/validate', { token }),
+
+  // Conclui a redefinição. Não faz login automático: o usuário entra com a
+  // senha nova (um link interceptado nunca vira sessão ativa).
+  confirmPasswordReset: (token: string, novaSenha: string) =>
+    api.post('/auth/reset-password/confirm', { token, novaSenha })
 };
 
 // Users
@@ -524,11 +542,19 @@ export const paymentService = {
   quote: (data: { cursoId: string; cupom?: string; email?: string }) =>
     api.post('/payments/quote', data),
 
+  // Verifica se o e-mail digitado no checkout já tem conta na plataforma
+  checkEmail: (email: string) =>
+    api.post('/payments/check-email', { email }),
+
   checkout: (data: {
     cursoId: string;
     cupom?: string;
     comprador: { nome: string; email: string; telefone: string; cpf: string };
     aceiteTermos: { aceito: boolean };
+    // Compra sem login com e-mail que já tem conta:
+    //   'conta' -> libera o acesso na conta existente
+    //   'email' -> envia a chave de ativação por e-mail
+    entregaModo?: 'conta' | 'email';
   }) => api.post('/payments/checkout', data),
 
   // Checkout Transparente: envia os dados tokenizados pelo Payment Brick
@@ -540,6 +566,10 @@ export const paymentService = {
 
   syncOrder: (numeroPedido: string) =>
     api.post(`/payments/order/${numeroPedido}/sync`),
+
+  // Reenvia o comprovante + chave de ativação para o e-mail do pedido
+  resendEmail: (numeroPedido: string) =>
+    api.post(`/payments/order/${numeroPedido}/resend-email`),
 
   // Usuário logado
   getMyOrders: () => api.get('/payments/my-orders'),
@@ -622,6 +652,7 @@ export const materialService = {
     cupom?: string;
     comprador: { nome: string; email: string; telefone: string; cpf: string };
     aceiteTermos: { aceito: boolean };
+    entregaModo?: 'conta' | 'email';
   }) => api.post('/materials/checkout', data),
 
   process: (numeroPedido: string, payment: any) =>

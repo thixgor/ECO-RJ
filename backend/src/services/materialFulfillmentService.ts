@@ -4,7 +4,7 @@ import Material from '../models/Material';
 import MaterialEntitlement from '../models/MaterialEntitlement';
 import Coupon from '../models/Coupon';
 import User from '../models/User';
-import { sendMaterialPurchaseEmail, MailAttachment } from './emailService';
+import { sendMaterialPurchaseEmail, MailAttachment, ultimoErroEnvio } from './emailService';
 import { getSignedUrl } from './blobStorageService';
 import { watermarkPdfBuffer } from './pdfWatermarkService';
 
@@ -63,8 +63,41 @@ export async function fulfillMaterialOrder(orderId: string): Promise<void> {
   );
   if (!claimed) return;
 
+  try {
+    await executarEntregaMaterial(claimed);
+  } catch (err) {
+    // Mesma proteção do fulfillment de cursos: o claim marca `entregue` ANTES de
+    // processar, então uma falha no meio deixaria o pedido travado como entregue
+    // sem entitlement. Devolver o claim permite que o /sync ou o webhook
+    // seguinte reprocessem o pedido.
+    console.error(`Falha na entrega do material ${claimed.numeroPedido} — reabrindo para nova tentativa:`, err);
+    await MaterialOrder.updateOne(
+      { _id: claimed._id },
+      { $set: { entregue: false }, $unset: { entregueEm: '' } }
+    ).catch((e) => console.error('Não foi possível reabrir o pedido de material:', e));
+    throw err;
+  }
+}
+
+/** Corpo da entrega do material. Cada etapa é individualmente idempotente. */
+async function executarEntregaMaterial(claimed: any): Promise<void> {
   const order = claimed;
   const material = await Material.findById(order.material);
+
+  // 0) Conta vinculada ainda existe? (compra logada ou convidado que pediu para
+  //    liberar na conta dele). Se a conta sumiu entre o checkout e a aprovação,
+  //    o vínculo é desfeito para o material ser entregue por e-mail/token — caso
+  //    contrário o entitlement nasceria apontando para um usuário inexistente.
+  if (order.comprador) {
+    const existe = await User.exists({ _id: order.comprador });
+    if (!existe) {
+      console.warn(`Pedido de material ${order.numeroPedido}: conta vinculada não existe mais — entregando como convidado.`);
+      order.comprador = undefined;
+      order.vinculadoAContaExistente = false;
+      order.entregaModo = 'email';
+      await order.save();
+    }
+  }
 
   // 1) Códigos de acesso (gerados uma única vez e persistidos no pedido)
   let serialKey = order.serialKeyCodigo;
@@ -134,8 +167,10 @@ export async function fulfillMaterialOrder(orderId: string): Promise<void> {
     const user = await User.findById(order.comprador);
     if (user) {
       isGuest = false;
+      // Ver fulfillmentService: não gravamos o CPF de quem comprou sem login
+      // para a conta de outra pessoa (compra-presente corromperia a marca d'água).
       const cpfCompra = (order.compradorDados?.cpf || '').replace(/[^\d]/g, '');
-      if (cpfCompra && cpfCompra.length === 11 && !user.cpf) {
+      if (cpfCompra && cpfCompra.length === 11 && !user.cpf && !order.vinculadoAContaExistente) {
         const cpfEmUso = await User.findOne({ cpf: cpfCompra, _id: { $ne: user._id } }).select('_id');
         if (!cpfEmUso) {
           user.cpf = cpfCompra;
@@ -192,7 +227,7 @@ export async function fulfillMaterialOrder(orderId: string): Promise<void> {
       order.emailEnviado = true;
       order.ultimoEmailErro = undefined;
     } else {
-      order.ultimoEmailErro = 'E-mail não enviado (SMTP indisponível ou falha no envio)';
+      order.ultimoEmailErro = ultimoErroEnvio || 'E-mail não enviado (SMTP indisponível ou falha no envio)';
     }
     await order.save();
   } catch (err: any) {

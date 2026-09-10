@@ -7,7 +7,9 @@ import {
   mercadoPagoWebhook,
   getOrderStatus,
   syncOrderStatus,
-  getMyOrders
+  getMyOrders,
+  checkBuyerEmail,
+  resendOrderEmail
 } from '../controllers/paymentController';
 import {
   getAllOrders,
@@ -32,11 +34,15 @@ const router = Router();
 // ---- Público ----
 router.get('/config', getPublicConfig);
 router.post('/quote', getQuote);
+// Verifica se o e-mail digitado no checkout já tem conta (oferece as duas
+// opções de entrega a quem compra sem login).
+router.post('/check-email', optionalAuth, checkBuyerEmail);
 router.post('/checkout', optionalAuth, createCheckout);
 router.post('/order/:numeroPedido/process', optionalAuth, processPayment);
 router.all('/webhook', mercadoPagoWebhook); // MP pode usar GET ou POST
 router.get('/order/:numeroPedido', getOrderStatus);
 router.post('/order/:numeroPedido/sync', syncOrderStatus);
+router.post('/order/:numeroPedido/resend-email', resendOrderEmail);
 
 // ---- Cron externo (cron-job.org) — autenticado por CRON_SECRET ----
 // Reconcilia pedidos pendentes com o Mercado Pago (aceita GET e POST).

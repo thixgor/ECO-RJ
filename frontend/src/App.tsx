@@ -14,6 +14,7 @@ import LandingPageWrapper from './components/common/LandingPageWrapper';
 // Public Pages
 const Login = lazy(() => import('./pages/Login'));
 const Register = lazy(() => import('./pages/Register'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
 const Courses = lazy(() => import('./pages/Courses'));
 const CourseDetail = lazy(() => import('./pages/CourseDetail'));
 const Terms = lazy(() => import('./pages/Terms'));
@@ -143,6 +144,8 @@ const App: React.FC = () => {
               <Route element={<PublicLayout />}>
                 <Route path="/login" element={<Login />} />
                 <Route path="/registro" element={<Register />} />
+                {/* Link enviado por e-mail na recuperação de senha */}
+                <Route path="/redefinir-senha" element={<ResetPassword />} />
               </Route>
 
               {/* Public Certificate Validation (standalone page) */}

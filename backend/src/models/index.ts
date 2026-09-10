@@ -16,3 +16,5 @@ export { default as Material } from './Material';
 export { default as MaterialOrder } from './MaterialOrder';
 export { default as MaterialEntitlement } from './MaterialEntitlement';
 export { default as MaterialReview } from './MaterialReview';
+export { default as PasswordReset } from './PasswordReset';
+export { default as RateLimit } from './RateLimit';

@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
   ShoppingCart, Tag, ShieldCheck, Loader2, ArrowLeft, CheckCircle2, Lock, Calendar, Clock, PackageX, Mail, Gift,
-  LogIn, UserPlus
+  LogIn, UserPlus, UserCheck, KeyRound
 } from 'lucide-react';
 import { GlassCard, GlassButton, GlassInput, GlassModal } from '../components/ui';
 import MercadoPagoBrick from '../components/MercadoPagoBrick';
@@ -59,6 +59,15 @@ const Checkout: React.FC = () => {
   const [indisponivelMotivo, setIndisponivelMotivo] = useState<string | null>(null);
   const [threeDs, setThreeDs] = useState<ThreeDsChallengeData | null>(null);
 
+  // ---- Compra sem login com e-mail que já tem conta ----
+  // Quando o e-mail digitado já pertence a uma conta, o comprador escolhe entre
+  // liberar o acesso direto nessa conta ou receber a chave de ativação por
+  // e-mail. Sem essa escolha, a compra gerava uma chave "solta" que a pessoa
+  // ainda precisava descobrir como aplicar na conta que ela já tinha.
+  const [contaExistente, setContaExistente] = useState<{ nomeMascarado?: string; emailMascarado?: string } | null>(null);
+  const [verificandoConta, setVerificandoConta] = useState(false);
+  const [entregaModo, setEntregaModo] = useState<'conta' | 'email'>('conta');
+
   useEffect(() => {
     if (user) {
       setNome(user.nomeCompleto || '');
@@ -110,6 +119,43 @@ const Checkout: React.FC = () => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cursoId]);
+
+  // Verifica (com atraso, enquanto a pessoa digita) se o e-mail já tem conta.
+  // Só faz sentido para quem NÃO está logado: quem está logado já compra para a
+  // própria conta.
+  useEffect(() => {
+    if (isAuthenticated) {
+      setContaExistente(null);
+      return;
+    }
+    const emailLimpo = email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailLimpo)) {
+      setContaExistente(null);
+      return;
+    }
+
+    let cancelado = false;
+    setVerificandoConta(true);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await paymentService.checkEmail(emailLimpo);
+        if (cancelado) return;
+        setContaExistente(res.data?.contaExistente ? res.data : null);
+      } catch {
+        // Falha na verificação não pode travar a compra: seguimos sem a escolha
+        // e o comprador recebe a chave por e-mail (caminho sempre válido).
+        if (!cancelado) setContaExistente(null);
+      } finally {
+        if (!cancelado) setVerificandoConta(false);
+      }
+    }, 600);
+
+    return () => {
+      cancelado = true;
+      clearTimeout(timer);
+      setVerificandoConta(false);
+    };
+  }, [email, isAuthenticated]);
 
   const refreshQuote = async (id: string, cupomCode?: string, emailForQuote?: string) => {
     try {
@@ -164,7 +210,9 @@ const Checkout: React.FC = () => {
           telefone: telefone.replace(/\D/g, ''),
           cpf: cpf.replace(/\D/g, '')
         },
-        aceiteTermos: { aceito: true }
+        aceiteTermos: { aceito: true },
+        // Só enviamos a escolha quando ela existe (e-mail com conta + sem login)
+        entregaModo: !isAuthenticated && contaExistente ? entregaModo : undefined
       });
       const data = res.data;
       if (data.gratuito) {
@@ -387,6 +435,90 @@ const Checkout: React.FC = () => {
                 error={cpf && !cpfValido ? 'CPF inválido' : undefined}
                 required
               />
+
+              {/* Comprando sem login com um e-mail que JÁ tem conta:
+                  o comprador escolhe como quer receber o acesso. */}
+              {!isAuthenticated && verificandoConta && !contaExistente && (
+                <p className="text-xs text-[var(--color-text-muted)] flex items-center gap-2">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  Verificando se este e-mail já tem conta...
+                </p>
+              )}
+
+              {!isAuthenticated && contaExistente && (
+                <div className="p-4 rounded-xl bg-primary-500/5 border border-primary-500/30 space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="w-9 h-9 rounded-full bg-primary-500/15 flex items-center justify-center flex-shrink-0">
+                      <UserCheck className="w-5 h-5 text-primary-500" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-sm text-[var(--color-text-primary)]">
+                        Já existe uma conta com este e-mail
+                        {contaExistente.nomeMascarado ? ` (${contaExistente.nomeMascarado})` : ''}
+                      </p>
+                      <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                        Escolha como quer receber o acesso a este curso:
+                      </p>
+                    </div>
+                  </div>
+
+                  <label
+                    className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                      entregaModo === 'conta'
+                        ? 'border-primary-500 bg-primary-500/10'
+                        : 'border-[var(--glass-border)] hover:border-primary-500/50'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="entregaModo"
+                      value="conta"
+                      checked={entregaModo === 'conta'}
+                      onChange={() => setEntregaModo('conta')}
+                      className="mt-1 w-4 h-4 accent-primary-500 flex-shrink-0"
+                    />
+                    <span className="text-sm">
+                      <span className="flex items-center gap-2 font-medium text-[var(--color-text-primary)]">
+                        <UserCheck className="w-4 h-4 text-primary-500" />
+                        Liberar na conta que já existe
+                        <span className="text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                          Recomendado
+                        </span>
+                      </span>
+                      <span className="block text-xs text-[var(--color-text-muted)] mt-1">
+                        O curso aparece automaticamente ao entrar com este e-mail — sem chave para digitar.
+                      </span>
+                    </span>
+                  </label>
+
+                  <label
+                    className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                      entregaModo === 'email'
+                        ? 'border-primary-500 bg-primary-500/10'
+                        : 'border-[var(--glass-border)] hover:border-primary-500/50'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="entregaModo"
+                      value="email"
+                      checked={entregaModo === 'email'}
+                      onChange={() => setEntregaModo('email')}
+                      className="mt-1 w-4 h-4 accent-primary-500 flex-shrink-0"
+                    />
+                    <span className="text-sm">
+                      <span className="flex items-center gap-2 font-medium text-[var(--color-text-primary)]">
+                        <KeyRound className="w-4 h-4 text-primary-500" />
+                        Receber a chave de ativação por e-mail
+                      </span>
+                      <span className="block text-xs text-[var(--color-text-muted)] mt-1">
+                        Enviamos a serial key para você ativar quando (e em qual conta) quiser —
+                        útil se a compra é presente para outra pessoa.
+                      </span>
+                    </span>
+                  </label>
+                </div>
+              )}
 
               {/* Cupom */}
               <div>

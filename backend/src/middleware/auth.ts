@@ -8,6 +8,22 @@ export interface AuthRequest extends Request {
   user?: IUser;
 }
 
+/**
+ * Uma sessão (JWT) só vale se tiver sido emitida DEPOIS da última troca de senha.
+ * É isso que faz "redefinir a senha" derrubar quem estava logado com a senha
+ * antiga — inclusive um invasor que tenha roubado o token.
+ *
+ * A folga de 5s existe porque o `iat` do JWT é gravado em segundos (arredondado
+ * para baixo) enquanto `senhaAlteradaEm` tem milissegundos: sem ela, o token
+ * emitido no mesmo instante do cadastro/troca seria recusado.
+ */
+const TOLERANCIA_IAT_MS = 5000;
+
+function sessaoInvalidadaPorTrocaDeSenha(user: IUser, iat?: number): boolean {
+  if (!iat || !user.senhaAlteradaEm) return false;
+  return iat * 1000 + TOLERANCIA_IAT_MS < new Date(user.senhaAlteradaEm).getTime();
+}
+
 export const protect = async (req: AuthRequest, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization || '';
   let token;
@@ -16,7 +32,7 @@ export const protect = async (req: AuthRequest, res: Response, next: NextFunctio
     try {
       token = authHeader.replace(/^bearer\s+/i, '').trim();
 
-      const decoded = jwt.verify(token, getJwtSecret()) as { id: string };
+      const decoded = jwt.verify(token, getJwtSecret()) as { id: string; iat?: number };
 
       const user = await User.findById(decoded.id).select('-password');
 
@@ -26,6 +42,10 @@ export const protect = async (req: AuthRequest, res: Response, next: NextFunctio
 
       if (!user.ativo) {
         return res.status(401).json({ message: 'Conta desativada' });
+      }
+
+      if (sessaoInvalidadaPorTrocaDeSenha(user, decoded.iat)) {
+        return res.status(401).json({ message: 'Sua senha foi alterada. Entre novamente.' });
       }
 
       req.user = user;
@@ -95,11 +115,11 @@ export const optionalAuth = async (req: AuthRequest, res: Response, next: NextFu
     try {
       const token = authHeader.replace(/^bearer\s+/i, '').trim();
 
-      const decoded = jwt.verify(token, getJwtSecret()) as { id: string };
+      const decoded = jwt.verify(token, getJwtSecret()) as { id: string; iat?: number };
 
       const user = await User.findById(decoded.id).select('-password');
 
-      if (user && user.ativo) {
+      if (user && user.ativo && !sessaoInvalidadaPorTrocaDeSenha(user, decoded.iat)) {
         req.user = user;
       }
     } catch (error) {

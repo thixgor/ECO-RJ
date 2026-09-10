@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import {
-  CheckCircle2, Clock, XCircle, Loader2, Copy, KeyRound, ArrowRight, RefreshCw, QrCode, Barcode, ExternalLink
+  CheckCircle2, Clock, XCircle, Loader2, Copy, KeyRound, ArrowRight, RefreshCw, QrCode, Barcode, ExternalLink,
+  UserCheck, MailWarning, Send
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { GlassCard, GlassButton } from '../components/ui';
@@ -21,6 +22,9 @@ interface OrderStatusData {
   compradorNome?: string;
   createdAt?: string;
   isGuest?: boolean;
+  entregaModo?: 'conta' | 'email';
+  vinculadoAContaExistente?: boolean;
+  emailEnviado?: boolean;
   serialKeyCodigo?: string;
   activationLink?: string;
   pix?: { qrCode?: string; qrCodeBase64?: string; ticketUrl?: string };
@@ -35,6 +39,7 @@ const PaymentStatus: React.FC = () => {
 
   const [order, setOrder] = useState<OrderStatusData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [reenviando, setReenviando] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const attemptsRef = useRef(0);
 
@@ -80,6 +85,25 @@ const PaymentStatus: React.FC = () => {
     if (order?.serialKeyCodigo) {
       navigator.clipboard.writeText(order.serialKeyCodigo);
       toast.success('Chave copiada!');
+    }
+  };
+
+  /**
+   * Reenvia o comprovante + chave para o e-mail do pedido. É a rede de
+   * segurança de quem comprou sem login: se o e-mail não chegou (spam, caixa
+   * cheia, SMTP fora do ar na hora), a chave não se perde.
+   */
+  const reenviarEmail = async () => {
+    if (!numeroPedido || reenviando) return;
+    setReenviando(true);
+    try {
+      const res = await paymentService.resendEmail(numeroPedido);
+      toast.success(res.data?.message || 'E-mail reenviado!');
+      fetchStatus();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Não foi possível reenviar o e-mail agora.');
+    } finally {
+      setReenviando(false);
     }
   };
 
@@ -212,6 +236,28 @@ const PaymentStatus: React.FC = () => {
           </div>
         )}
 
+        {/* Comprou sem login, mas pediu para liberar na conta que já existia */}
+        {aprovado && order?.vinculadoAContaExistente && (
+          <div className="p-5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 mb-6 text-left">
+            <div className="flex items-center gap-2 mb-2 text-emerald-600 dark:text-emerald-400 font-semibold">
+              <UserCheck className="w-5 h-5" /> Acesso liberado na sua conta
+            </div>
+            <p className="text-sm text-[var(--color-text-secondary)] mb-3">
+              Como já existia uma conta com o e-mail informado, o curso foi liberado
+              diretamente nela. Não é preciso usar chave de ativação: basta entrar com a
+              sua senha de sempre.
+            </p>
+            <GlassButton
+              variant="primary"
+              fullWidth
+              onClick={() => navigate(isAuthenticated ? '/dashboard' : '/login')}
+              rightIcon={<ArrowRight className="w-4 h-4" />}
+            >
+              {isAuthenticated ? 'Ir para meus cursos' : 'Entrar na minha conta'}
+            </GlassButton>
+          </div>
+        )}
+
         {/* Serial key para convidados */}
         {aprovado && order?.isGuest && order?.serialKeyCodigo && (
           <div className="p-5 rounded-xl bg-primary-500/10 border border-primary-500/30 mb-6 text-left">
@@ -226,20 +272,42 @@ const PaymentStatus: React.FC = () => {
                 Copiar
               </GlassButton>
             </div>
-            <p className="text-xs text-[var(--color-text-muted)] mb-3">
-              Enviamos esta chave e o comprovante para o seu e-mail. Crie sua conta (ou faça login) e ative seu curso.
-            </p>
+            {order.emailEnviado === false ? (
+              <div className="flex items-start gap-2 p-3 mb-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs text-amber-700 dark:text-amber-400">
+                <MailWarning className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <span>
+                  <strong>Não conseguimos confirmar o envio do e-mail.</strong> Copie e guarde a
+                  chave acima — ela é a sua garantia de acesso — e tente reenviar o comprovante.
+                </span>
+              </div>
+            ) : (
+              <p className="text-xs text-[var(--color-text-muted)] mb-3">
+                Enviamos esta chave e o comprovante para o seu e-mail (confira também o spam).
+                Crie sua conta (ou faça login) e ative seu curso.
+              </p>
+            )}
             <Link to={`/ativar?codigo=${order.serialKeyCodigo}`}>
               <GlassButton variant="primary" fullWidth rightIcon={<ArrowRight className="w-4 h-4" />}>
                 Ativar meu curso
               </GlassButton>
             </Link>
+            <GlassButton
+              variant="secondary"
+              fullWidth
+              className="mt-2"
+              onClick={reenviarEmail}
+              isLoading={reenviando}
+              disabled={reenviando}
+              leftIcon={!reenviando && <Send className="w-4 h-4" />}
+            >
+              {reenviando ? 'Reenviando...' : 'Reenviar e-mail com a chave'}
+            </GlassButton>
           </div>
         )}
 
         {/* Ações */}
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          {aprovado && !order?.isGuest && (
+          {aprovado && !order?.isGuest && !order?.vinculadoAContaExistente && (
             <GlassButton variant="primary" onClick={() => navigate(isAuthenticated ? '/dashboard' : '/login')} rightIcon={<ArrowRight className="w-4 h-4" />}>
               Ir para meus cursos
             </GlassButton>

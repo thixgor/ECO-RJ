@@ -45,6 +45,10 @@ export interface IUser extends Document {
   ipsAcesso: string[];
   ativo: boolean;
   tokenRecuperacao?: string; // Token único para recuperação de senha (gerado automaticamente)
+  // Momento da última troca de senha. Sessões (JWT) emitidas ANTES desta data
+  // são recusadas pelo middleware `protect`: ao redefinir a senha, quem estava
+  // logado com a senha antiga (inclusive um invasor) perde o acesso na hora.
+  senhaAlteradaEm?: Date;
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
@@ -199,6 +203,9 @@ const UserSchema = new Schema<IUser>(
       type: String,
       unique: true,
       sparse: true // Permite múltiplos documentos sem este campo durante migração
+    },
+    senhaAlteradaEm: {
+      type: Date
     }
   },
   {
@@ -222,6 +229,9 @@ UserSchema.pre('save', async function (next) {
   try {
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
+    // Marca o instante da troca para invalidar sessões antigas. No documento
+    // novo (cadastro) isso apenas registra a criação — não há sessão anterior.
+    this.senhaAlteradaEm = new Date();
     next();
   } catch (error: any) {
     next(error);
