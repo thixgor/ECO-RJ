@@ -19,8 +19,15 @@ let transporter: Transporter | null = null;
  * Tempo máximo esperando o SMTP. Em ambiente serverless uma conexão pendurada
  * consome todo o tempo da função e a requisição morre no meio — no fluxo de
  * compra isso deixava o pedido marcado como entregue e o e-mail nunca saía.
+ *
+ * Padrão de 8s (não 15s): o plano Hobby da Vercel mata a função em 10s. Um
+ * timeout interno MAIOR que o limite da plataforma nunca chega a rodar — a
+ * Vercel encerra a função primeiro, com um erro genérico da plataforma em vez
+ * da resposta 503 tratada. 8s deixa margem para as consultas ao banco que
+ * acontecem antes do envio (rate limit, busca do usuário, etc.). Em um plano
+ * com `functions.maxDuration` maior, ajuste esta variável junto.
  */
-const SMTP_TIMEOUT_MS = Number(process.env.SMTP_TIMEOUT_MS || 15000);
+const SMTP_TIMEOUT_MS = Number(process.env.SMTP_TIMEOUT_MS || 8000);
 
 /**
  * Escapa texto que veio do usuário antes de entrar no HTML do e-mail.

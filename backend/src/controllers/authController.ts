@@ -10,7 +10,8 @@ import { consumirLimite, limparLimite, getClientIp } from '../services/rateLimit
 import {
   isEmailConfigured,
   sendPasswordResetEmail,
-  sendPasswordChangedEmail
+  sendPasswordChangedEmail,
+  ultimoErroEnvio
 } from '../services/emailService';
 import { ensureCriticalUserIndexes } from '../config/database-indexes';
 import { getJwtSecret } from '../config/jwt';
@@ -728,7 +729,9 @@ export const forgotPassword = async (req: Request, res: Response) => {
       // genérica: seria cruel deixar a pessoa esperando um e-mail que nunca vai
       // chegar. A mensagem não revela se a conta existe — descreve uma falha do
       // servidor, que aconteceria igualmente para um e-mail sem conta.
-      console.error(`Falha ao enviar e-mail de redefinição (IP ${ip})`);
+      // `ultimoErroEnvio` traz o motivo real (timeout, auth, DNS...) que o
+      // nodemailer devolveu — sem isso, o log só dizia "falhou", sem o porquê.
+      console.error(`Falha ao enviar e-mail de redefinição (IP ${ip}): ${ultimoErroEnvio || 'motivo desconhecido'}`);
       return res.status(503).json({
         message: 'Não foi possível enviar o e-mail agora. Tente novamente em alguns minutos ou fale com o suporte.'
       });
