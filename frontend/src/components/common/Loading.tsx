@@ -33,7 +33,7 @@ Loading.displayName = 'Loading';
  * Uses fixed positioning with blur backdrop to hide all content
  */
 export const LoadingPage: React.FC<{ text?: string }> = React.memo(({ text = "Carregando..." }) => (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--color-bg-primary)]/95 dark:bg-[var(--color-bg-primary)]/95">
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--color-bg-primary)]/95 dark:bg-[var(--color-bg-primary)]/95 backdrop-blur-sm">
     <Loading size="lg" text={text} />
   </div>
 ));
@@ -44,7 +44,7 @@ LoadingPage.displayName = 'LoadingPage';
  * LoadingOverlay - Similar to LoadingPage but with higher z-index for modal overlays
  */
 export const LoadingOverlay: React.FC<{ text?: string }> = React.memo(({ text = "Carregando..." }) => (
-  <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[var(--color-bg-primary)]/95">
+  <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[var(--color-bg-primary)]/95 backdrop-blur-md">
     <Loading size="lg" text={text} />
   </div>
 ));

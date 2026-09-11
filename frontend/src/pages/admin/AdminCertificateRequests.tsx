@@ -262,7 +262,7 @@ const AdminCertificateRequests: React.FC = () => {
       <div className="card overflow-hidden">
         {requests.length === 0 ? (
           <div className="p-8 text-center">
-            <Award className="w-12 h-12 text-[var(--color-neutral)] mx-auto mb-4" />
+            <Award className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <p className="text-[var(--color-text-muted)]">
               Nenhuma solicitacao encontrada
             </p>
@@ -358,7 +358,7 @@ const AdminCertificateRequests: React.FC = () => {
                         )}
                         <button
                           onClick={() => handleDelete(request._id)}
-                          className="p-2 text-[var(--color-neutral)] hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg transition-colors"
+                          className="p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg transition-colors"
                           title="Excluir"
                         >
                           <Trash2 className="w-5 h-5" />

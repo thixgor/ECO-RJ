@@ -58,7 +58,7 @@ const EcgTransition: React.FC<Props> = ({ active, label, color = '#1E90FF' }) =>
   return (
     <div className="ecg-transition" aria-hidden="true">
       <div className="ecg-transition__inner">
-        <svg viewBox="0 0 300 80" className="ecg-transition__svg" preserveAspectRatio="none" aria-hidden="true">
+        <svg viewBox="0 0 300 80" className="ecg-transition__svg" preserveAspectRatio="none">
           {/* Linha de base fantasma, para o traçado não "aparecer do nada" */}
           <path d={ECG_PATH} fill="none" stroke={color} strokeOpacity={0.12} strokeWidth={2} />
           {/* Traçado desenhado progressivamente */}

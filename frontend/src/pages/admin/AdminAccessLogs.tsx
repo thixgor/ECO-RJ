@@ -133,7 +133,7 @@ const AdminAccessLogs: React.FC = () => {
       exercicio: 'bg-orange-100 text-orange-700',
       prova: 'bg-red-100 text-red-700'
     };
-    return colors[tipo] || 'bg-gray-100 text-[var(--color-muted)]';
+    return colors[tipo] || 'bg-gray-100 text-gray-700';
   };
 
   const getTipoIcon = (tipo: string) => {
@@ -454,8 +454,8 @@ const AdminAccessLogs: React.FC = () => {
 
       {/* Modal de confirmação para limpar logs */}
       {showClearModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-md w-full mx-4 shadow-raised">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 bg-red-100 dark:bg-red-500/20 rounded-full flex items-center justify-center">
                 <AlertTriangle className="w-5 h-5 text-red-500" />

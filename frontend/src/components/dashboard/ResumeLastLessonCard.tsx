@@ -72,7 +72,7 @@ const ResumeLastLessonCard: React.FC<ResumeLastLessonCardProps> = ({ lastLesson,
         className="relative overflow-hidden border-l-4 border-l-primary-500"
       >
         {/* Gradient overlay */}
-        <div className="absolute inset-0 bg-[var(--color-paper-2)] opacity-0 group-hover:opacity-100 transition-opacity duration-short" />
+        <div className="absolute inset-0 bg-gradient-to-r from-primary-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
         <div className="p-4 relative">
           {/* Header */}
@@ -139,9 +139,9 @@ const ResumeLastLessonCard: React.FC<ResumeLastLessonCardProps> = ({ lastLesson,
                 month: 'short'
               })}
             </span>
-            <div className="flex items-center gap-2 text-primary-500 font-medium text-sm group-hover:gap-3 transition-colors">
+            <div className="flex items-center gap-2 text-primary-500 font-medium text-sm group-hover:gap-3 transition-all">
               <span>Retomar</span>
-              <div className="w-8 h-8 rounded-full bg-primary-500 flex items-center justify-center text-white group- transition-transform">
+              <div className="w-8 h-8 rounded-full bg-primary-500 flex items-center justify-center text-white shadow-lg shadow-primary-500/30 group-hover:scale-110 transition-transform">
                 <Play className="w-4 h-4 ml-0.5" />
               </div>
             </div>

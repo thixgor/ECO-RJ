@@ -295,13 +295,13 @@ const AdminExercises: React.FC = () => {
             </div>
 
             {/* Filters & Search */}
-            <div className="bg-white dark:bg-white/5 p-4 rounded-xl shadow-whisper border border-gray-200 dark:border-white/10">
+            <div className="bg-white dark:bg-white/5 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-white/10">
                 <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--color-neutral)]" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <input
                         type="text"
                         placeholder="Buscar por título ou aula..."
-                        className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-colors"
+                        className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
@@ -309,7 +309,7 @@ const AdminExercises: React.FC = () => {
             </div>
 
             {/* List */}
-            <div className="bg-white dark:bg-white/5 rounded-xl shadow-whisper border border-gray-200 dark:border-white/10 overflow-hidden">
+            <div className="bg-white dark:bg-white/5 rounded-xl shadow-sm border border-gray-200 dark:border-white/10 overflow-hidden">
                 {isLoading ? (
                     <div className="p-12">
                         <Loading />
@@ -346,14 +346,14 @@ const AdminExercises: React.FC = () => {
                                     <div className="flex items-center gap-2 mt-4 md:mt-0">
                                         <button
                                             onClick={() => openModal(exercise)}
-                                            className="p-2 text-[var(--color-neutral)] hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                                            className="p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
                                             title="Editar"
                                         >
                                             <Edit className="w-4 h-4" />
                                         </button>
                                         <button
                                             onClick={() => handleDelete(exercise._id)}
-                                            className="p-2 text-[var(--color-neutral)] hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                                             title="Excluir"
                                         >
                                             <Trash2 className="w-4 h-4" />
@@ -366,18 +366,18 @@ const AdminExercises: React.FC = () => {
                 ) : (
                     <div className="text-center py-16">
                         <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <ClipboardList className="w-8 h-8 text-[var(--color-neutral)]" />
+                            <ClipboardList className="w-8 h-8 text-gray-400" />
                         </div>
-                        <h3 className="text-lg font-medium text-[var(--color-ink-deep)]">Nenhum exercício cadastrado</h3>
-                        <p className="text-[var(--color-neutral)] mt-1">Clique em "Novo Exercício" para criar seu primeiro exercício.</p>
-                        <p className="text-xs text-[var(--color-neutral)] mt-2">Você pode anexar o exercício a uma aula depois, se desejar.</p>
+                        <h3 className="text-lg font-medium text-gray-900">Nenhum exercício cadastrado</h3>
+                        <p className="text-gray-500 mt-1">Clique em "Novo Exercício" para criar seu primeiro exercício.</p>
+                        <p className="text-xs text-gray-400 mt-2">Você pode anexar o exercício a uma aula depois, se desejar.</p>
                     </div>
                 )}
             </div>
 
             {/* CRUD Modal */}
             {showModal && (
-                <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 overflow-y-auto">
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
                     <div className="modal-content !max-w-4xl !my-8 !flex !flex-col !max-h-[90vh] p-0 overflow-hidden">
                         <div className="p-6 border-b border-[var(--glass-border)] flex items-center justify-between">
                             <h2 className="text-xl font-bold flex items-center gap-2 text-[var(--color-text-primary)]">
@@ -488,7 +488,7 @@ const AdminExercises: React.FC = () => {
                                         <button
                                             type="button"
                                             onClick={() => setShowImportModal(true)}
-                                            className="btn btn-outline py-1 px-3 text-sm flex items-center gap-1 text-blue-600 border-blue-200 hover:bg-blue-50/50 hover:border-blue-300 transition-colors"
+                                            className="btn btn-outline py-1 px-3 text-sm flex items-center gap-1 text-blue-600 border-blue-200 hover:bg-blue-50/50 hover:border-blue-300 transition-all"
                                             title="Importar questões em massa"
                                         >
                                             <Upload className="w-4 h-4" />
@@ -627,19 +627,19 @@ const AdminExercises: React.FC = () => {
                 </div>
             )}
             {showImportModal && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                    <div className="bg-[var(--color-paper)] border border-[var(--color-rule-strong)] rounded-xl shadow-raised w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col animate-fade-in">
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col animate-fade-in">
                         <div className="flex items-center justify-between p-6 border-b">
-                            <h3 className="text-xl font-bold text-[var(--color-ink-deep)]">Importar Questões</h3>
-                            <button onClick={() => setShowImportModal(false)} className="text-[var(--color-neutral)] hover:text-[var(--color-muted)]">
+                            <h3 className="text-xl font-bold text-gray-900">Importar Questões</h3>
+                            <button onClick={() => setShowImportModal(false)} className="text-gray-400 hover:text-gray-600">
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
 
                         <div className="p-6 overflow-y-auto flex-1">
                             <div className="mb-4">
-                                <p className="text-sm text-[var(--color-muted)] mb-2">Cole o texto das questões no padrão abaixo ou envie um arquivo .txt:</p>
-                                <div className="bg-gray-50 p-3 rounded-lg text-xs font-mono text-[var(--color-neutral)] mb-4 border border-gray-200">
+                                <p className="text-sm text-gray-600 mb-2">Cole o texto das questões no padrão abaixo ou envie um arquivo .txt:</p>
+                                <div className="bg-gray-50 p-3 rounded-lg text-xs font-mono text-gray-500 mb-4 border border-gray-200">
                                     --QUESTAO1<br />
                                     ENUNCIADO: "Texto da questão"<br />
                                     OPCAO1: "Opção A"<br />
@@ -655,7 +655,7 @@ const AdminExercises: React.FC = () => {
                                         <Upload className="w-4 h-4 mr-2" />
                                         Carregar arquivo .txt
                                     </label>
-                                    <span className="text-xs text-[var(--color-neutral)]">ou cole abaixo</span>
+                                    <span className="text-xs text-gray-400">ou cole abaixo</span>
                                 </div>
 
                                 <textarea

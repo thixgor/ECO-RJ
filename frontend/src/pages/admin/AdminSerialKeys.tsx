@@ -251,7 +251,7 @@ const AdminSerialKeys: React.FC = () => {
                             ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400'
                             : key.cargoAtribuido === 'Instrutor'
                               ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400'
-                              : 'bg-gray-100 text-gray-700 dark:bg-gray-500/20 dark:text-[var(--color-neutral)]'
+                              : 'bg-gray-100 text-gray-700 dark:bg-gray-500/20 dark:text-gray-400'
                           }`}>
                           {key.cargoAtribuido}
                         </span>
@@ -286,7 +286,7 @@ const AdminSerialKeys: React.FC = () => {
                         <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={() => handleCopy(key.chave)}
-                            className="p-2 text-[var(--color-neutral)] hover:text-primary-500"
+                            className="p-2 text-gray-400 hover:text-primary-500"
                             title="Copiar chave"
                           >
                             {copiedKey === key.chave ? (
@@ -297,7 +297,7 @@ const AdminSerialKeys: React.FC = () => {
                           </button>
                           <button
                             onClick={() => handleDelete(key._id)}
-                            className="p-2 text-[var(--color-neutral)] hover:text-red-500"
+                            className="p-2 text-gray-400 hover:text-red-500"
                             title="Deletar"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -311,7 +311,7 @@ const AdminSerialKeys: React.FC = () => {
             </table>
 
             {keys.length === 0 && (
-              <div className="p-8 text-center text-[var(--color-neutral)]">
+              <div className="p-8 text-center text-gray-500">
                 <Key className="w-12 h-12 mx-auto mb-4 text-gray-300" />
                 <p>Nenhuma chave encontrada</p>
               </div>
@@ -322,7 +322,7 @@ const AdminSerialKeys: React.FC = () => {
 
       {/* Generate Modal */}
       {showGenerateModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="modal-content !max-w-md">
             <div className="p-6 border-b border-[var(--glass-border)]">
               <h2 className="font-heading text-xl font-semibold text-[var(--color-text-primary)]">Gerar Novas Chaves</h2>
@@ -463,7 +463,7 @@ const AdminSerialKeys: React.FC = () => {
 
       {/* Delete All Modal */}
       {showDeleteAllModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="modal-content !max-w-md">
             <div className="p-6 text-center">
               <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-100 dark:bg-red-500/20 flex items-center justify-center">

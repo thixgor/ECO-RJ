@@ -21,7 +21,7 @@ export const GlassTabs: React.FC<GlassTabsProps> = ({
   className = ''
 }) => {
   return (
-    <div className={`flex gap-2 p-1 bg-white/50 dark:bg-white/5 rounded-xl border border-[var(--glass-border)] ${className}`}>
+    <div className={`flex gap-2 p-1 bg-white/50 dark:bg-white/5 backdrop-blur-sm rounded-xl border border-[var(--glass-border)] ${className}`}>
       {tabs.map((tab) => {
         const isActive = activeTab === tab.id;
         return (
@@ -29,9 +29,9 @@ export const GlassTabs: React.FC<GlassTabsProps> = ({
             key={tab.id}
             onClick={() => onChange(tab.id)}
             className={`
-              flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-colors duration-micro
+              flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-all duration-200
               ${isActive
-                ? 'bg-primary-500 text-white'
+                ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/25'
                 : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-white/50 dark:hover:bg-white/10'
               }
             `}

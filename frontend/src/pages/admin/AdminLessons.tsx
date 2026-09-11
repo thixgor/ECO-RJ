@@ -501,7 +501,7 @@ const AdminLessons: React.FC = () => {
           <button
             onClick={() => moveLesson(lesson, 'up')}
             disabled={isFirst}
-            className={`p-1 rounded ${isFirst ? 'text-gray-300 cursor-not-allowed' : 'text-[var(--color-neutral)] hover:text-primary-500 hover:bg-primary-50'}`}
+            className={`p-1 rounded ${isFirst ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:text-primary-500 hover:bg-primary-50'}`}
             title="Mover para cima"
           >
             <ChevronUp className="w-4 h-4" />
@@ -510,17 +510,17 @@ const AdminLessons: React.FC = () => {
           <button
             onClick={() => moveLesson(lesson, 'down')}
             disabled={isLast}
-            className={`p-1 rounded ${isLast ? 'text-gray-300 cursor-not-allowed' : 'text-[var(--color-neutral)] hover:text-primary-500 hover:bg-primary-50'}`}
+            className={`p-1 rounded ${isLast ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:text-primary-500 hover:bg-primary-50'}`}
             title="Mover para baixo"
           >
             <ChevronDown className="w-4 h-4" />
           </button>
         </div>
         <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${lesson.tipo === 'ao_vivo'
-          ? 'bg-[var(--color-danger-soft)]'
+          ? 'bg-gradient-to-br from-red-400/20 to-red-600/20'
           : lesson.tipo === 'material'
-            ? 'bg-[var(--color-paper-3)]'
-            : 'bg-[var(--color-accent-soft)]'
+            ? 'bg-gradient-to-br from-purple-400/20 to-purple-600/20'
+            : 'bg-gradient-to-br from-blue-400/20 to-blue-600/20'
           }`}>
           {lesson.tipo === 'ao_vivo' ? (
             <Video className="w-6 h-6 text-red-500" />
@@ -536,14 +536,14 @@ const AdminLessons: React.FC = () => {
             <span>{curso?.titulo || 'Curso'}</span>
             {!filterCurso && topico && (
               <>
-                <span className="text-[var(--color-neutral)]">•</span>
+                <span className="text-gray-400">•</span>
                 <span className="flex items-center gap-1 text-primary-500">
                   <FolderOpen className="w-3 h-3" />
                   {topico.titulo}
                 </span>
                 {subtopico && (
                   <>
-                    <span className="text-[var(--color-neutral)]">/</span>
+                    <span className="text-gray-400">/</span>
                     <span className="flex items-center gap-1 text-amber-500">
                       <Layers className="w-3 h-3" />
                       {subtopico.titulo}
@@ -554,7 +554,7 @@ const AdminLessons: React.FC = () => {
             )}
             {filterCurso && subtopico && (
               <>
-                <span className="text-[var(--color-neutral)]">•</span>
+                <span className="text-gray-400">•</span>
                 <span className="flex items-center gap-1 text-amber-500">
                   <Layers className="w-3 h-3" />
                   {subtopico.titulo}
@@ -786,7 +786,7 @@ const AdminLessons: React.FC = () => {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-start justify-center z-50 p-4 overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start justify-center z-50 p-4 overflow-y-auto">
           <div className="glass-card-static w-full max-w-3xl my-8 animate-scale-in">
             <div className="p-6 border-b border-[var(--glass-border)] flex items-center justify-between">
               <h2 className="font-heading text-xl font-semibold text-[var(--color-text-primary)]">
@@ -794,7 +794,7 @@ const AdminLessons: React.FC = () => {
               </h2>
               <button
                 onClick={() => setShowModal(false)}
-                className="p-2 hover:bg-white/10 rounded-full text-[var(--color-neutral)]"
+                className="p-2 hover:bg-white/10 rounded-full text-gray-400"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1073,7 +1073,7 @@ const AdminLessons: React.FC = () => {
                       key={cargo}
                       type="button"
                       onClick={() => toggleCargo(cargo)}
-                      className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors duration-micro ${formData.cargosPermitidos.includes(cargo)
+                      className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${formData.cargosPermitidos.includes(cargo)
                         ? 'glass-btn-primary'
                         : 'glass-btn'
                         }`}

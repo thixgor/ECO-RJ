@@ -169,13 +169,13 @@ const Exercises: React.FC = () => {
             </div>
 
             {/* Filtros e busca */}
-            <div className="bg-white dark:bg-white/5 p-4 rounded-xl shadow-whisper border border-gray-200 dark:border-white/10 flex flex-col md:flex-row gap-4 justify-between md:items-center">
+            <div className="bg-white dark:bg-white/5 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-white/10 flex flex-col md:flex-row gap-4 justify-between md:items-center">
                 <div className="relative w-full md:w-96">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--color-text-muted)]" />
                     <input
                         type="text"
                         placeholder="Buscar por título ou aula..."
-                        className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-colors placeholder:text-[var(--color-text-muted)]"
+                        className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all placeholder:text-[var(--color-text-muted)]"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
@@ -186,8 +186,8 @@ const Exercises: React.FC = () => {
                         <button
                             key={f}
                             onClick={() => setFilter(f)}
-                            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${filter === f
-                                ? 'bg-white dark:bg-primary-500 text-primary-600 dark:text-white shadow-whisper'
+                            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${filter === f
+                                ? 'bg-white dark:bg-primary-500 text-primary-600 dark:text-white shadow-sm'
                                 : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
                                 }`}
                         >
@@ -211,9 +211,9 @@ const Exercises: React.FC = () => {
                         return (
                             <div
                                 key={exercise._id}
-                                className={`group bg-white dark:bg-white/5 rounded-xl shadow-whisper border transition-colors duration-short overflow-hidden flex flex-col ${completed
+                                className={`group bg-white dark:bg-white/5 rounded-xl shadow-sm border transition-all duration-300 overflow-hidden flex flex-col ${completed
                                     ? 'border-emerald-200 dark:border-emerald-500/30 bg-emerald-50/30 dark:bg-emerald-500/5'
-                                    : 'border-gray-200 dark:border-white/10 hover:shadow-whisper hover:border-primary-200 dark:hover:border-primary-500/50'
+                                    : 'border-gray-200 dark:border-white/10 hover:shadow-md hover:border-primary-200 dark:hover:border-primary-500/50'
                                     }`}
                             >
                                 <div className="p-6 flex-1">

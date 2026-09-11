@@ -24,10 +24,10 @@ const FloatingMiniPlayer: React.FC<FloatingMiniPlayerProps> = ({
         fixed bottom-6 right-6 z-50
         w-72 md:w-80
         rounded-xl overflow-hidden
-        shadow-raised shadow-black/40
+        shadow-2xl shadow-black/40
         border border-[var(--glass-border)]
         bg-black
-        transform transition-transform duration-short ease-out
+        transform transition-all duration-300 ease-out
         ${isVisible ? 'scale-100 opacity-100' : 'scale-90 opacity-0 pointer-events-none'}
         animate-slide-up
       `}
@@ -48,7 +48,7 @@ const FloatingMiniPlayer: React.FC<FloatingMiniPlayerProps> = ({
             e.stopPropagation();
             onClose();
           }}
-          className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 hover:bg-black/80 flex items-center justify-center text-white/80 hover:text-white transition-colors z-10"
+          className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 hover:bg-black/80 flex items-center justify-center text-white/80 hover:text-white transition-all z-10"
           title="Fechar mini-player"
         >
           <X className="w-4 h-4" />
@@ -57,7 +57,7 @@ const FloatingMiniPlayer: React.FC<FloatingMiniPlayerProps> = ({
         {/* Expand button - Main action */}
         <button
           onClick={onExpand}
-          className="absolute bottom-2 right-2 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary-500/90 hover:bg-primary-500 text-white text-xs font-medium transition-colors z-10"
+          className="absolute bottom-2 right-2 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary-500/90 hover:bg-primary-500 text-white text-xs font-medium transition-all hover:scale-105 z-10"
           title="Voltar ao tamanho normal"
         >
           <Maximize2 className="w-3.5 h-3.5" />

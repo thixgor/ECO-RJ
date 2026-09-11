@@ -106,7 +106,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
             setCustomValue('');
             onChange('');
           }}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-neutral)] hover:text-[var(--color-muted)]"
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
           title="Voltar para a lista"
         >
           <X className="w-4 h-4" />
@@ -126,17 +126,17 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
           disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'
         }`}
       >
-        <span className={value ? 'text-[var(--color-text-primary)] truncate' : 'text-[var(--color-neutral)] truncate'}>
+        <span className={value ? 'text-[var(--color-text-primary)] truncate' : 'text-gray-400 truncate'}>
           {value || placeholder}
         </span>
-        <ChevronDown className={`w-5 h-5 text-[var(--color-neutral)] flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`w-5 h-5 text-gray-400 flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {open && (
-        <div className="absolute z-50 mt-1 w-full bg-white dark:bg-gray-800 border border-[var(--glass-border)] rounded-lg shadow-raised max-h-72 overflow-hidden flex flex-col animate-slide-down">
+        <div className="absolute z-50 mt-1 w-full bg-white dark:bg-gray-800 border border-[var(--glass-border)] rounded-lg shadow-xl max-h-72 overflow-hidden flex flex-col animate-slide-down">
           <div className="p-2 border-b border-[var(--glass-border)] sticky top-0 bg-white dark:bg-gray-800">
             <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-neutral)]" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
                 value={query}

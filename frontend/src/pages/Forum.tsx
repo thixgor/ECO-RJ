@@ -208,7 +208,7 @@ const Forum: React.FC = () => {
         <div className="bg-yellow-50 dark:bg-amber-500/10 border border-yellow-200 dark:border-amber-500/30 rounded-lg p-4">
           <p className="text-yellow-800 dark:text-amber-400">
             Você precisa ser um Aluno para participar do fórum.{' '}
-            <Link to="/perfil" className="underline underline-offset-2 decoration-1 font-medium hover:decoration-2 hover:text-amber-900 dark:hover:text-amber-200 transition-[text-decoration-thickness,color] duration-micro ease-out">
+            <Link to="/perfil" className="underline font-medium hover:text-amber-300">
               Aplique uma serial key no seu perfil
             </Link>.
           </p>

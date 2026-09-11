@@ -54,7 +54,7 @@ const AutoAdvanceOverlay: React.FC<AutoAdvanceOverlayProps> = ({
 
   return (
     <div
-      className="absolute inset-0 bg-black/85 flex flex-col items-center justify-center z-30 cursor-pointer animate-fade-in"
+      className="absolute inset-0 bg-black/85 backdrop-blur-sm flex flex-col items-center justify-center z-30 cursor-pointer animate-fade-in"
       onClick={handleCancel}
     >
       {/* Cancel hint */}
@@ -66,7 +66,7 @@ const AutoAdvanceOverlay: React.FC<AutoAdvanceOverlayProps> = ({
       {/* Countdown Circle */}
       <div className="relative w-32 h-32 mb-6">
         {/* Background circle */}
-        <svg className="w-full h-full transform -rotate-90" aria-hidden="true">
+        <svg className="w-full h-full transform -rotate-90">
           <circle
             cx="64"
             cy="64"
@@ -86,7 +86,7 @@ const AutoAdvanceOverlay: React.FC<AutoAdvanceOverlayProps> = ({
             strokeLinecap="round"
             strokeDasharray={351.86} // 2 * PI * 56
             strokeDashoffset={351.86 * (1 - progress / 100)}
-            className="transition-colors duration-long ease-linear"
+            className="transition-all duration-1000 ease-linear"
           />
           <defs>
             <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -120,7 +120,7 @@ const AutoAdvanceOverlay: React.FC<AutoAdvanceOverlayProps> = ({
           e.stopPropagation();
           onNavigate();
         }}
-        className="flex items-center gap-3 px-6 py-3 bg-primary-500 hover:bg-primary-600 text-white rounded-full font-semibold text-lg transition-colors duration-micro"
+        className="flex items-center gap-3 px-6 py-3 bg-primary-500 hover:bg-primary-600 text-white rounded-full font-semibold text-lg shadow-lg shadow-primary-500/30 hover:scale-105 transition-all duration-200"
       >
         <Play className="w-5 h-5" />
         Assistir Agora

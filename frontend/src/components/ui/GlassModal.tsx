@@ -127,7 +127,7 @@ export const GlassModal: React.FC<GlassModalProps> = ({
             {showCloseButton && (
               <button
                 onClick={onClose}
-                className="p-2 -mr-2 rounded-lg hover:bg-[var(--glass-bg)] transition-colors duration-micro text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] flex-shrink-0"
+                className="p-2 -mr-2 rounded-lg hover:bg-[var(--glass-bg)] transition-colors duration-200 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] flex-shrink-0"
                 aria-label="Fechar modal"
               >
                 <X className="w-5 h-5" />

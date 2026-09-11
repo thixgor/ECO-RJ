@@ -77,7 +77,7 @@ const AppDownload: React.FC = () => {
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fade-in">
       {/* Header */}
       <div className="text-center mb-10">
-        <div className="w-20 h-20 bg-[var(--color-accent-soft)] border border-[var(--color-accent-tint)] text-[var(--color-accent)] rounded-3xl mx-auto mb-6 flex items-center justify-center">
+        <div className="w-20 h-20 bg-gradient-to-br from-primary-400 to-primary-600 rounded-3xl mx-auto mb-6 flex items-center justify-center shadow-lg shadow-primary-500/30">
           <Smartphone className="w-10 h-10 text-white" />
         </div>
         <h1 className="font-heading text-3xl md:text-4xl font-bold text-[var(--color-text-primary)] mb-4">
@@ -186,7 +186,7 @@ const AppDownload: React.FC = () => {
 
 // Play Store Icon Component
 const PlayStoreIcon: React.FC = () => (
-  <svg viewBox="0 0 24 24" className="w-8 h-8" fill="currentColor" aria-hidden="true">
+  <svg viewBox="0 0 24 24" className="w-8 h-8" fill="currentColor">
     <path d="M3.609 1.814L13.792 12 3.61 22.186a.996.996 0 0 1-.61-.92V2.734a1 1 0 0 1 .609-.92zm10.89 10.893l2.302 2.302-10.937 6.333 8.635-8.635zm3.199-3.198l2.807 1.626a1 1 0 0 1 0 1.73l-2.808 1.626L15.206 12l2.492-2.491zM5.864 2.658L16.8 9.99l-2.302 2.302-8.634-8.634z"/>
   </svg>
 );
@@ -218,7 +218,7 @@ const DownloadButton: React.FC<DownloadButtonProps> = ({
   if (isComingSoon) {
     return (
       <div
-        className={`relative p-6 rounded-2xl border-2 border-dashed transition-colors ${
+        className={`relative p-6 rounded-2xl border-2 border-dashed transition-all ${
           highlight
             ? 'border-primary-500/50 bg-primary-500/5'
             : 'border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-white/5'
@@ -230,7 +230,7 @@ const DownloadButton: React.FC<DownloadButtonProps> = ({
           </div>
         )}
         <div className="text-center">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-xl bg-gray-200 dark:bg-white/10 flex items-center justify-center text-gray-400 dark:text-[var(--color-neutral)]">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-xl bg-gray-200 dark:bg-white/10 flex items-center justify-center text-gray-400 dark:text-gray-500">
             {icon}
           </div>
           <h3 className="font-semibold text-[var(--color-text-primary)] mb-1">{platform}</h3>
@@ -251,9 +251,9 @@ const DownloadButton: React.FC<DownloadButtonProps> = ({
         href={url}
         target="_blank"
         rel="noopener noreferrer"
-        className={`relative block p-6 rounded-2xl border-2 transition-colors hover:shadow-whisper ${
+        className={`relative block p-6 rounded-2xl border-2 transition-all hover:scale-[1.02] hover:shadow-lg ${
           highlight
-            ? 'border-primary-500 bg-primary-500/10'
+            ? 'border-primary-500 bg-primary-500/10 shadow-lg shadow-primary-500/20'
             : 'border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 hover:border-primary-500/50'
         }`}
       >
@@ -285,9 +285,9 @@ const DownloadButton: React.FC<DownloadButtonProps> = ({
         href={url}
         target="_blank"
         rel="noopener noreferrer"
-        className={`relative block p-6 rounded-2xl border-2 transition-colors hover:shadow-whisper ${
+        className={`relative block p-6 rounded-2xl border-2 transition-all hover:scale-[1.02] hover:shadow-lg ${
           highlight
-            ? 'border-primary-500 bg-primary-500/10'
+            ? 'border-primary-500 bg-primary-500/10 shadow-lg shadow-primary-500/20'
             : 'border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 hover:border-primary-500/50'
         }`}
       >
@@ -297,7 +297,7 @@ const DownloadButton: React.FC<DownloadButtonProps> = ({
           </div>
         )}
         <div className="text-center">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-xl bg-[var(--color-accent-soft)] border border-[var(--color-accent-tint)] flex items-center justify-center text-white">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-xl bg-gradient-to-br from-green-400 via-blue-500 to-purple-500 flex items-center justify-center text-white">
             {icon}
           </div>
           <p className="text-xs text-[var(--color-text-muted)] mb-1">Disponivel no</p>
@@ -319,9 +319,9 @@ const DownloadButton: React.FC<DownloadButtonProps> = ({
         href={url}
         target="_blank"
         rel="noopener noreferrer"
-        className={`relative block p-6 rounded-2xl border-2 transition-colors hover:shadow-whisper ${
+        className={`relative block p-6 rounded-2xl border-2 transition-all hover:scale-[1.02] hover:shadow-lg ${
           highlight
-            ? 'border-primary-500 bg-primary-500/10'
+            ? 'border-primary-500 bg-primary-500/10 shadow-lg shadow-primary-500/20'
             : 'border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 hover:border-primary-500/50'
         }`}
       >
@@ -331,7 +331,7 @@ const DownloadButton: React.FC<DownloadButtonProps> = ({
           </div>
         )}
         <div className="text-center">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-xl bg-[var(--color-accent)] flex items-center justify-center text-white">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white">
             {icon}
           </div>
           <p className="text-xs text-[var(--color-text-muted)] mb-1">Baixar para</p>

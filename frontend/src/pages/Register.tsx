@@ -291,7 +291,7 @@ NÃO COMPARTILHE ESTE TOKEN COM NINGUÉM!
             <img
               src={isDark ? LOGO_DARK : LOGO_LIGHT}
               alt="ECO RJ"
-              className="h-16 w-auto drop-shadow-whisper select-none pointer-events-none"
+              className="h-16 w-auto drop-shadow-lg select-none pointer-events-none"
               loading="lazy"
               decoding="async"
               draggable={false}
@@ -313,7 +313,7 @@ NÃO COMPARTILHE ESTE TOKEN COM NINGUÉM!
             <div>
               <label htmlFor="estado" className="label">Estado *</label>
               <div className="relative">
-                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--color-neutral)] z-10" />
+                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 z-10" />
                 <select
                   id="estado"
                   name="estado"
@@ -339,7 +339,7 @@ NÃO COMPARTILHE ESTE TOKEN COM NINGUÉM!
                     key={tipo}
                     type="button"
                     onClick={() => handleSelectTipo(tipo)}
-                    className={`p-4 rounded-xl border-2 text-center transition-colors ${
+                    className={`p-4 rounded-xl border-2 text-center transition-all ${
                       tipoUsuario === tipo
                         ? 'border-primary-500 bg-primary-50 dark:bg-primary-500/10 text-primary-600 dark:text-primary-400'
                         : 'border-[var(--glass-border)] hover:border-primary-300 text-[var(--color-text-secondary)]'
@@ -374,7 +374,7 @@ NÃO COMPARTILHE ESTE TOKEN COM NINGUÉM!
                   <div>
                     <label htmlFor="crm" className="label">
                       Número do CRM *
-                      <span className="text-xs text-[var(--color-neutral)] font-normal ml-1">(apenas números)</span>
+                      <span className="text-xs text-gray-500 font-normal ml-1">(apenas números)</span>
                     </label>
                     <input
                       id="crm"
@@ -510,7 +510,7 @@ NÃO COMPARTILHE ESTE TOKEN COM NINGUÉM!
             <div>
               <label htmlFor="nomeCompleto" className="label">Nome Completo *</label>
               <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--color-neutral)]" />
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
                   id="nomeCompleto"
                   name="nomeCompleto"
@@ -527,7 +527,7 @@ NÃO COMPARTILHE ESTE TOKEN COM NINGUÉM!
             <div>
               <label htmlFor="email" className="label">E-mail *</label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--color-neutral)]" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
                   id="email"
                   name="email"
@@ -546,7 +546,7 @@ NÃO COMPARTILHE ESTE TOKEN COM NINGUÉM!
               <div>
                 <label htmlFor="password" className="label">Senha *</label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--color-neutral)]" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <input
                     id="password"
                     name="password"
@@ -559,7 +559,7 @@ NÃO COMPARTILHE ESTE TOKEN COM NINGUÉM!
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-neutral)] hover:text-[var(--color-muted)]"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   >
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
@@ -569,7 +569,7 @@ NÃO COMPARTILHE ESTE TOKEN COM NINGUÉM!
               <div>
                 <label htmlFor="confirmPassword" className="label">Confirmar Senha *</label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--color-neutral)]" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <input
                     id="confirmPassword"
                     name="confirmPassword"
@@ -585,7 +585,7 @@ NÃO COMPARTILHE ESTE TOKEN COM NINGUÉM!
             </div>
 
             {/* Terms */}
-            <p className="text-sm text-[var(--color-neutral)]">
+            <p className="text-sm text-gray-500">
               Ao criar uma conta, você concorda com nossos{' '}
               <Link to="/termos" className="link">Termos de Serviço</Link> e{' '}
               <Link to="/privacidade" className="link">Política de Privacidade</Link>.
@@ -601,7 +601,7 @@ NÃO COMPARTILHE ESTE TOKEN COM NINGUÉM!
           </form>
 
           <div className="mt-6 text-center">
-            <p className="text-[var(--color-muted)]">
+            <p className="text-gray-600">
               Já tem uma conta?{' '}
               <Link to="/login" className="link font-medium">
                 Entrar
@@ -613,10 +613,10 @@ NÃO COMPARTILHE ESTE TOKEN COM NINGUÉM!
 
       {/* Modal de Token de Recuperação */}
       {showTokenModal && recoveryData && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-2 sm:p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-lg w-full shadow-raised animate-slide-up overflow-hidden max-h-[90vh] flex flex-col">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-lg w-full shadow-2xl animate-slide-up overflow-hidden max-h-[90vh] flex flex-col">
             {/* Header */}
-            <div className="bg-[var(--color-warning)] p-4 sm:p-6 text-white flex-shrink-0">
+            <div className="bg-gradient-to-r from-amber-500 to-orange-500 p-4 sm:p-6 text-white flex-shrink-0">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
                   <Key className="w-5 h-5 sm:w-6 sm:h-6" />
@@ -650,19 +650,19 @@ NÃO COMPARTILHE ESTE TOKEN COM NINGUÉM!
               {/* Account Info */}
               <div className="bg-gray-50 dark:bg-white/5 rounded-xl p-3 sm:p-4 space-y-2 sm:space-y-3">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs sm:text-sm text-gray-500 dark:text-[var(--color-neutral)] flex-shrink-0">ID da Conta:</span>
+                  <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 flex-shrink-0">ID da Conta:</span>
                   <code className="text-xs sm:text-sm font-mono bg-gray-200 dark:bg-white/10 px-2 py-1 rounded truncate">
                     {recoveryData.id}
                   </code>
                 </div>
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs sm:text-sm text-gray-500 dark:text-[var(--color-neutral)] flex-shrink-0">E-mail:</span>
+                  <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 flex-shrink-0">E-mail:</span>
                   <span className="text-xs sm:text-sm font-medium text-[var(--color-text-primary)] truncate">
                     {recoveryData.email}
                   </span>
                 </div>
                 <div className="border-t border-gray-200 dark:border-white/10 pt-2 sm:pt-3">
-                  <span className="text-xs sm:text-sm text-gray-500 dark:text-[var(--color-neutral)] block mb-2">Token de Recuperação:</span>
+                  <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 block mb-2">Token de Recuperação:</span>
                   <code className="block w-full text-center text-base sm:text-lg font-mono bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 px-2 sm:px-3 py-2 sm:py-3 rounded-lg break-all font-bold tracking-wider">
                     {recoveryData.tokenRecuperacao}
                   </code>

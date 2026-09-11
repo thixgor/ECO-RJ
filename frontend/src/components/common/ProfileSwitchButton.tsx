@@ -1,37 +1,65 @@
 import React from 'react';
 import { useLocation } from 'react-router-dom';
+import { ArrowLeftRight, Stethoscope, Heart } from 'lucide-react';
 import { useUserProfile } from '../../contexts/UserProfileContext';
 
-/**
- * Troca entre a porta do médico e a porta do paciente, na página inicial.
- *
- * Antes: pílula de vidro flutuante no canto, com quatro ícones e dois textos
- * coloridos. Agora: uma linha tipográfica ancorada na régua inferior — a
- * escolha continua à mão, mas para de competir com o conteúdo.
- */
 const ProfileSwitchButton: React.FC = () => {
   const { profileType, setProfileType, hasSelectedProfile } = useUserProfile();
   const location = useLocation();
 
-  if (location.pathname !== '/' || !hasSelectedProfile) return null;
+  // Apenas mostrar na landing page (/)
+  if (location.pathname !== '/' || !hasSelectedProfile) {
+    return null;
+  }
+
+  const handleSwitch = () => {
+    setProfileType(profileType === 'patient' ? 'student' : 'patient');
+  };
 
   const isPatient = profileType === 'patient';
-  const destino = isPatient ? 'médico ou aluno' : 'paciente';
 
   return (
-    <div className="fixed bottom-0 inset-x-0 z-sticky border-t border-[var(--color-rule)] bg-[var(--color-paper)]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-2.5 flex items-center justify-between gap-4">
-        <p className="label-caps truncate">
-          {isPatient ? 'Você está na área do paciente' : 'Você está na área do aluno'}
-        </p>
-        <button
-          onClick={() => setProfileType(isPatient ? 'student' : 'patient')}
-          className="flex-shrink-0 text-xs font-medium text-[var(--color-accent)] underline underline-offset-4 decoration-1 hover:decoration-2 transition-[text-decoration-thickness] duration-micro ease-out whitespace-nowrap"
-        >
-          Sou {destino}
-        </button>
-      </div>
-    </div>
+    <button
+      onClick={handleSwitch}
+      className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3
+                 bg-white/90 dark:bg-dark-card/90 backdrop-blur-sm
+                 border border-[var(--glass-border)] rounded-full
+                 shadow-lg hover:shadow-xl transition-all duration-300
+                 text-sm font-medium text-[var(--color-text-secondary)]
+                 hover:text-primary-500 hover:border-primary-500/30
+                 group"
+      title={`Trocar para ${isPatient ? 'Medico/Aluno' : 'Paciente'}`}
+    >
+      <ArrowLeftRight className="w-4 h-4 group-hover:rotate-180 transition-transform duration-300" />
+      <span className="hidden sm:inline">Trocar:</span>
+      <span className="flex items-center gap-1">
+        {isPatient ? (
+          <>
+            <Heart className="w-3.5 h-3.5 text-red-500" />
+            <span className="text-red-600 dark:text-red-400">Paciente</span>
+          </>
+        ) : (
+          <>
+            <Stethoscope className="w-3.5 h-3.5 text-primary-500" />
+            <span className="text-primary-600 dark:text-primary-400">Aluno</span>
+          </>
+        )}
+      </span>
+      <span className="text-[var(--color-text-muted)]">→</span>
+      <span className="flex items-center gap-1">
+        {isPatient ? (
+          <>
+            <Stethoscope className="w-3.5 h-3.5 text-primary-500" />
+            <span className="text-primary-600 dark:text-primary-400">Aluno</span>
+          </>
+        ) : (
+          <>
+            <Heart className="w-3.5 h-3.5 text-red-500" />
+            <span className="text-red-600 dark:text-red-400">Paciente</span>
+          </>
+        )}
+      </span>
+    </button>
   );
 };
 

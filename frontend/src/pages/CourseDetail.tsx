@@ -523,7 +523,7 @@ const CourseDetail: React.FC = () => {
 
         {/* Enrollment Card */}
         <div className="card p-6">
-          <div className="h-40 bg-[var(--color-paper-3)] rounded-lg mb-4 flex items-center justify-center">
+          <div className="h-40 bg-gradient-to-br from-primary-300 to-primary-500 rounded-lg mb-4 flex items-center justify-center">
             {course.imagemCapa ? (
               <img
                 src={course.imagemCapa}
@@ -559,7 +559,7 @@ const CourseDetail: React.FC = () => {
                 </div>
                 <div className="w-full bg-gray-200 dark:bg-white/10 rounded-full h-2">
                   <div
-                    className="bg-primary-500 h-2 rounded-full transition-[width] duration-long ease-out"
+                    className="bg-primary-500 h-2 rounded-full transition-all"
                     style={{ width: `${progress.progresso}%` }}
                   />
                 </div>
@@ -633,7 +633,7 @@ const CourseDetail: React.FC = () => {
                       <button
                         onClick={handleRequestCertificate}
                         disabled={isRequestingCertificate}
-                        className="btn bg-[var(--color-warning)] hover:opacity-90 text-white w-full flex items-center justify-center gap-2 shadow-whisper"
+                        className="btn bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-white w-full flex items-center justify-center gap-2 shadow-lg"
                       >
                         {isRequestingCertificate ? (
                           <>
@@ -652,7 +652,7 @@ const CourseDetail: React.FC = () => {
                     <button
                       onClick={handleRequestCertificate}
                       disabled={isRequestingCertificate}
-                      className="btn bg-[var(--color-warning)] hover:opacity-90 text-white w-full flex items-center justify-center gap-2 shadow-whisper"
+                      className="btn bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-white w-full flex items-center justify-center gap-2 shadow-lg"
                     >
                       {isRequestingCertificate ? (
                         <>
@@ -716,7 +716,7 @@ const CourseDetail: React.FC = () => {
                   </div>
                   <button
                     onClick={() => navigate(`/comprar/${course._id}`)}
-                    className="btn btn-primary w-full flex items-center justify-center gap-2"
+                    className="btn btn-primary w-full flex items-center justify-center gap-2 animate-pulse-glow"
                   >
                     {gratuito ? <Gift className="w-5 h-5" /> : <ShoppingCart className="w-5 h-5" />}
                     {gratuito ? 'Inscrever-se grátis' : 'Comprar Curso'}
@@ -771,7 +771,7 @@ const CourseDetail: React.FC = () => {
                 {/* Topic header */}
                 <button
                   onClick={(e) => toggleTopic(e, topic._id)}
-                  className="w-full p-4 flex items-center gap-3 bg-white dark:bg-white/[0.02] hover:bg-gray-50 dark:hover:bg-white/5 transition-colors duration-micro active:scale-[0.99]"
+                  className="w-full p-4 flex items-center gap-3 bg-white dark:bg-white/[0.02] hover:bg-gray-50 dark:hover:bg-white/5 transition-all duration-200 active:scale-[0.99]"
                 >
                   <div className="w-10 h-10 rounded-lg bg-primary-100 dark:bg-primary-500/20 flex items-center justify-center flex-shrink-0">
                     <FolderOpen className="w-5 h-5 text-primary-500" />
@@ -788,13 +788,13 @@ const CourseDetail: React.FC = () => {
                     </p>
                   </div>
                   <ChevronDown
-                    className={`w-5 h-5 text-[var(--color-text-muted)] transition-transform duration-micro ${expandedTopics.has(topic._id) ? 'rotate-180' : ''}`}
+                    className={`w-5 h-5 text-[var(--color-text-muted)] transition-transform duration-200 ${expandedTopics.has(topic._id) ? 'rotate-180' : ''}`}
                   />
                 </button>
 
                 {/* Topic content (Lessons and Subtopics) */}
                 <div
-                  className={`grid transition-[grid-template-rows] duration-micro ease-in-out bg-gray-50/50 dark:bg-white/[0.02] ${expandedTopics.has(topic._id) ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}
+                  className={`grid transition-[grid-template-rows] duration-200 ease-in-out bg-gray-50/50 dark:bg-white/[0.02] ${expandedTopics.has(topic._id) ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}
                 >
                   <div className="overflow-hidden min-h-0">
                     {/* Lessons directly in topic */}
@@ -814,7 +814,7 @@ const CourseDetail: React.FC = () => {
                         {/* Subtopic header */}
                         <button
                           onClick={(e) => toggleSubtopic(e, subtopic._id)}
-                          className="w-full p-3 flex items-center gap-3 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors duration-micro active:scale-[0.99] rounded-lg"
+                          className="w-full p-3 flex items-center gap-3 hover:bg-gray-100 dark:hover:bg-white/5 transition-all duration-200 active:scale-[0.99] rounded-lg"
                         >
                           <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-500/10 flex items-center justify-center flex-shrink-0">
                             <Layers className="w-4 h-4 text-amber-500" />
@@ -828,13 +828,13 @@ const CourseDetail: React.FC = () => {
                             </p>
                           </div>
                           <ChevronDown
-                            className={`w-4 h-4 text-[var(--color-text-muted)] transition-transform duration-micro ${expandedSubtopics.has(subtopic._id) ? 'rotate-180' : ''}`}
+                            className={`w-4 h-4 text-[var(--color-text-muted)] transition-transform duration-200 ${expandedSubtopics.has(subtopic._id) ? 'rotate-180' : ''}`}
                           />
                         </button>
 
                         {/* Subtopic lessons */}
                         <div
-                          className={`grid transition-[grid-template-rows] duration-micro ease-in-out ${expandedSubtopics.has(subtopic._id) ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}
+                          className={`grid transition-[grid-template-rows] duration-200 ease-in-out ${expandedSubtopics.has(subtopic._id) ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}
                         >
                           <div className="overflow-hidden">
                             {subtopicLessons.length > 0 ? (
@@ -894,7 +894,7 @@ const CourseDetail: React.FC = () => {
           <div className="grid md:grid-cols-2 gap-6">
             {course.venda?.disponivel ? (
               /* Curso com adesão online (pago ou gratuito) */
-              <div className="p-6 rounded-2xl bg-white dark:bg-white/5 border border-[var(--glass-border)] hover:border-primary-500/30 transition-colors duration-short">
+              <div className="p-6 rounded-2xl bg-white dark:bg-white/5 border border-[var(--glass-border)] hover:border-primary-500/30 transition-all duration-300">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-10 h-10 rounded-xl bg-primary-500/10 flex items-center justify-center text-primary-500">
                     {cursoGratuito ? <Gift className="w-5 h-5" /> : <ShoppingCart className="w-5 h-5" />}
@@ -924,7 +924,7 @@ const CourseDetail: React.FC = () => {
               </div>
             ) : (
               /* Curso não vendido online: contato por e-mail */
-              <div className="p-6 rounded-2xl bg-white dark:bg-white/5 border border-[var(--glass-border)] hover:border-primary-500/30 transition-colors duration-short">
+              <div className="p-6 rounded-2xl bg-white dark:bg-white/5 border border-[var(--glass-border)] hover:border-primary-500/30 transition-all duration-300">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-10 h-10 rounded-xl bg-primary-500/10 flex items-center justify-center text-primary-500">
                     <PlayCircle className="w-5 h-5" />
@@ -947,7 +947,7 @@ const CourseDetail: React.FC = () => {
               </div>
             )}
 
-            <div className="p-6 rounded-2xl bg-white dark:bg-white/5 border border-[var(--glass-border)] hover:border-emerald-500/30 transition-colors duration-short">
+            <div className="p-6 rounded-2xl bg-white dark:bg-white/5 border border-[var(--glass-border)] hover:border-emerald-500/30 transition-all duration-300">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
                   <CheckCircle className="w-5 h-5" />

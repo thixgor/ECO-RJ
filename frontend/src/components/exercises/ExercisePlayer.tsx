@@ -232,11 +232,11 @@ const ExercisePlayer: React.FC<Props> = ({ exercise, onClose, onSubmitted, onRes
     }, [showStartScreen, result, currentQuestionIndex, questaoAtual, totalQuestions, selectAnswer, goToQuestion, submitExercise]);
 
     return (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-0 sm:p-4">
-            <div className="bg-white dark:bg-[#1a1c1e] sm:rounded-2xl w-full sm:max-w-4xl h-full sm:h-auto sm:max-h-[92vh] overflow-hidden flex flex-col animate-fade-in shadow-raised border border-transparent dark:border-white/10">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-0 sm:p-4">
+            <div className="bg-white dark:bg-[#1a1c1e] sm:rounded-2xl w-full sm:max-w-4xl h-full sm:h-auto sm:max-h-[92vh] overflow-hidden flex flex-col animate-fade-in shadow-2xl border border-transparent dark:border-white/10">
 
                 {/* Header */}
-                <div className="bg-[var(--color-accent)] text-white p-4 sm:p-6 flex-shrink-0">
+                <div className="bg-gradient-to-r from-primary-500 to-primary-600 text-white p-4 sm:p-6 flex-shrink-0">
                     <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                             <h2 className="text-lg sm:text-xl font-bold truncate">{exercise.titulo}</h2>
@@ -270,7 +270,7 @@ const ExercisePlayer: React.FC<Props> = ({ exercise, onClose, onSubmitted, onRes
                             </div>
                             <div className="h-2 bg-primary-400/50 rounded-full overflow-hidden">
                                 <div
-                                    className="h-full bg-white transition-[width] duration-long ease-out rounded-full"
+                                    className="h-full bg-white transition-all duration-300 rounded-full"
                                     style={{ width: `${progressPercent}%` }}
                                 />
                             </div>
@@ -296,7 +296,7 @@ const ExercisePlayer: React.FC<Props> = ({ exercise, onClose, onSubmitted, onRes
                             <button
                                 onClick={() => setMode('estudo')}
                                 disabled={exercise.mostrarRespostas === false}
-                                className={`w-full text-left p-4 rounded-xl border-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${mode === 'estudo'
+                                className={`w-full text-left p-4 rounded-xl border-2 transition-all disabled:opacity-40 disabled:cursor-not-allowed ${mode === 'estudo'
                                     ? 'border-primary-500 bg-primary-50 dark:bg-primary-500/10'
                                     : 'border-gray-200 dark:border-white/10 hover:border-primary-300'
                                     }`}
@@ -324,7 +324,7 @@ const ExercisePlayer: React.FC<Props> = ({ exercise, onClose, onSubmitted, onRes
 
                             <button
                                 onClick={() => setMode('prova')}
-                                className={`w-full text-left p-4 rounded-xl border-2 transition-colors ${mode === 'prova'
+                                className={`w-full text-left p-4 rounded-xl border-2 transition-all ${mode === 'prova'
                                     ? 'border-amber-500 bg-amber-50 dark:bg-amber-500/10'
                                     : 'border-gray-200 dark:border-white/10 hover:border-amber-300'
                                     }`}
@@ -355,10 +355,10 @@ const ExercisePlayer: React.FC<Props> = ({ exercise, onClose, onSubmitted, onRes
                         /* ---- Resultado ---- */
                         <div className="p-4 sm:p-6 space-y-6">
                             <div className={`text-center p-6 sm:p-8 rounded-2xl ${result.nota >= 70
-                                ? 'bg-[var(--color-success-soft)] border border-emerald-100 dark:border-emerald-500/20'
+                                ? 'bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-500/10 dark:to-emerald-500/20 border border-emerald-100 dark:border-emerald-500/20'
                                 : result.nota >= 50
-                                    ? 'bg-[var(--color-warning-soft)] border border-amber-100 dark:border-amber-500/20'
-                                    : 'bg-[var(--color-danger-soft)] border border-red-100 dark:border-red-500/20'
+                                    ? 'bg-gradient-to-br from-amber-50 to-yellow-100 dark:from-amber-500/10 dark:to-yellow-500/20 border border-amber-100 dark:border-amber-500/20'
+                                    : 'bg-gradient-to-br from-red-50 to-rose-100 dark:from-red-500/10 dark:to-rose-500/20 border border-red-100 dark:border-red-500/20'
                                 }`}>
                                 <div className={`w-20 h-20 mx-auto rounded-full flex items-center justify-center mb-4 ${result.nota >= 70 ? 'bg-emerald-500' : result.nota >= 50 ? 'bg-amber-500' : 'bg-red-500'
                                     }`}>
@@ -463,7 +463,7 @@ const ExercisePlayer: React.FC<Props> = ({ exercise, onClose, onSubmitted, onRes
                                     const atual = currentQuestionIndex === idx;
                                     let classes = 'bg-gray-100 dark:bg-white/5 text-[var(--color-text-muted)] hover:bg-gray-200 dark:hover:bg-white/10';
                                     if (atual) {
-                                        classes = 'bg-primary-500 text-white shadow-whisper ring-2 ring-primary-500/30';
+                                        classes = 'bg-primary-500 text-white shadow-md ring-2 ring-primary-500/30';
                                     } else if (chk) {
                                         classes = chk.correto
                                             ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-2 border-emerald-300 dark:border-emerald-500/40'
@@ -475,7 +475,7 @@ const ExercisePlayer: React.FC<Props> = ({ exercise, onClose, onSubmitted, onRes
                                         <button
                                             key={idx}
                                             onClick={() => goToQuestion(idx)}
-                                            className={`w-10 h-10 rounded-lg font-medium text-sm transition-colors flex-shrink-0 ${classes}`}
+                                            className={`w-10 h-10 rounded-lg font-medium text-sm transition-all flex-shrink-0 ${classes}`}
                                             aria-label={`Ir para a questão ${idx + 1}`}
                                         >
                                             {idx + 1}
@@ -502,7 +502,7 @@ const ExercisePlayer: React.FC<Props> = ({ exercise, onClose, onSubmitted, onRes
                                         </h3>
 
                                         {questaoAtual.imagem && (
-                                            <div className="mt-4 rounded-xl overflow-hidden shadow-whisper border border-[var(--glass-border)]">
+                                            <div className="mt-4 rounded-xl overflow-hidden shadow-sm border border-[var(--glass-border)]">
                                                 <img
                                                     src={questaoAtual.imagem}
                                                     alt={`Imagem da questão ${currentQuestionIndex + 1}`}
@@ -539,7 +539,7 @@ const ExercisePlayer: React.FC<Props> = ({ exercise, onClose, onSubmitted, onRes
                                                     key={optIdx}
                                                     onClick={() => selectAnswer(optIdx)}
                                                     disabled={travada || checking}
-                                                    className={`w-full p-4 rounded-xl border-2 text-left transition-colors ${box} ${travada ? 'cursor-default' : ''}`}
+                                                    className={`w-full p-4 rounded-xl border-2 text-left transition-all ${box} ${travada ? 'cursor-default' : ''}`}
                                                 >
                                                     <div className="flex items-center gap-4">
                                                         <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center font-medium text-sm flex-shrink-0 ${bolha}`}>
@@ -583,7 +583,7 @@ const ExercisePlayer: React.FC<Props> = ({ exercise, onClose, onSubmitted, onRes
 
                                     {checking && (
                                         <p className="mt-4 flex items-center gap-2 text-sm text-[var(--color-text-muted)]">
-                                            <Activity className="w-4 h-4 text-primary-500" /> Corrigindo…
+                                            <Activity className="w-4 h-4 animate-pulse text-primary-500" /> Corrigindo…
                                         </p>
                                     )}
                                 </div>

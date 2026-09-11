@@ -6,6 +6,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { UserProfileProvider } from './contexts/UserProfileContext';
 import { PublicLayout, AuthenticatedLayout, AdminLayout, PublicPageWrapper } from './components/Layout';
 import ProtectedRoute from './components/common/ProtectedRoute';
+import { AnimatedBackground, LiquidGlassCursor } from './components/ui';
 import { LoadingMinimal } from './components/common/Loading';
 import WelcomeModal from './components/common/WelcomeModal';
 import LandingPageWrapper from './components/common/LandingPageWrapper';
@@ -83,39 +84,37 @@ const App: React.FC = () => {
       <UserProfileProvider>
         <AuthProvider>
           <BrowserRouter>
-          {/* O fundo animado (3 blobs desfocados) e o cursor de vidro foram
-              removidos no redesenho editorial: ambos são tells de interface
-              gerada e nenhum dos dois carregava informação. Ver design.md. */}
+          {/* Animated Background */}
+          <AnimatedBackground intensity="subtle" />
+
+          {/* Liquid Glass Cursor Effect */}
+          <LiquidGlassCursor size={32} />
 
           {/* Welcome Modal for First-Time Visitors */}
           <WelcomeModal />
 
-          {/* Sucesso silencioso: toast só para falha, ação assíncrona cujo efeito
-              não é visível, e confirmação que o usuário vai precisar reler. */}
           <Toaster
-            position="bottom-center"
+            position="top-right"
             toastOptions={{
-              duration: 4000,
+              duration: 3000,
               style: {
-                background: 'var(--color-ink)',
-                color: 'var(--color-paper)',
-                border: 'none',
-                borderRadius: 'var(--radius-sm)',
-                fontFamily: 'var(--font-body)',
-                fontSize: 'var(--text-sm)',
-                padding: 'var(--space-sm) var(--space-md)',
-                maxWidth: '32rem',
+                background: 'var(--glass-bg)',
+                color: 'var(--color-text-primary)',
+                backdropFilter: 'blur(12px)',
+                border: '1px solid var(--glass-border)',
+                borderRadius: '12px',
               },
               success: {
-                iconTheme: { primary: 'var(--color-paper)', secondary: 'var(--color-ink)' },
+                style: {
+                  background: 'rgba(16, 185, 129, 0.9)',
+                  color: '#fff',
+                },
               },
               error: {
-                duration: 6000,
                 style: {
-                  background: 'var(--color-danger)',
-                  color: 'var(--color-accent-ink)',
+                  background: 'rgba(239, 68, 68, 0.9)',
+                  color: '#fff',
                 },
-                iconTheme: { primary: 'var(--color-accent-ink)', secondary: 'var(--color-danger)' },
               },
             }}
           />

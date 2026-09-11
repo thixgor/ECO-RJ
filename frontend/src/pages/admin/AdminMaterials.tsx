@@ -65,7 +65,7 @@ const BlobUploadButton: React.FC<{
       </button>
       {uploading && (
         <div className="mt-2 h-1.5 w-full rounded-full bg-[var(--glass-border)] overflow-hidden">
-          <div className="h-full bg-primary-500 transition-[width] duration-long ease-out" style={{ width: `${progress}%` }} />
+          <div className="h-full bg-primary-500 transition-all" style={{ width: `${progress}%` }} />
         </div>
       )}
     </div>
@@ -221,7 +221,7 @@ const AdminMaterials: React.FC = () => {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="font-semibold text-[var(--color-text-primary)] truncate">{m.titulo}</h3>
-                    {!m.ativo && <span className="text-xs px-2 py-0.5 rounded-full bg-gray-500/15 text-[var(--color-neutral)]">Inativo</span>}
+                    {!m.ativo && <span className="text-xs px-2 py-0.5 rounded-full bg-gray-500/15 text-gray-500">Inativo</span>}
                     {m.destaque && <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-500 flex items-center gap-1"><Star className="w-3 h-3 fill-amber-500" /> Destaque</span>}
                   </div>
                   <div className="flex items-center gap-3 text-xs text-[var(--color-text-muted)] mt-1 flex-wrap">
@@ -240,7 +240,7 @@ const AdminMaterials: React.FC = () => {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <button onClick={() => toggleField(m, 'disponivel')} className={`text-xs px-3 py-1.5 rounded-lg font-medium ${m.disponivel ? 'bg-emerald-500/15 text-emerald-600' : 'bg-gray-500/15 text-[var(--color-neutral)]'}`}>
+                  <button onClick={() => toggleField(m, 'disponivel')} className={`text-xs px-3 py-1.5 rounded-lg font-medium ${m.disponivel ? 'bg-emerald-500/15 text-emerald-600' : 'bg-gray-500/15 text-gray-500'}`}>
                     {m.disponivel ? 'À venda' : 'Fora da loja'}
                   </button>
                   <button onClick={() => setAccessFor(m)} className="p-2 rounded-lg hover:bg-[var(--glass-bg)] text-emerald-500" title="Gerenciar acesso dos usuários"><UserCog className="w-4 h-4" /></button>

@@ -124,7 +124,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ children, items, disab
             disabled={item.disabled}
             className={`
               relative w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm
-              transition-colors duration-micro
+              transition-all duration-200
               ${item.disabled
                 ? 'text-[var(--color-text-muted)] cursor-not-allowed opacity-50'
                 : 'text-[var(--color-text-primary)] hover:bg-[var(--glass-bg-hover)] cursor-pointer'

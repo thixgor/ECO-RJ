@@ -252,7 +252,7 @@ const Dashboard: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-heading font-bold text-[var(--color-text-primary)]">
-            Olá, <span className="text-[var(--color-accent)]">{firstName}</span>
+            Olá, <span className="text-gradient">{firstName}</span>
           </h1>
           <p className="text-[var(--color-text-muted)] mt-1">
             Bem-vindo de volta! Continue de onde parou.
@@ -288,7 +288,7 @@ const Dashboard: React.FC = () => {
       {/* Announcements Section */}
       {!isLoadingAnnouncements && announcements.length > 0 && (
         <GlassCard hover={false} padding="none" className="overflow-hidden">
-          <div className="p-4 bg-[var(--color-paper-2)] border-b border-[var(--glass-border)]">
+          <div className="p-4 bg-gradient-to-r from-primary-500/10 to-transparent border-b border-[var(--glass-border)]">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-primary-500 flex items-center justify-center">
                 <Bell className="w-5 h-5 text-white" />
@@ -357,7 +357,7 @@ const Dashboard: React.FC = () => {
                       <Bell className={`w-5 h-5 ${
                         isHighPriority ? 'text-red-500' :
                         isNormalPriority ? 'text-amber-500' :
-                        'text-[var(--color-neutral)]'
+                        'text-gray-500'
                       }`} />
                     </div>
 
@@ -408,9 +408,9 @@ const Dashboard: React.FC = () => {
       {/* Eventos do Dia - Aulas ao Vivo */}
       {visibleLiveLessons.length > 0 && (
         <GlassCard hover={false} padding="none" className="border-l-4 border-l-red-500 overflow-hidden">
-          <div className="p-4 bg-[var(--color-paper-2)] border-b border-[var(--glass-border)]">
+          <div className="p-4 bg-gradient-to-r from-red-500/10 to-transparent border-b border-[var(--glass-border)]">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xs bg-[var(--color-danger-soft)] border border-[var(--color-danger)]/30 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-full bg-red-500 flex items-center justify-center animate-pulse">
                 <Video className="w-5 h-5 text-white" />
               </div>
               <div>
@@ -461,7 +461,7 @@ const Dashboard: React.FC = () => {
                     }`}>
                       {isLive ? (
                         <div className="flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 bg-white rounded-full" aria-hidden="true" />
+                          <span className="w-2 h-2 bg-white rounded-full animate-ping" />
                           <Video className="w-5 h-5 text-white" />
                         </div>
                       ) : (
@@ -476,7 +476,7 @@ const Dashboard: React.FC = () => {
                           {event.lesson.titulo}
                         </h3>
                         <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-                          isLive ? 'bg-[var(--color-danger)] text-[var(--color-accent-ink)]' :
+                          isLive ? 'bg-red-500 text-white animate-pulse' :
                           isStartingSoon ? 'bg-amber-500 text-white' :
                           isPast ? 'bg-gray-400 text-white' : 'bg-primary-100 text-primary-700 dark:bg-primary-500/20 dark:text-primary-400'
                         }`}>
@@ -502,9 +502,9 @@ const Dashboard: React.FC = () => {
                       {!isPast && (
                         <Link
                           to={`/aulas/${event.lesson._id}`}
-                          className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                          className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
                             isLive
-                              ? 'bg-[var(--color-danger)] text-[var(--color-accent-ink)] hover:opacity-90'
+                              ? 'bg-red-500 text-white hover:bg-red-600 animate-pulse'
                               : isStartingSoon
                               ? 'bg-amber-500 text-white hover:bg-amber-600'
                               : 'bg-primary-500 text-white hover:bg-primary-600'
@@ -542,7 +542,7 @@ const Dashboard: React.FC = () => {
           <>
             <GlassCard padding="lg" className="group">
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-[var(--color-accent-soft)] border border-[var(--color-accent-tint)] text-[var(--color-accent)] flex items-center justify-center group- transition-transform duration-short">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center shadow-lg shadow-primary-500/20 group-hover:scale-110 transition-transform duration-300">
                   <BookOpen className="w-7 h-7 text-white" />
                 </div>
                 <div>
@@ -554,7 +554,7 @@ const Dashboard: React.FC = () => {
 
             <GlassCard padding="lg" className="group">
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-[var(--color-success-soft)] border border-[var(--color-success)]/25 text-[var(--color-success)] flex items-center justify-center group- transition-transform duration-short">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/20 group-hover:scale-110 transition-transform duration-300">
                   <CheckCircle className="w-7 h-7 text-white" />
                 </div>
                 <div>
@@ -567,7 +567,7 @@ const Dashboard: React.FC = () => {
             <Link to="/exercicios" className="block">
               <GlassCard padding="lg" className="group h-full">
                 <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-[var(--color-paper-3)] border border-[var(--color-rule-strong)] text-[var(--color-ink)] flex items-center justify-center group- transition-transform duration-short">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center shadow-lg shadow-purple-500/20 group-hover:scale-110 transition-transform duration-300">
                     <TrendingUp className="w-7 h-7 text-white" />
                   </div>
                   <div>
@@ -580,7 +580,7 @@ const Dashboard: React.FC = () => {
 
             <GlassCard padding="lg" className="group">
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-[var(--color-warning-soft)] border border-[var(--color-warning)]/25 text-[var(--color-warning)] flex items-center justify-center group- transition-transform duration-short">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center shadow-lg shadow-orange-500/20 group-hover:scale-110 transition-transform duration-300">
                   <MessageSquare className="w-7 h-7 text-white" />
                 </div>
                 <div>
@@ -624,7 +624,7 @@ const Dashboard: React.FC = () => {
                     >
                       <GlassCard padding="md" className="!rounded-xl">
                         <div className="flex items-start gap-4">
-                          <div className="w-16 h-16 rounded-xl bg-[var(--color-paper-3)] border border-[var(--color-rule)] flex items-center justify-center flex-shrink-0 overflow-hidden">
+                          <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-primary-400/20 to-primary-600/20 flex items-center justify-center flex-shrink-0 overflow-hidden">
                             {course.imagemCapa ? (
                               <img
                                 src={course.imagemCapa}

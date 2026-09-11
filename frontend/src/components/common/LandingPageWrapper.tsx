@@ -23,18 +23,14 @@ const LandingPageWrapper: React.FC = () => {
         onSelect={handleProfileSelect}
       />
 
-      {/* Conteudo baseado no perfil selecionado.
-          O `pb-12` reserva a altura da barra de troca de perfil, que é fixa no
-          rodapé — sem isso ela cobriria a última linha do colofão. */}
+      {/* Conteudo baseado no perfil selecionado */}
       {hasSelectedProfile && (
-        <div className="pb-12">
-          <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loading /></div>}>
-            {profileType === 'patient' ? <PatientHome /> : <Home />}
-          </Suspense>
-        </div>
+        <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loading /></div>}>
+          {profileType === 'patient' ? <PatientHome /> : <Home />}
+        </Suspense>
       )}
 
-      {/* Barra de troca de perfil, ancorada na régua inferior */}
+      {/* Botao flutuante para trocar de perfil */}
       <ProfileSwitchButton />
     </>
   );
