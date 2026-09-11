@@ -107,8 +107,8 @@ const ResetPassword: React.FC = () => {
     <div className="min-h-[85dvh] flex items-center justify-center py-12 px-4">
       <div className="max-w-md w-full animate-slide-up">
         <div className="text-center mb-8">
-          <div className="w-20 h-20 rounded-2xl bg-[var(--color-accent-soft)] border border-[var(--color-accent-tint)] flex items-center justify-center mx-auto mb-6">
-            <KeyRound className="w-10 h-10 text-[var(--color-accent)]" />
+          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center mx-auto mb-6 shadow-lg shadow-primary-500/30">
+            <KeyRound className="w-10 h-10 text-white" />
           </div>
           <h1 className="font-heading text-3xl font-bold text-[var(--color-text-primary)] mb-2">
             Nova senha

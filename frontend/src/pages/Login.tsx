@@ -428,7 +428,7 @@ const Login: React.FC = () => {
                   <div>
                     <label className="label">E-mail da conta</label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--color-neutral)]" />
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--color-text-muted)]" />
                       <input
                         type="email"
                         value={recoveryEmail}
