@@ -72,11 +72,69 @@ function getTransporter(): Transporter | null {
     greetingTimeout: SMTP_TIMEOUT_MS,
     socketTimeout: SMTP_TIMEOUT_MS
   });
+
+  // Diagnóstico do erro mais comum de configuração: remetente que não pertence
+  // à conta autenticada. O provedor recusa com `553 Sender address rejected`
+  // SÓ na hora do envio — este aviso antecipa o problema no log do servidor.
+  const remetente = extrairEndereco(getFrom());
+  const usuario = String(process.env.SMTP_USER || '').trim().toLowerCase();
+  if (pareceEmail(usuario) && remetente !== usuario) {
+    console.warn(
+      `[EMAIL] Remetente "${remetente}" é diferente da conta SMTP "${usuario}". ` +
+      'Muitos provedores recusam o envio nesse caso (553 Sender address rejected). ' +
+      'Se acontecer, ajuste SMTP_FROM para um endereço que pertença à conta SMTP.'
+    );
+  }
+
   return transporter;
 }
 
+/** Endereço institucional — para onde as respostas devem voltar. */
+const CONTATO_INSTITUCIONAL = 'contato@cursodeecocardiografia.com';
+
+/** Extrai só o endereço de um remetente no formato `Nome <email@dominio>`. */
+function extrairEndereco(valor: string): string {
+  const comNome = /<([^>]+)>\s*$/.exec(String(valor || '').trim());
+  return (comNome ? comNome[1] : String(valor || '')).trim().toLowerCase();
+}
+
+function pareceEmail(valor: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(valor || '').trim());
+}
+
+/**
+ * Remetente (`From`) dos e-mails.
+ *
+ * A maioria dos provedores de SMTP recusa a mensagem quando o remetente não
+ * pertence à conta autenticada — é o erro `553 Sender address rejected: not
+ * owned by user`. Por isso o padrão, quando `SMTP_FROM` não está definido,
+ * é a PRÓPRIA conta do SMTP (`SMTP_USER`): assim o envio funciona de imediato,
+ * sem depender de mais uma variável de ambiente estar correta.
+ *
+ * O endereço institucional só entra como último recurso (quando o `SMTP_USER`
+ * não é um e-mail — provedores como SendGrid usam `apikey` como usuário).
+ */
 function getFrom(): string {
-  return process.env.SMTP_FROM || 'ECO RJ <contato@cursodeecocardiografia.com>';
+  const configurado = String(process.env.SMTP_FROM || '').trim();
+  if (configurado) return configurado;
+
+  const usuario = String(process.env.SMTP_USER || '').trim();
+  if (pareceEmail(usuario)) return `ECO RJ <${usuario}>`;
+
+  return `ECO RJ <${CONTATO_INSTITUCIONAL}>`;
+}
+
+/**
+ * `Reply-To`: quando o envio sai por um endereço técnico (o da conta SMTP),
+ * as respostas de quem recebe continuam indo para o contato institucional.
+ */
+function getReplyTo(): string | undefined {
+  const configurado = String(process.env.SMTP_REPLY_TO || '').trim();
+  if (configurado) return configurado;
+
+  // Se o próprio remetente já é o contato institucional, não há o que redirecionar.
+  if (extrairEndereco(getFrom()) === CONTATO_INSTITUCIONAL) return undefined;
+  return `ECO RJ <${CONTATO_INSTITUCIONAL}>`;
 }
 
 export interface MailAttachment {
@@ -128,6 +186,7 @@ export async function sendMail(
     await comTimeout(
       t.sendMail({
         from: getFrom(),
+        replyTo: getReplyTo(),
         to,
         subject,
         html,

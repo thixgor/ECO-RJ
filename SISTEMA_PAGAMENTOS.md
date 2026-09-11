@@ -130,12 +130,16 @@ SMTP_PORT=587
 SMTP_SECURE=false
 SMTP_USER=usuario_smtp
 SMTP_PASS=senha_smtp
-SMTP_FROM=ECO RJ <contato@cursodeecocardiografia.com>
+# O remetente precisa pertencer à conta em SMTP_USER (ver aviso abaixo).
+# Deixe vazio para o sistema usar o próprio SMTP_USER.
+SMTP_FROM=ECO RJ <contato@seudominio.com>
+SMTP_REPLY_TO=ECO RJ <contato@cursodeecocardiografia.com>
 ```
 
 > ⚠️ **Sem `MP_ACCESS_TOKEN`** o checkout retorna "pagamentos indisponíveis" (nenhuma cobrança é feita).
 > ⚠️ **Sem `MP_PUBLIC_KEY`** o Payment Brick não renderiza no front-end (o Checkout Transparente exige a chave pública).
 > ⚠️ **Sem SMTP** a compra de quem está **logado** continua funcionando (o acesso é liberado direto na conta e o e-mail é apenas registrado no log), mas a **compra sem login é bloqueada** — não haveria como entregar a serial key/o PDF ao convidado. Configure o SMTP para produção.
+> ⚠️ **`SMTP_FROM` precisa pertencer à conta de `SMTP_USER`.** Quase todo provedor recusa a mensagem quando os dois divergem — o erro é `553 5.7.1 Sender address rejected: not owned by user`, e nenhum e-mail sai (comprovante, serial key, redefinição de senha). Deixando `SMTP_FROM` vazio, o sistema usa o próprio `SMTP_USER` como remetente, que é sempre aceito, e o `SMTP_REPLY_TO` garante que as respostas ainda cheguem ao contato institucional.
 
 No **Vercel**, cadastre essas variáveis em *Project → Settings → Environment Variables*.
 
