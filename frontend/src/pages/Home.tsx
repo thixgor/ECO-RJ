@@ -9,7 +9,7 @@ const PROFESSOR_IMAGE = 'https://i.imgur.com/QmeotYH.jpeg';
 
 // SVG do coração/ECG para decoração
 const HeartbeatLine: React.FC<{ className?: string }> = ({ className }) => (
-  <svg viewBox="0 0 200 50" className={className} preserveAspectRatio="none">
+  <svg viewBox="0 0 200 50" className={className} preserveAspectRatio="none" aria-hidden="true">
     <path
       d="M0,25 L40,25 L45,25 L50,10 L55,40 L60,15 L65,35 L70,25 L75,25 L200,25"
       fill="none"

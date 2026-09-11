@@ -262,7 +262,7 @@ const AdminUsers: React.FC = () => {
                         <option value="Administrador">Administrador</option>
                       </select>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
+                    <td className="px-6 py-4 text-sm text-[var(--color-text-muted)]">
                       {user.ultimoLogin ? formatDate(user.ultimoLogin) : 'Nunca'}
                     </td>
                     <td className="px-6 py-4">
@@ -304,7 +304,7 @@ const AdminUsers: React.FC = () => {
         {/* Pagination */}
         {pagination.pages > 1 && (
           <div className="px-6 py-4 border-t flex items-center justify-between">
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-[var(--color-text-muted)]">
               Página {pagination.page} de {pagination.pages}
             </p>
             <div className="flex gap-2">

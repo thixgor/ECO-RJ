@@ -388,7 +388,7 @@ const AdminAnnouncements: React.FC = () => {
             </table>
 
             {announcements.length === 0 && (
-              <div className="p-8 text-center text-gray-500">
+              <div className="p-8 text-center text-[var(--color-text-muted)]">
                 <Bell className="w-12 h-12 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
                 <p>Nenhum aviso encontrado</p>
                 <button onClick={openCreateModal} className="btn btn-primary mt-4">

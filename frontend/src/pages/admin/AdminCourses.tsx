@@ -423,7 +423,7 @@ const AdminCourses: React.FC = () => {
                     <button
                       onClick={() => moveCourse(index, 'up')}
                       disabled={index === 0}
-                      className={`p-1 rounded ${index === 0 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:text-primary-500 hover:bg-primary-50'}`}
+                      className={`p-1 rounded ${index === 0 ? 'text-gray-300 cursor-not-allowed' : 'text-[var(--color-text-muted)] hover:text-primary-500 hover:bg-primary-50'}`}
                       title="Mover para cima"
                     >
                       <ChevronUp className="w-4 h-4" />
@@ -432,7 +432,7 @@ const AdminCourses: React.FC = () => {
                     <button
                       onClick={() => moveCourse(index, 'down')}
                       disabled={index === courses.length - 1}
-                      className={`p-1 rounded ${index === courses.length - 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:text-primary-500 hover:bg-primary-50'}`}
+                      className={`p-1 rounded ${index === courses.length - 1 ? 'text-gray-300 cursor-not-allowed' : 'text-[var(--color-text-muted)] hover:text-primary-500 hover:bg-primary-50'}`}
                       title="Mover para baixo"
                     >
                       <ChevronDown className="w-4 h-4" />
@@ -528,7 +528,7 @@ const AdminCourses: React.FC = () => {
             })}
           </div>
         ) : (
-          <div className="p-8 text-center text-gray-500">
+          <div className="p-8 text-center text-[var(--color-text-muted)]">
             <BookOpen className="w-12 h-12 mx-auto mb-4 text-gray-300" />
             <p>Nenhum curso criado ainda</p>
             <button onClick={() => openModal()} className="btn btn-primary mt-4">
@@ -839,14 +839,14 @@ const AdminCourses: React.FC = () => {
                             <button
                               onClick={() => moveTopic(index, 'up')}
                               disabled={index === 0}
-                              className={`p-0.5 rounded ${index === 0 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:text-primary-500'}`}
+                              className={`p-0.5 rounded ${index === 0 ? 'text-gray-300 cursor-not-allowed' : 'text-[var(--color-text-muted)] hover:text-primary-500'}`}
                             >
                               <ChevronUp className="w-3 h-3" />
                             </button>
                             <button
                               onClick={() => moveTopic(index, 'down')}
                               disabled={index === topics.length - 1}
-                              className={`p-0.5 rounded ${index === topics.length - 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:text-primary-500'}`}
+                              className={`p-0.5 rounded ${index === topics.length - 1 ? 'text-gray-300 cursor-not-allowed' : 'text-[var(--color-text-muted)] hover:text-primary-500'}`}
                             >
                               <ChevronDown className="w-3 h-3" />
                             </button>
@@ -956,14 +956,14 @@ const AdminCourses: React.FC = () => {
                                         <button
                                           onClick={() => moveSubtopic(subIndex, 'up')}
                                           disabled={subIndex === 0}
-                                          className={`p-0.5 rounded ${subIndex === 0 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:text-primary-500'}`}
+                                          className={`p-0.5 rounded ${subIndex === 0 ? 'text-gray-300 cursor-not-allowed' : 'text-[var(--color-text-muted)] hover:text-primary-500'}`}
                                         >
                                           <ChevronUp className="w-2.5 h-2.5" />
                                         </button>
                                         <button
                                           onClick={() => moveSubtopic(subIndex, 'down')}
                                           disabled={subIndex === subtopics.length - 1}
-                                          className={`p-0.5 rounded ${subIndex === subtopics.length - 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:text-primary-500'}`}
+                                          className={`p-0.5 rounded ${subIndex === subtopics.length - 1 ? 'text-gray-300 cursor-not-allowed' : 'text-[var(--color-text-muted)] hover:text-primary-500'}`}
                                         >
                                           <ChevronDown className="w-2.5 h-2.5" />
                                         </button>

@@ -374,7 +374,7 @@ NÃO COMPARTILHE ESTE TOKEN COM NINGUÉM!
                   <div>
                     <label htmlFor="crm" className="label">
                       Número do CRM *
-                      <span className="text-xs text-gray-500 font-normal ml-1">(apenas números)</span>
+                      <span className="text-xs text-[var(--color-text-muted)] font-normal ml-1">(apenas números)</span>
                     </label>
                     <input
                       id="crm"
@@ -559,7 +559,7 @@ NÃO COMPARTILHE ESTE TOKEN COM NINGUÉM!
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[var(--color-text-secondary)]"
                   >
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
@@ -585,7 +585,7 @@ NÃO COMPARTILHE ESTE TOKEN COM NINGUÉM!
             </div>
 
             {/* Terms */}
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-[var(--color-text-muted)]">
               Ao criar uma conta, você concorda com nossos{' '}
               <Link to="/termos" className="link">Termos de Serviço</Link> e{' '}
               <Link to="/privacidade" className="link">Política de Privacidade</Link>.
@@ -601,7 +601,7 @@ NÃO COMPARTILHE ESTE TOKEN COM NINGUÉM!
           </form>
 
           <div className="mt-6 text-center">
-            <p className="text-gray-600">
+            <p className="text-[var(--color-text-secondary)]">
               Já tem uma conta?{' '}
               <Link to="/login" className="link font-medium">
                 Entrar

@@ -72,7 +72,7 @@ const ProfileSelectionModal: React.FC<ProfileSelectionModalProps> = ({ isOpen, o
 
             <div className="flex items-center gap-2 text-primary-300 text-sm font-medium group-hover:text-primary-200 transition-colors">
               <span>Acessar plataforma de cursos</span>
-              <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg aria-hidden="true" className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
             </div>
@@ -101,7 +101,7 @@ const ProfileSelectionModal: React.FC<ProfileSelectionModalProps> = ({ isOpen, o
 
             <div className="flex items-center gap-2 text-red-300 text-sm font-medium group-hover:text-red-200 transition-colors">
               <span>Agendar consulta ou exame</span>
-              <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg aria-hidden="true" className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
             </div>

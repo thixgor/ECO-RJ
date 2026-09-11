@@ -7,7 +7,7 @@ const WHATSAPP_NUMBER = '5521968084445';
 
 // SVG do coracao/ECG para decoracao
 const HeartbeatLine: React.FC<{ className?: string }> = ({ className }) => (
-  <svg viewBox="0 0 200 50" className={className} preserveAspectRatio="none">
+  <svg viewBox="0 0 200 50" className={className} preserveAspectRatio="none" aria-hidden="true">
     <path
       d="M0,25 L40,25 L45,25 L50,10 L55,40 L60,15 L65,35 L70,25 L75,25 L200,25"
       fill="none"
@@ -119,7 +119,7 @@ const PatientHome: React.FC = () => {
             <div className="flex items-center justify-center gap-2 mb-4 sm:mb-6">
               <Activity className="w-5 h-5 text-red-500" />
               <span className="px-4 py-1.5 bg-red-500/10 text-red-600 dark:text-red-400 rounded-full text-sm font-medium border border-red-500/20">
-                Centro de Exames em Ecocardiografia
+                Centro de Treinamento em Ecocardiografia
               </span>
               <Heart className="w-5 h-5 text-red-500" />
             </div>

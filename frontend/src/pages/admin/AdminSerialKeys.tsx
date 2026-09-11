@@ -311,7 +311,7 @@ const AdminSerialKeys: React.FC = () => {
             </table>
 
             {keys.length === 0 && (
-              <div className="p-8 text-center text-gray-500">
+              <div className="p-8 text-center text-[var(--color-text-muted)]">
                 <Key className="w-12 h-12 mx-auto mb-4 text-gray-300" />
                 <p>Nenhuma chave encontrada</p>
               </div>

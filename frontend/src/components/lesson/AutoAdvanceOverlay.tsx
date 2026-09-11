@@ -66,7 +66,7 @@ const AutoAdvanceOverlay: React.FC<AutoAdvanceOverlayProps> = ({
       {/* Countdown Circle */}
       <div className="relative w-32 h-32 mb-6">
         {/* Background circle */}
-        <svg className="w-full h-full transform -rotate-90">
+        <svg className="w-full h-full transform -rotate-90" aria-hidden="true">
           <circle
             cx="64"
             cy="64"

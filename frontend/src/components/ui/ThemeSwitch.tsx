@@ -29,7 +29,7 @@ export const ThemeSwitch: React.FC<ThemeSwitchProps> = ({
       >
         <div className="theme-switch-thumb flex items-center justify-center">
           {isDark ? (
-            <Moon className="w-3.5 h-3.5 text-gray-600" />
+            <Moon className="w-3.5 h-3.5 text-[var(--color-text-secondary)]" />
           ) : (
             <Sun className="w-3.5 h-3.5 text-amber-600" />
           )}

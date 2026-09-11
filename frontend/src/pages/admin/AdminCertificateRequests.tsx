@@ -358,7 +358,7 @@ const AdminCertificateRequests: React.FC = () => {
                         )}
                         <button
                           onClick={() => handleDelete(request._id)}
-                          className="p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg transition-colors"
+                          className="p-2 text-[var(--color-text-muted)] hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg transition-colors"
                           title="Excluir"
                         >
                           <Trash2 className="w-5 h-5" />

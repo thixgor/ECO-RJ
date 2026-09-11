@@ -357,7 +357,7 @@ const Dashboard: React.FC = () => {
                       <Bell className={`w-5 h-5 ${
                         isHighPriority ? 'text-red-500' :
                         isNormalPriority ? 'text-amber-500' :
-                        'text-gray-500'
+                        'text-[var(--color-text-muted)]'
                       }`} />
                     </div>
 

@@ -331,7 +331,7 @@ const AdminCertificates: React.FC = () => {
             </table>
 
             {filteredCertificates.length === 0 && (
-              <div className="p-8 text-center text-gray-500">
+              <div className="p-8 text-center text-[var(--color-text-muted)]">
                 <Award className="w-12 h-12 mx-auto mb-4 text-gray-300" />
                 <p>Nenhum certificado encontrado</p>
               </div>

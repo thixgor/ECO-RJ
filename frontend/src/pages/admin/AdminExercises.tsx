@@ -368,8 +368,8 @@ const AdminExercises: React.FC = () => {
                         <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
                             <ClipboardList className="w-8 h-8 text-gray-400" />
                         </div>
-                        <h3 className="text-lg font-medium text-gray-900">Nenhum exercício cadastrado</h3>
-                        <p className="text-gray-500 mt-1">Clique em "Novo Exercício" para criar seu primeiro exercício.</p>
+                        <h3 className="text-lg font-medium text-[var(--color-text-primary)]">Nenhum exercício cadastrado</h3>
+                        <p className="text-[var(--color-text-muted)] mt-1">Clique em "Novo Exercício" para criar seu primeiro exercício.</p>
                         <p className="text-xs text-gray-400 mt-2">Você pode anexar o exercício a uma aula depois, se desejar.</p>
                     </div>
                 )}
@@ -628,18 +628,18 @@ const AdminExercises: React.FC = () => {
             )}
             {showImportModal && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col animate-fade-in">
+                    <div className="bg-white dark:bg-dark-card rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col animate-fade-in">
                         <div className="flex items-center justify-between p-6 border-b">
-                            <h3 className="text-xl font-bold text-gray-900">Importar Questões</h3>
-                            <button onClick={() => setShowImportModal(false)} className="text-gray-400 hover:text-gray-600">
+                            <h3 className="text-xl font-bold text-[var(--color-text-primary)]">Importar Questões</h3>
+                            <button onClick={() => setShowImportModal(false)} className="text-gray-400 hover:text-[var(--color-text-secondary)]">
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
 
                         <div className="p-6 overflow-y-auto flex-1">
                             <div className="mb-4">
-                                <p className="text-sm text-gray-600 mb-2">Cole o texto das questões no padrão abaixo ou envie um arquivo .txt:</p>
-                                <div className="bg-gray-50 p-3 rounded-lg text-xs font-mono text-gray-500 mb-4 border border-gray-200">
+                                <p className="text-sm text-[var(--color-text-secondary)] mb-2">Cole o texto das questões no padrão abaixo ou envie um arquivo .txt:</p>
+                                <div className="bg-gray-50 p-3 rounded-lg text-xs font-mono text-[var(--color-text-muted)] mb-4 border border-gray-200">
                                     --QUESTAO1<br />
                                     ENUNCIADO: "Texto da questão"<br />
                                     OPCAO1: "Opção A"<br />

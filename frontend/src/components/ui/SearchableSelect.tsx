@@ -106,7 +106,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
             setCustomValue('');
             onChange('');
           }}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[var(--color-text-secondary)]"
           title="Voltar para a lista"
         >
           <X className="w-4 h-4" />

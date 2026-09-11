@@ -501,7 +501,7 @@ const AdminLessons: React.FC = () => {
           <button
             onClick={() => moveLesson(lesson, 'up')}
             disabled={isFirst}
-            className={`p-1 rounded ${isFirst ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:text-primary-500 hover:bg-primary-50'}`}
+            className={`p-1 rounded ${isFirst ? 'text-gray-300 cursor-not-allowed' : 'text-[var(--color-text-muted)] hover:text-primary-500 hover:bg-primary-50'}`}
             title="Mover para cima"
           >
             <ChevronUp className="w-4 h-4" />
@@ -510,7 +510,7 @@ const AdminLessons: React.FC = () => {
           <button
             onClick={() => moveLesson(lesson, 'down')}
             disabled={isLast}
-            className={`p-1 rounded ${isLast ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:text-primary-500 hover:bg-primary-50'}`}
+            className={`p-1 rounded ${isLast ? 'text-gray-300 cursor-not-allowed' : 'text-[var(--color-text-muted)] hover:text-primary-500 hover:bg-primary-50'}`}
             title="Mover para baixo"
           >
             <ChevronDown className="w-4 h-4" />
