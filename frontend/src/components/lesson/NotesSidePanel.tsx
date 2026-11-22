@@ -10,6 +10,8 @@ interface NotesSidePanelProps {
   onClose: () => void;
   getCurrentTimestamp: () => number;
   onSeekToTimestamp: (timestamp: number) => void;
+  /** Acima do modo foco da aula ao vivo (que cobre a página). */
+  elevated?: boolean;
 }
 
 const formatTimestamp = (seconds: number): string => {
@@ -28,7 +30,8 @@ const NotesSidePanel: React.FC<NotesSidePanelProps> = ({
   isOpen,
   onClose,
   getCurrentTimestamp,
-  onSeekToTimestamp
+  onSeekToTimestamp,
+  elevated = false
 }) => {
   const [notes, setNotes] = useState<UserNote[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -153,7 +156,7 @@ const NotesSidePanel: React.FC<NotesSidePanelProps> = ({
       {/* Backdrop for mobile */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          className={`fixed inset-0 bg-black/50 lg:hidden ${elevated ? 'z-[70]' : 'z-40'}`}
           onClick={onClose}
         />
       )}
@@ -161,7 +164,7 @@ const NotesSidePanel: React.FC<NotesSidePanelProps> = ({
       {/* Side Panel */}
       <div
         className={`
-          fixed top-0 right-0 h-full z-50
+          fixed top-0 right-0 h-full ${elevated ? 'z-[80]' : 'z-50'}
           w-full sm:w-96
           bg-[var(--glass-bg)] backdrop-blur-xl
           border-l border-[var(--glass-border)]

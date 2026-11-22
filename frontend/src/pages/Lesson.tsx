@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Clock, CheckCircle, BookOpen, FileText, Play, ExternalLink, Download, Layers, X, ChevronRight, Video, File, PlayCircle, Maximize, Minimize, MessageCircle, Settings, StickyNote } from 'lucide-react';
-import { lessonService, exerciseService, zoomService, siteConfigService } from '../services/api';
+import { ArrowLeft, Clock, CheckCircle, BookOpen, FileText, Play, ExternalLink, Download, Layers, ChevronRight, Video, File, PlayCircle, Settings, StickyNote } from 'lucide-react';
+import { lessonService, exerciseService, siteConfigService } from '../services/api';
 import { Lesson as LessonType, Exercise, Course } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { generateExercisePDF } from '../utils/pdfGenerator';
@@ -11,6 +11,7 @@ import VideoWatermark from '../components/common/VideoWatermark';
 import AutoAdvanceOverlay from '../components/lesson/AutoAdvanceOverlay';
 import FloatingMiniPlayer from '../components/lesson/FloatingMiniPlayer';
 import NotesSidePanel from '../components/lesson/NotesSidePanel';
+import LiveClassRoom from '../components/lesson/LiveClassRoom';
 import ExercisePlayer from '../components/exercises/ExercisePlayer';
 import toast from 'react-hot-toast';
 
@@ -35,19 +36,10 @@ const Lesson: React.FC = () => {
   /** Trocar a key remonta o player — é assim que o botão "Refazer" reinicia. */
   const [exercisePlayerKey, setExercisePlayerKey] = useState(0);
 
-  // Zoom meeting states
-  const [isZoomJoined, setIsZoomJoined] = useState(false);
-  const [isZoomConnecting, setIsZoomConnecting] = useState(false);
-  const [isZoomInitializing, setIsZoomInitializing] = useState(false); // Para mostrar container durante init
-  const [zoomError, setZoomError] = useState<string | null>(null);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [showFullscreenSuggestion, setShowFullscreenSuggestion] = useState(false);
-  const [joinedExternally, setJoinedExternally] = useState(false);
+  // Aula ao vivo (Zoom integrado — ver components/lesson/LiveClassRoom)
   const [zoomNativeEnabled, setZoomNativeEnabled] = useState(true);
-  const [isChatOpen, setIsChatOpen] = useState(false);
-  const zoomClientRef = useRef<any>(null);
-  const zoomContainerRef = useRef<HTMLDivElement>(null);
-  const zoomWrapperRef = useRef<HTMLDivElement>(null);
+  const [liveFocusMode, setLiveFocusMode] = useState(false);
+  const exercisesRef = useRef<HTMLDivElement>(null);
 
   // New feature states
   const [showAutoAdvance, setShowAutoAdvance] = useState(false);
@@ -205,11 +197,6 @@ const Lesson: React.FC = () => {
   };
 
   // ========== New Feature Functions ==========
-
-  // Get current video timestamp (for notes)
-  const getCurrentTimestamp = useCallback((): number => {
-    return currentVideoTimestamp;
-  }, [currentVideoTimestamp]);
 
   // Seek video to specific timestamp
   const handleSeekToTimestamp = useCallback((timestamp: number) => {
@@ -638,423 +625,24 @@ const Lesson: React.FC = () => {
     return () => clearTimeout(timeoutId);
   }, [lesson?.tipo, lesson?.embedVideo, resumeTimestamp, videoDuration]);
 
-  // ========== Zoom Integration Functions ==========
-  const joinZoomMeeting = useCallback(async () => {
-    if (!lesson?.zoomMeetingId || !user) {
-      toast.error('Dados de reunião não disponíveis');
-      return;
-    }
-
-    // Validar e limpar o Meeting ID antes de processar
-    const meetingId = lesson.zoomMeetingId?.trim();
-    if (!meetingId) {
-      toast.error('Meeting ID não está configurado corretamente');
-      return;
-    }
-
-    setIsZoomConnecting(true);
-    setIsZoomInitializing(true); // Mostrar container para obter dimensões
-    setZoomError(null);
-
+  // ========== Aula ao vivo ==========
+  // Presença registrada automaticamente pela sala após alguns minutos conectado.
+  const handleLiveAttendance = useCallback(async () => {
+    if (!id || user?.aulasAssistidas?.includes(id)) return;
     try {
-      // Limpar Meeting ID (remover espaços e hífens)
-      const cleanMeetingId = meetingId.replace(/\s|-/g, '');
-      console.log('Generating Zoom signature for meeting:', cleanMeetingId);
-
-      // Buscar signature JWT do backend
-      const signatureResponse = await zoomService.generateSignature(cleanMeetingId, 0);
-      const { signature } = signatureResponse.data;
-
-      if (!signature) {
-        throw new Error('Signature Zoom não disponível');
-      }
-
-      console.log('Signature received:', signature.substring(0, 50) + '...');
-      console.log('Signature length:', signature.length);
-
-      // Decodificar JWT para debug (apenas para verificar o payload)
-      try {
-        const parts = signature.split('.');
-        if (parts.length === 3) {
-          const payload = JSON.parse(atob(parts[1]));
-          console.log('Decoded JWT Payload:', payload);
-        }
-      } catch (e) {
-        console.warn('Não foi possível decodificar JWT:', e);
-      }
-
-      // Verificar se o container existe
-      if (!zoomContainerRef.current) {
-        throw new Error('Container do Zoom não encontrado');
-      }
-
-      // Dynamic import do Zoom SDK (lazy loading)
-      console.log('Loading Zoom SDK...');
-      const ZoomMtgEmbeddedModule = await import('@zoom/meetingsdk/embedded');
-      const ZoomMtgEmbedded = ZoomMtgEmbeddedModule.default || ZoomMtgEmbeddedModule;
-      console.log('Zoom SDK loaded successfully');
-
-      // Criar novo cliente Zoom (sempre criar novo para cada join)
-      console.log('Creating Zoom client...');
-      const client = ZoomMtgEmbedded.createClient();
-      zoomClientRef.current = client;
-
-      // Aguardar um pouco para garantir que o container está completamente renderizado
-      await new Promise(resolve => setTimeout(resolve, 150));
-
-      // Inicializar o container da reunião
-      console.log('Initializing Zoom client...');
-
-      // Calcular dimensões do container - usar o wrapper ou o container pai para obter dimensões reais
-      const wrapperElement = zoomWrapperRef.current;
-      let containerWidth = zoomContainerRef.current.offsetWidth;
-      let containerHeight = zoomContainerRef.current.offsetHeight;
-
-      // Se o container tem dimensões zeradas (porque está oculto), calcular baseado no pai
-      if (containerWidth === 0 || containerHeight === 0) {
-        // Buscar o card pai para obter a largura real
-        const cardElement = zoomContainerRef.current.closest('.card');
-        if (cardElement) {
-          containerWidth = cardElement.clientWidth;
-          containerHeight = Math.round(containerWidth * 9 / 16); // 16:9 aspect ratio
-        } else if (wrapperElement) {
-          // Fallback para o wrapper
-          const rect = wrapperElement.getBoundingClientRect();
-          containerWidth = rect.width || window.innerWidth * 0.65;
-          containerHeight = rect.height || Math.round(containerWidth * 9 / 16);
-        }
-      }
-
-      // Garantir dimensões mínimas
-      containerWidth = Math.max(containerWidth, 640);
-      containerHeight = Math.max(containerHeight, 360);
-
-      console.log('Container dimensions:', { width: containerWidth, height: containerHeight });
-
-      await client.init({
-        zoomAppRoot: zoomContainerRef.current,
-        language: 'pt-PT', // Zoom SDK aceita pt-PT (Português), não pt-BR
-        patchJsMedia: true,
-        leaveOnPageUnload: true,
-        customize: {
-          video: {
-            isResizable: true,
-            viewSizes: {
-              default: {
-                width: containerWidth,
-                height: containerHeight
-              }
-            }
-          },
-          chat: {
-            popper: {
-              disableDraggable: false,
-              anchorElement: zoomContainerRef.current,
-              placement: 'right'
-            }
-          },
-          meetingInfo: ['topic', 'host', 'mn', 'pwd', 'telPwd', 'invite', 'participant', 'dc', 'enctype']
-          // Removido toolbar.buttons para manter controles padrão do Zoom
-        }
-      });
-      console.log('Zoom client initialized successfully');
-
-      // Aguardar mais um pouco após a inicialização antes de entrar na reunião
-      await new Promise(resolve => setTimeout(resolve, 200));
-
-      console.log('Joining meeting with params:', {
-        meetingNumber: cleanMeetingId,
-        password: lesson.zoomMeetingPassword ? '***' : '',
-        userName: user.nomeCompleto,
-        userEmail: user.email,
-        signatureLength: signature.length
-      });
-
-      // Entrar na reunião com SDK JWT Signature
-      // SDK JWT Signature já inclui appKey no payload, NÃO passar sdkKey aqui
-      // Ref: https://devforum.zoom.us - SDK JWT usa tempo em SEGUNDOS (não milissegundos)
-      await client.join({
-        signature: signature,
-        meetingNumber: cleanMeetingId,
-        password: lesson.zoomMeetingPassword || '',
-        userName: user.nomeCompleto,
-        userEmail: user.email
-      });
-
-      console.log('Zoom meeting joined successfully');
-      setIsZoomJoined(true);
-      setIsZoomConnecting(false);
-      toast.success('Conectado à aula ao vivo!');
-
-      // Mostrar sugestão de tela cheia após 2 segundos
-      setTimeout(() => {
-        setShowFullscreenSuggestion(true);
-      }, 2000);
-    } catch (error: any) {
-      console.error('Zoom initialization error:', error);
-      setZoomError(error.message || 'Erro ao inicializar Zoom');
-      setIsZoomConnecting(false);
-      setIsZoomInitializing(false); // Esconder container em caso de erro
-      toast.error('Não foi possível carregar o Zoom integrado');
+      await lessonService.markAsWatched(id);
+      await refreshUser();
+      toast.success('Presença registrada nesta aula');
+    } catch {
+      // silencioso: o aluno ainda pode marcar manualmente
     }
-  }, [lesson, user]);
+  }, [id, user?.aulasAssistidas, refreshUser]);
 
-  // Funções para abrir Zoom externamente
-  const openZoomApp = useCallback(() => {
-    if (!lesson?.zoomMeetingId) return;
-
-    const cleanMeetingId = lesson.zoomMeetingId.replace(/\s|-/g, '');
-    const password = lesson.zoomMeetingPassword || '';
-
-    // URL do protocolo zoommtg:// para abrir o app Zoom
-    const zoomAppUrl = `zoommtg://zoom.us/join?confno=${cleanMeetingId}${password ? `&pwd=${password}` : ''}`;
-    window.location.href = zoomAppUrl;
-
-    // Marcar que entrou externamente
-    setJoinedExternally(true);
-    toast.success('Abrindo Zoom App...');
-  }, [lesson]);
-
-  const openZoomBrowser = useCallback(() => {
-    if (!lesson?.zoomMeetingId) return;
-
-    const cleanMeetingId = lesson.zoomMeetingId.replace(/\s|-/g, '');
-    const password = lesson.zoomMeetingPassword ? `?pwd=${lesson.zoomMeetingPassword}` : '';
-
-    // URL para abrir Zoom no navegador
-    const zoomBrowserUrl = `https://zoom.us/wc/join/${cleanMeetingId}${password}`;
-    window.open(zoomBrowserUrl, '_blank');
-
-    // Marcar que entrou externamente
-    setJoinedExternally(true);
-    toast.success('Abrindo Zoom no navegador...');
-  }, [lesson]);
-
-  const leaveZoomMeeting = useCallback(async () => {
-    if (zoomClientRef.current && isZoomJoined) {
-      try {
-        // Sair do fullscreen se estiver ativo
-        if (document.fullscreenElement) {
-          await document.exitFullscreen().catch(() => {});
-        }
-
-        // Tentar sair da reunião
-        await zoomClientRef.current.leaveMeeting();
-        setIsZoomJoined(false);
-        setZoomError(null);
-        setIsFullscreen(false);
-        toast.success('Você saiu da aula ao vivo');
-      } catch (error: any) {
-        console.error('Error leaving Zoom:', error);
-
-        // Se o erro for estado inválido (5004), considerar como saída bem-sucedida
-        if (error?.errorCode === 5004) {
-          setIsZoomJoined(false);
-          setZoomError(null);
-          setIsFullscreen(false);
-          toast.success('Você saiu da aula ao vivo');
-        } else {
-          toast.error('Erro ao sair da reunião');
-        }
-      }
-    }
-  }, [isZoomJoined]);
-
-  // Função para entrar em tela cheia e ocultar sugestão
-  const enterFullscreenFromSuggestion = useCallback(async () => {
-    setShowFullscreenSuggestion(false);
-    if (zoomWrapperRef.current && !document.fullscreenElement) {
-      try {
-        await zoomWrapperRef.current.requestFullscreen();
-        setIsFullscreen(true);
-      } catch (err) {
-        console.error('Fullscreen failed:', err);
-        toast.error('Não foi possível entrar em tela cheia');
-      }
-    }
+  const scrollToExercises = useCallback(() => {
+    if (document.fullscreenElement) document.exitFullscreen?.().catch(() => undefined);
+    exercisesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    exercisesRef.current?.focus({ preventScroll: true });
   }, []);
-
-  // Funções de Fullscreen
-  const toggleFullscreen = useCallback(async () => {
-    if (!zoomWrapperRef.current) return;
-
-    try {
-      if (!document.fullscreenElement) {
-        await zoomWrapperRef.current.requestFullscreen();
-        setIsFullscreen(true);
-      } else {
-        await document.exitFullscreen();
-        setIsFullscreen(false);
-      }
-    } catch (error) {
-      console.error('Fullscreen error:', error);
-      toast.error('Erro ao alternar tela cheia');
-    }
-  }, []);
-
-  // Função para recalcular dimensões do Zoom
-  const resizeZoomMeeting = useCallback(() => {
-    if (!zoomClientRef.current || !isZoomJoined) return;
-
-    try {
-      let newWidth: number;
-      let newHeight: number;
-
-      if (document.fullscreenElement) {
-        // Em tela cheia: usar viewport inteira
-        newWidth = window.innerWidth;
-        newHeight = window.innerHeight;
-      } else if (zoomWrapperRef.current) {
-        // Modo normal: usar dimensões do container
-        const rect = zoomWrapperRef.current.getBoundingClientRect();
-        newWidth = rect.width;
-        newHeight = rect.height;
-
-        // Fallback se dimensões inválidas
-        if (newWidth === 0 || newHeight === 0) {
-          const cardElement = zoomWrapperRef.current.closest('.card');
-          if (cardElement) {
-            newWidth = cardElement.clientWidth;
-            newHeight = Math.round(newWidth * 9 / 16);
-          }
-        }
-      } else {
-        return;
-      }
-
-      // Garantir dimensões mínimas
-      newWidth = Math.max(Math.round(newWidth), 320);
-      newHeight = Math.max(Math.round(newHeight), 180);
-
-      console.log('Resizing Zoom to:', { width: newWidth, height: newHeight, fullscreen: !!document.fullscreenElement });
-
-      // Redimensionar o cliente Zoom
-      zoomClientRef.current.updateVideoSize?.(newWidth, newHeight);
-    } catch (error) {
-      console.error('Error resizing Zoom:', error);
-    }
-  }, [isZoomJoined]);
-
-  // Função para abrir/fechar chat do Zoom
-  const toggleChat = useCallback(() => {
-    if (!zoomClientRef.current || !isZoomJoined) return;
-
-    try {
-      const newChatState = !isChatOpen;
-      setIsChatOpen(newChatState);
-
-      // Tentar usar a API do Zoom SDK para controlar o chat
-      if (newChatState) {
-        // Abrir chat
-        zoomClientRef.current.openChat?.();
-      } else {
-        // Fechar chat
-        zoomClientRef.current.closeChat?.();
-      }
-
-      console.log('Chat toggled:', newChatState);
-    } catch (error) {
-      console.error('Error toggling chat:', error);
-    }
-  }, [isZoomJoined, isChatOpen]);
-
-  // Detectar mudanças de fullscreen e redimensionar
-  useEffect(() => {
-    const handleFullscreenChange = () => {
-      const isNowFullscreen = !!document.fullscreenElement;
-      setIsFullscreen(isNowFullscreen);
-
-      // Aguardar transição de fullscreen antes de redimensionar
-      setTimeout(() => {
-        resizeZoomMeeting();
-      }, 100);
-    };
-
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => {
-      document.removeEventListener('fullscreenchange', handleFullscreenChange);
-    };
-  }, [resizeZoomMeeting]);
-
-  // Detectar mudanças de tamanho da janela e zoom do navegador
-  useEffect(() => {
-    if (!isZoomJoined) return;
-
-    let resizeTimeout: ReturnType<typeof setTimeout>;
-
-    const handleResize = () => {
-      // Debounce para evitar muitas chamadas
-      clearTimeout(resizeTimeout);
-      resizeTimeout = setTimeout(() => {
-        resizeZoomMeeting();
-      }, 150);
-    };
-
-    window.addEventListener('resize', handleResize);
-
-    // Também detectar mudanças de orientação em dispositivos móveis
-    window.addEventListener('orientationchange', handleResize);
-
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      window.removeEventListener('orientationchange', handleResize);
-      clearTimeout(resizeTimeout);
-    };
-  }, [isZoomJoined, resizeZoomMeeting]);
-
-  // Cleanup Zoom ao desmontar componente
-  useEffect(() => {
-    return () => {
-      if (zoomClientRef.current && isZoomJoined) {
-        // Usar timeout para garantir que o cleanup não interfira com o estado do Zoom
-        setTimeout(() => {
-          try {
-            // Verificar se o cliente ainda existe e está em sessão válida
-            if (zoomClientRef.current) {
-              zoomClientRef.current.leaveMeeting().catch((err: any) => {
-                // Ignorar erros de estado inválido durante cleanup
-                if (err?.errorCode !== 5004) {
-                  console.error('Cleanup error:', err);
-                }
-              });
-            }
-          } catch (err) {
-            // Silenciar erros de cleanup
-            console.log('Zoom cleanup completed');
-          }
-        }, 100);
-      }
-    };
-  }, [isZoomJoined]);
-
-  // Detectar mudanças de visibilidade da página
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.hidden && isZoomJoined) {
-        console.log('User left page with active Zoom session');
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [isZoomJoined]);
-
-  // Detectar refresh ou fechamento de página
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (isZoomJoined) {
-        e.preventDefault();
-        e.returnValue = 'Você está em uma aula ao vivo. Deseja sair?';
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
-  }, [isZoomJoined]);
 
   // ========== Exercícios ==========
   // A experiência de responder vive em <ExercisePlayer /> — o mesmo componente
@@ -1174,6 +762,24 @@ const Lesson: React.FC = () => {
     return embedCode;
   };
 
+  // Aula ao vivo mostra a sala; depois que o horário passa e a gravação é
+  // publicada no campo de vídeo, a página passa a exibir a gravação.
+  const videoEmbed = getVideoEmbed();
+  const liveStart = lesson.dataHoraInicio ? new Date(lesson.dataHoraInicio).getTime() : NaN;
+  const liveEnded =
+    lesson.status === 'expirada' ||
+    (!Number.isNaN(liveStart) && Date.now() > liveStart + ((lesson.duracao || 120) * 60000));
+  const showLiveRoom =
+    lesson.tipo === 'ao_vivo' && (lesson.zoomMeetingId ? !(liveEnded && videoEmbed) : !videoEmbed);
+
+  const getNotesTimestamp = (): number => {
+    if (showLiveRoom) {
+      // Nas aulas ao vivo, a nota fica marcada no tempo desde o início da aula
+      return Number.isNaN(liveStart) ? 0 : Math.max(0, Math.floor((Date.now() - liveStart) / 1000));
+    }
+    return currentVideoTimestamp;
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fade-in">
       {/* Navigation bar */}
@@ -1206,221 +812,21 @@ const Lesson: React.FC = () => {
       <div className="grid lg:grid-cols-3 gap-8">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Video Player ou Zoom Container */}
-          {lesson?.zoomMeetingId && lesson.tipo === 'ao_vivo' ? (
-            <div className="card overflow-hidden">
-              {/* Tela de entrada (antes de conectar) ou tela de "já entrou externamente" */}
-              {!isZoomJoined && !joinedExternally && !isZoomInitializing && (
-                <div className="w-full bg-gradient-to-br from-[#0a1628] to-[#1a2744] rounded-xl">
-                  <div className="flex flex-col items-center justify-center p-6 sm:p-8 text-center">
-                    <div className="w-14 h-14 sm:w-16 sm:h-16 mb-3 sm:mb-4 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-xl">
-                      <Video className="w-7 h-7 sm:w-8 sm:h-8 text-white" />
-                    </div>
-
-                    <h3 className="text-lg sm:text-xl font-bold text-white mb-1 sm:mb-2">
-                      Aula ao Vivo via Zoom
-                    </h3>
-
-                    <p className="text-gray-400 text-xs sm:text-sm mb-2 sm:mb-3">
-                      Escolha como deseja participar da aula.
-                    </p>
-
-                    <div className="inline-block mb-3 sm:mb-4 px-3 py-1.5 bg-white/10 rounded-lg text-xs sm:text-sm text-gray-300">
-                      Você entrará como: <strong className="text-cyan-400">{user?.nomeCompleto}</strong>
-                    </div>
-
-                    {zoomError && (
-                      <div className="mb-3 p-2 bg-red-500/20 border border-red-500/30 rounded-lg text-red-300 text-xs max-w-sm mx-auto">
-                        <strong className="block mb-0.5">Erro ao conectar:</strong>
-                        {zoomError}
-                      </div>
-                    )}
-
-                    <div className="space-y-2 w-full max-w-xs sm:max-w-sm">
-                      {/* Opção 1: Ver nativamente aqui (só aparece se habilitado) */}
-                      {zoomNativeEnabled && (
-                        <button
-                          onClick={joinZoomMeeting}
-                          disabled={isZoomConnecting}
-                          className="relative w-full flex flex-col items-center justify-center gap-0.5 px-4 py-2.5 sm:py-3 bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-600 hover:to-cyan-700 text-white rounded-xl font-bold transition-all shadow-lg hover:shadow-xl disabled:opacity-50 border border-cyan-400/50"
-                        >
-                          {isZoomConnecting ? (
-                            <>
-                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                              <span className="text-xs">Conectando...</span>
-                            </>
-                          ) : (
-                            <>
-                              <div className="flex items-center gap-2">
-                                <Video className="w-4 h-4" />
-                                <span className="text-sm">Assistir Aqui Nativamente</span>
-                              </div>
-                              <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-medium">
-                                (em testes)
-                              </span>
-                            </>
-                          )}
-                        </button>
-                      )}
-
-                      {/* Opção 2: Abrir no App Zoom */}
-                      <button
-                        onClick={openZoomApp}
-                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-all shadow-md hover:shadow-lg text-sm"
-                      >
-                        <Video className="w-4 h-4" />
-                        Abrir no App Zoom
-                      </button>
-
-                      {/* Opção 3: Abrir no Navegador */}
-                      <button
-                        onClick={openZoomBrowser}
-                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-600 hover:bg-gray-700 text-white rounded-xl font-semibold transition-all shadow-md hover:shadow-lg text-sm"
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                        Abrir no Navegador
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Mensagem quando entrou externamente */}
-              {!isZoomJoined && joinedExternally && (
-                <div className="w-full bg-gradient-to-br from-[#0a2818] to-[#1a4428] rounded-xl">
-                  <div className="flex flex-col items-center justify-center p-6 sm:p-8 text-center">
-                    <div className="w-16 h-16 sm:w-20 sm:h-20 mb-4 sm:mb-6 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-xl">
-                      <CheckCircle className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
-                    </div>
-
-                    <h3 className="text-xl sm:text-2xl font-bold text-white mb-2">
-                      Você já entrou na reunião
-                    </h3>
-
-                    <p className="text-gray-300 text-sm sm:text-base mb-4 sm:mb-6 max-w-md mx-auto">
-                      A aula foi aberta em outra aba ou aplicativo.<br />
-                      Aproveite sua aula ao vivo!
-                    </p>
-
-                    <button
-                      onClick={() => setJoinedExternally(false)}
-                      className="px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-xl font-semibold transition-all shadow-md hover:shadow-lg"
-                    >
-                      Voltar às Opções
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Container do Zoom SDK - visível durante inicialização e quando conectado */}
-              <div
-                ref={zoomWrapperRef}
-                className={`zoom-meeting-wrapper relative bg-black w-full overflow-hidden ${isFullscreen ? 'fixed inset-0 z-[9998]' : ''} ${isChatOpen ? 'chat-open' : ''}`}
-                style={{
-                  // Em tela cheia: 100% da viewport; Modo normal: aspect ratio 16:9
-                  ...(isFullscreen ? {
-                    width: '100vw',
-                    height: '100vh',
-                    paddingBottom: '0'
-                  } : {
-                    paddingBottom: (isZoomInitializing || isZoomJoined) ? '56.25%' : '0'
-                  }),
-                  display: (isZoomInitializing || isZoomJoined) ? 'block' : 'none'
-                }}
-              >
-                {/* Container interno do Zoom SDK */}
-                <div
-                  ref={zoomContainerRef}
-                  id="zoom-meeting-container"
-                  className="zoom-sdk-container absolute inset-0 w-full h-full"
-                  style={isFullscreen ? { width: '100vw', height: '100vh' } : undefined}
-                />
-
-                {/* Controles sobrepostos */}
-                {isZoomJoined && (
-                  <div className={`absolute top-4 z-[9999] flex gap-2 ${isFullscreen ? 'left-4' : 'right-4'}`}>
-                    {/* Botão de Chat */}
-                    <button
-                      onClick={toggleChat}
-                      className={`px-4 py-2.5 rounded-lg font-semibold shadow-xl transition-all flex items-center gap-2 backdrop-blur-sm ${
-                        isChatOpen
-                          ? 'bg-primary-500 hover:bg-primary-600 text-white'
-                          : 'bg-gray-800/90 hover:bg-gray-700 text-white'
-                      }`}
-                      title={isChatOpen ? 'Fechar Chat' : 'Abrir Chat'}
-                    >
-                      <MessageCircle className="w-4 h-4" />
-                      {!isFullscreen && <span className="hidden sm:inline">Chat</span>}
-                    </button>
-
-                    {/* Botão Tela Cheia */}
-                    <button
-                      onClick={toggleFullscreen}
-                      className="px-4 py-2.5 bg-gray-800/90 hover:bg-gray-700 text-white rounded-lg font-semibold shadow-xl transition-all hover:shadow-2xl flex items-center gap-2 backdrop-blur-sm"
-                      title={isFullscreen ? 'Sair da tela cheia' : 'Tela cheia'}
-                    >
-                      {isFullscreen ? (
-                        <>
-                          <Minimize className="w-4 h-4" />
-                          <span className="hidden sm:inline">Sair</span>
-                        </>
-                      ) : (
-                        <>
-                          <Maximize className="w-4 h-4" />
-                          <span className="hidden sm:inline">Tela Cheia</span>
-                        </>
-                      )}
-                    </button>
-
-                    {/* Botão Sair da Aula */}
-                    <button
-                      onClick={leaveZoomMeeting}
-                      className="px-4 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-lg font-bold shadow-xl transition-all hover:shadow-red-500/50 flex items-center gap-2"
-                    >
-                      <X className="w-4 h-4" />
-                      <span className="hidden sm:inline">Sair</span>
-                    </button>
-                  </div>
-                )}
-
-                {/* Sugestão de tela cheia */}
-                {isZoomJoined && showFullscreenSuggestion && !isFullscreen && (
-                  <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 z-[9999] animate-fade-in max-w-md">
-                    <div className="bg-gradient-to-r from-primary-500 to-primary-600 text-white px-6 py-4 rounded-xl shadow-2xl backdrop-blur-sm">
-                      <div className="flex items-center gap-3 mb-3">
-                        <Maximize className="w-6 h-6 flex-shrink-0" />
-                        <div className="flex-1">
-                          <p className="font-bold text-base">Melhor experiência em tela cheia</p>
-                          <p className="text-xs text-primary-100 mt-0.5">Recomendado para acompanhar a aula</p>
-                        </div>
-                        <button
-                          onClick={() => setShowFullscreenSuggestion(false)}
-                          className="p-1 hover:bg-white/20 rounded transition-colors"
-                          aria-label="Fechar sugestão"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={enterFullscreenFromSuggestion}
-                          className="flex-1 px-4 py-2 bg-white text-primary-600 hover:bg-primary-50 rounded-lg font-semibold transition-colors text-sm"
-                        >
-                          Tela Cheia
-                        </button>
-                        <button
-                          onClick={() => setShowFullscreenSuggestion(false)}
-                          className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg font-medium transition-colors text-sm"
-                        >
-                          Agora Não
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : getVideoEmbed() ? (
+          {/* Aula ao vivo (Zoom dentro da plataforma) ou player de vídeo */}
+          {showLiveRoom ? (
+            <LiveClassRoom
+              lesson={lesson}
+              userName={user?.nomeCompleto || 'Aluno ECO RJ'}
+              userEmail={user?.email || ''}
+              integratedEnabled={zoomNativeEnabled}
+              alreadyAttended={!!isWatched}
+              onAttendance={handleLiveAttendance}
+              onOpenNotes={() => setShowNotesPanel(true)}
+              hasExercises={exercises.length > 0}
+              onGoToExercises={scrollToExercises}
+              onFocusModeChange={setLiveFocusMode}
+            />
+          ) : videoEmbed ? (
             <div className="card overflow-hidden relative">
               <div
                 ref={videoContainerRef}
@@ -1430,7 +836,7 @@ const Lesson: React.FC = () => {
               >
                 <div
                   className="absolute inset-0 bg-gray-900"
-                  dangerouslySetInnerHTML={{ __html: getVideoEmbed() }}
+                  dangerouslySetInnerHTML={{ __html: videoEmbed }}
                 />
                 <VideoWatermark />
 
@@ -1446,7 +852,7 @@ const Lesson: React.FC = () => {
               </div>
 
               {/* Notes Button - Floating on video */}
-              {lesson.tipo === 'gravada' && (
+              {lesson.tipo !== 'material' && (
                 <button
                   onClick={() => setShowNotesPanel(true)}
                   className="absolute top-3 right-3 z-20 flex items-center gap-2 px-3 py-2 bg-black/60 hover:bg-black/80 text-white rounded-lg text-sm font-medium transition-all hover:scale-105 backdrop-blur-sm"
@@ -1579,7 +985,7 @@ const Lesson: React.FC = () => {
           )}
 
           {/* Exercises */}
-          <div className="card">
+          <div className="card scroll-mt-24 outline-none" ref={exercisesRef} tabIndex={-1}>
             <div className="p-6 border-b border-[var(--glass-border)]">
               <h3 className="font-heading font-semibold flex items-center gap-2 text-[var(--color-text-primary)]">
                 <Play className="w-5 h-5 text-primary-500" />
@@ -1762,14 +1168,15 @@ const Lesson: React.FC = () => {
         />
       )}
 
-      {/* Notes Side Panel */}
-      {lesson?.tipo === 'gravada' && (
+      {/* Notes Side Panel (gravadas e ao vivo) */}
+      {lesson?.tipo !== 'material' && (
         <NotesSidePanel
           lessonId={id || ''}
           isOpen={showNotesPanel}
           onClose={() => setShowNotesPanel(false)}
-          getCurrentTimestamp={getCurrentTimestamp}
+          getCurrentTimestamp={getNotesTimestamp}
           onSeekToTimestamp={handleSeekToTimestamp}
+          elevated={liveFocusMode}
         />
       )}
     </div>

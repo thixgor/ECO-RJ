@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Plus, Edit, Trash2, PlayCircle, Clock, Video, ExternalLink, X, ChevronUp, ChevronDown, FolderOpen, GripVertical, FileText, Layers, Zap } from 'lucide-react';
+import { Plus, Edit, Trash2, PlayCircle, Clock, Video, ExternalLink, X, ChevronUp, ChevronDown, FolderOpen, GripVertical, FileText, Layers, Zap, CheckCircle, AlertCircle } from 'lucide-react';
 import { lessonService, courseService, courseTopicService, courseSubtopicService } from '../../services/api';
 import { Lesson, Course, CustomButton, CourseTopic, CourseSubtopic } from '../../types';
 import Loading from '../../components/common/Loading';
 import { GlassCard, GlassButton, GlassInput, GlassSelect, GlassBadge } from '../../components/ui';
 import { detectVideoDuration } from '../../utils/videoUtils';
 import { formatDuration } from '../../utils/formatDuration';
+import { extrairMeetingId, formatarMeetingId, pareceLinkZoom } from '../../utils/zoom';
 import toast from 'react-hot-toast';
 
 // Ícones disponíveis para botões personalizados
@@ -1026,40 +1027,77 @@ const AdminLessons: React.FC = () => {
 
                   <div className="space-y-4 bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-200 dark:border-blue-700">
                     <p className="text-sm text-[var(--color-text-secondary)]">
-                      Configure uma reunião Zoom existente para esta aula. Os alunos poderão entrar diretamente pela plataforma.
+                      Vincule a reunião do Zoom desta aula. Os alunos assistem dentro da própria página da aula, sem sair da plataforma.
                     </p>
 
-                    <div>
-                      <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
-                        Meeting ID
-                      </label>
-                      <GlassInput
-                        type="text"
-                        value={formData.zoomMeetingId}
-                        onChange={(e) => setFormData({ ...formData, zoomMeetingId: e.target.value })}
-                        placeholder="Ex: 123 456 7890"
-                        maxLength={13}
-                      />
-                      <p className="text-xs text-[var(--color-text-muted)] mt-1">
-                        ID da reunião Zoom (9-11 dígitos). Deixe em branco para não usar Zoom.
-                      </p>
-                    </div>
+                    {(() => {
+                      const valor = formData.zoomMeetingId || '';
+                      const idValido = extrairMeetingId(valor);
+                      const senha = formData.zoomMeetingPassword || '';
+                      return (
+                        <>
+                          <div>
+                            <label htmlFor="zoom-meeting-id" className="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
+                              Meeting ID ou link do convite
+                            </label>
+                            <GlassInput
+                              id="zoom-meeting-id"
+                              type="text"
+                              inputMode="text"
+                              autoComplete="off"
+                              value={valor}
+                              onChange={(e) => {
+                                const texto = e.target.value;
+                                const extraido = pareceLinkZoom(texto) ? extrairMeetingId(texto) : null;
+                                setFormData({ ...formData, zoomMeetingId: extraido ? formatarMeetingId(extraido) : texto });
+                                if (extraido) toast.success('ID da reunião extraído do link');
+                              }}
+                              placeholder="123 4567 8901 ou https://zoom.us/j/..."
+                              aria-describedby="zoom-meeting-id-ajuda"
+                              aria-invalid={!!valor.trim() && !idValido}
+                            />
+                            <p id="zoom-meeting-id-ajuda" className="text-xs mt-1.5 flex items-center gap-1.5">
+                              {!valor.trim() ? (
+                                <span className="text-[var(--color-text-muted)]">
+                                  Cole o link do convite ou digite os 9 a 11 dígitos. Em branco, a aula fica sem sala.
+                                </span>
+                              ) : idValido ? (
+                                <span className="inline-flex items-center gap-1.5 text-green-700 dark:text-green-400">
+                                  <CheckCircle className="w-3.5 h-3.5" />
+                                  Sala {formatarMeetingId(idValido)} vinculada
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1.5 text-red-600 dark:text-red-400">
+                                  <AlertCircle className="w-3.5 h-3.5" />
+                                  ID inválido: use 9 a 11 dígitos ou o link do convite.
+                                </span>
+                              )}
+                            </p>
+                          </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
-                        Senha da Reunião (Opcional)
-                      </label>
-                      <GlassInput
-                        type="text"
-                        value={formData.zoomMeetingPassword}
-                        onChange={(e) => setFormData({ ...formData, zoomMeetingPassword: e.target.value })}
-                        placeholder="Senha da reunião (se houver)"
-                        maxLength={10}
-                      />
-                      <p className="text-xs text-[var(--color-text-muted)] mt-1">
-                        Deixe em branco se a reunião não tiver senha.
-                      </p>
-                    </div>
+                          <div>
+                            <label htmlFor="zoom-meeting-password" className="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
+                              Senha da reunião
+                            </label>
+                            <GlassInput
+                              id="zoom-meeting-password"
+                              type="text"
+                              autoComplete="off"
+                              value={senha}
+                              onChange={(e) => setFormData({ ...formData, zoomMeetingPassword: e.target.value })}
+                              placeholder="Como aparece no convite (se houver)"
+                              maxLength={64}
+                              aria-describedby="zoom-meeting-password-ajuda"
+                            />
+                            <p id="zoom-meeting-password-ajuda" className={`text-xs mt-1.5 ${senha.trim().length > 10 ? 'text-amber-700 dark:text-amber-400' : 'text-[var(--color-text-muted)]'}`}>
+                              {senha.trim().length > 10
+                                ? 'Isso parece o código longo do link. Prefira a senha curta do convite (até 10 caracteres).'
+                                : 'A senha só é enviada ao aluno no momento em que ele entra na aula.'}
+                            </p>
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
               )}

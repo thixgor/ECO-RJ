@@ -309,7 +309,7 @@ const AdminSiteConfig: React.FC = () => {
       await siteConfigService.updateZoomNative({
         enabled: config.zoomNative.enabled ?? true
       });
-      toast.success('Configurações do Zoom Nativo salvas!');
+      toast.success('Configuração das aulas ao vivo salva');
       loadData();
     } catch (error: any) {
       console.error('Erro ao salvar Zoom Nativo:', error);
@@ -937,10 +937,10 @@ const AdminSiteConfig: React.FC = () => {
                   </div>
                   <div>
                     <h2 className="font-heading text-lg font-semibold text-[var(--color-text-primary)]">
-                      Aulas ao Vivo - Zoom Nativo
+                      Aulas ao vivo dentro da plataforma
                     </h2>
                     <p className="text-sm text-[var(--color-text-muted)]">
-                      Habilite ou desabilite a opção de assistir aulas via Zoom integrado na plataforma
+                      Define se o Zoom abre na própria página da aula ou no aplicativo do aluno
                     </p>
                   </div>
                 </div>
@@ -966,10 +966,10 @@ const AdminSiteConfig: React.FC = () => {
                     Como funciona
                   </h4>
                   <ul className="text-sm text-blue-800 dark:text-blue-300 space-y-1 list-disc list-inside">
-                    <li><strong>Habilitado:</strong> Exibe a opção "Assistir Aqui Nativamente" em destaque com badge "(em testes)"</li>
-                    <li><strong>Desabilitado:</strong> Oculta a opção nativa, mostrando apenas "Abrir no App" e "Abrir no Navegador"</li>
-                    <li>Alunos podem escolher entre assistir integrado na plataforma ou em app/navegador externo</li>
-                    <li>O Zoom nativo permite melhor controle e experiência dentro da plataforma</li>
+                    <li><strong>Habilitado (recomendado):</strong> o aluno clica em "Entrar na aula" e assiste na própria página, com notas, presença automática e exercícios ao lado.</li>
+                    <li><strong>Desabilitado:</strong> o botão principal passa a abrir o aplicativo Zoom instalado no aparelho do aluno.</li>
+                    <li>Se a sala integrada falhar, o aluno sempre vê a opção de abrir no aplicativo Zoom como alternativa.</li>
+                    <li>Requer as variáveis <code>ZOOM_SDK_KEY</code> e <code>ZOOM_SDK_SECRET</code> (Client ID e Client Secret do app Meeting SDK) no servidor.</li>
                   </ul>
                 </div>
 
@@ -978,20 +978,20 @@ const AdminSiteConfig: React.FC = () => {
                   <div className="p-4 bg-green-50 dark:bg-green-500/10 border border-green-200 dark:border-green-500/30 rounded-lg">
                     <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
                       <Sparkles className="w-5 h-5" />
-                      <span className="font-medium">Zoom Nativo Habilitado</span>
+                      <span className="font-medium">Sala integrada ativa</span>
                     </div>
                     <p className="text-sm text-green-600 dark:text-green-300 mt-1">
-                      Os alunos verão a opção "Assistir Aqui Nativamente (em testes)" em destaque nas aulas ao vivo.
+                      As aulas ao vivo abrem dentro da plataforma.
                     </p>
                   </div>
                 ) : (
                   <div className="p-4 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg">
                     <div className="flex items-center gap-2 text-gray-700 dark:text-gray-400">
                       <Settings className="w-5 h-5" />
-                      <span className="font-medium">Zoom Nativo Desabilitado</span>
+                      <span className="font-medium">Sala integrada desligada</span>
                     </div>
                     <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
-                      Alunos só poderão abrir a aula no app Zoom ou navegador externo.
+                      Os alunos são direcionados ao aplicativo Zoom.
                     </p>
                   </div>
                 )}

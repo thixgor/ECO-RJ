@@ -1,78 +1,78 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import jwt from 'jsonwebtoken';
+import Lesson from '../models/Lesson';
+import { AuthRequest } from '../middleware/auth';
+import { avaliarAcessoAoItem } from '../utils/courseAccess';
+import { normalizarMeetingId } from '../utils/zoom';
 
-// Gerar Zoom Meeting SDK JWT Signature
-export const generateZoomSignature = async (req: Request, res: Response) => {
+/**
+ * @desc    Credenciais para entrar na aula ao vivo pelo Zoom integrado
+ * @route   POST /api/zoom/signature   body: { lessonId }
+ * @access  Private — só quem tem acesso à aula
+ *
+ * Antes, qualquer usuário logado podia pedir uma assinatura para QUALQUER
+ * número de reunião (e escolher role=1). Agora o cliente informa apenas a
+ * aula; o servidor confere o acesso com a mesma regra de getLessonById e
+ * devolve número, senha e assinatura de participante (role 0).
+ */
+export const generateZoomSignature = async (req: AuthRequest, res: Response) => {
   try {
-    const { meetingNumber, role } = req.body;
-
-    console.log('[Zoom] Generating signature for meeting:', meetingNumber);
-
-    // Validar inputs
-    if (!meetingNumber) {
-      console.error('[Zoom] Meeting number is missing');
-      return res.status(400).json({ message: 'Meeting number é obrigatório' });
+    const { lessonId } = req.body || {};
+    if (!lessonId || typeof lessonId !== 'string') {
+      return res.status(400).json({ code: 'AULA_INVALIDA', message: 'Aula não informada.' });
     }
 
-    // Credenciais do Zoom (do .env)
-    const sdkKey = process.env.ZOOM_SDK_KEY;
-    const sdkSecret = process.env.ZOOM_SDK_SECRET;
+    const lesson = await Lesson.findById(lessonId)
+      .select('tipo status zoomMeetingId zoomMeetingPassword cargosPermitidos cursoId')
+      .populate('cursoId', 'acessoRestrito alunosAutorizados dataTermino');
 
-    if (!sdkKey || !sdkSecret) {
-      console.error('[Zoom] SDK credentials not configured in .env');
-      return res.status(500).json({
-        message: 'Credenciais Zoom não configuradas no servidor'
+    if (!lesson) {
+      return res.status(404).json({ code: 'AULA_NAO_ENCONTRADA', message: 'Aula não encontrada.' });
+    }
+
+    const acesso = avaliarAcessoAoItem(lesson.cursoId as any, req.user, lesson.cargosPermitidos);
+    if (!acesso.permitido) {
+      return res.status(403).json({ code: 'SEM_ACESSO', message: acesso.mensagem });
+    }
+
+    if (lesson.status === 'inativa') {
+      return res.status(409).json({ code: 'AULA_INATIVA', message: 'Esta aula não está disponível no momento.' });
+    }
+
+    const meetingNumber = normalizarMeetingId(lesson.zoomMeetingId);
+    if (!meetingNumber) {
+      return res.status(409).json({
+        code: 'SEM_REUNIAO',
+        message: 'Esta aula ainda não tem uma sala do Zoom configurada.'
       });
     }
 
-    // Role: 0 = participante, 1 = host (padrão: participante)
-    const userRole = role || 0;
+    const sdkKey = process.env.ZOOM_SDK_KEY;
+    const sdkSecret = process.env.ZOOM_SDK_SECRET;
+    if (!sdkKey || !sdkSecret) {
+      console.error('[Zoom] ZOOM_SDK_KEY/ZOOM_SDK_SECRET ausentes no ambiente');
+      return res.status(503).json({
+        code: 'ZOOM_NAO_CONFIGURADO',
+        message: 'A sala integrada está temporariamente indisponível.'
+      });
+    }
 
-    // Criar payload para JWT seguindo EXATAMENTE a documentação oficial do Zoom
-    // https://developers.zoom.us/docs/meeting-sdk/auth/#generate-a-meeting-sdk-jwt
-    const iat = Math.round(new Date().getTime() / 1000) - 30; // Subtrai 30s como no exemplo oficial
-    const exp = iat + 60 * 60 * 2; // Expira em 2 horas
-    const tokenExp = exp;
+    // Meeting SDK JWT — https://developers.zoom.us/docs/meeting-sdk/auth/
+    const iat = Math.round(Date.now() / 1000) - 30;
+    const exp = iat + 60 * 60 * 2;
+    const signature = jwt.sign(
+      { appKey: sdkKey, mn: meetingNumber, role: 0, iat, exp, tokenExp: exp },
+      sdkSecret,
+      { algorithm: 'HS256' }
+    );
 
-    // Payload conforme exemplo oficial - APENAS appKey (NÃO incluir sdkKey!)
-    // sdkKey está deprecated após v5.0.0
-    const payload = {
-      appKey: sdkKey,        // ZOOM_CLIENT_ID
-      mn: String(meetingNumber),
-      role: userRole,
-      iat: iat,
-      exp: exp,
-      tokenExp: tokenExp
-    };
-
-    console.log('[Zoom] Payload completo:', payload);
-    console.log('[Zoom] Tipos:', {
-      appKey: typeof payload.appKey,
-      mn: typeof payload.mn,
-      role: typeof payload.role,
-      iat: typeof payload.iat,
-      exp: typeof payload.exp,
-      tokenExp: typeof payload.tokenExp
-    });
-
-    // Gerar signature JWT com algoritmo HS256
-    const signature = jwt.sign(payload, sdkSecret, { algorithm: 'HS256' });
-
-    console.log('[Zoom] Signature generated successfully');
-    console.log('[Zoom] Signature (primeiros 50 chars):', signature.substring(0, 50) + '...');
-
-    // Decodificar para debug (REMOVER EM PRODUÇÃO)
-    const decoded = jwt.decode(signature, { complete: true });
-    console.log('[Zoom] JWT Header:', decoded?.header);
-    console.log('[Zoom] JWT Payload decoded:', decoded?.payload);
-
-    // Retornar apenas a signature
-    // SDK JWT Signature já contém o appKey no payload, não precisa enviar sdkKey separado
     res.json({
-      signature
+      signature,
+      meetingNumber,
+      password: lesson.zoomMeetingPassword || ''
     });
-  } catch (error: any) {
-    console.error('[Zoom] Error generating signature:', error);
-    res.status(500).json({ message: 'Erro ao gerar signature do Zoom' });
+  } catch (error) {
+    console.error('[Zoom] Erro ao gerar assinatura:', error);
+    res.status(500).json({ code: 'ERRO_INTERNO', message: 'Não foi possível preparar a sala agora.' });
   }
 };

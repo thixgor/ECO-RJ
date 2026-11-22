@@ -442,8 +442,12 @@ export const siteConfigService = {
 
 // Zoom
 export const zoomService = {
-  generateSignature: (meetingNumber: string, role?: number) =>
-    api.post('/zoom/signature', { meetingNumber, role })
+  /** Credenciais de participante para a aula — o servidor confere o acesso. */
+  joinCredentials: (lessonId: string) =>
+    api.post<{ signature: string; meetingNumber: string; password: string }>(
+      '/zoom/signature',
+      { lessonId }
+    )
 };
 
 // Announcements (Avisos)

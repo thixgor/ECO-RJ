@@ -9,6 +9,7 @@ import {
   cargoEfetivoNoCurso,
   cargoPermitido
 } from '../utils/courseAccess';
+import { normalizarMeetingId, ocultarDadosPrivados } from '../utils/zoom';
 
 // @desc    Listar aulas de um curso
 // @route   GET /api/lessons/course/:courseId
@@ -26,13 +27,10 @@ export const getLessonsByCourse = async (req: AuthRequest, res: Response) => {
     ]);
 
     const lessonsComAcesso = lessons.map((lesson) => {
-      const lessonObj = lesson.toObject();
-      (lessonObj as any).bloqueada = !avaliarAcessoAoItem(
-        course,
-        req.user,
-        lesson.cargosPermitidos
-      ).permitido;
-      return lessonObj;
+      const bloqueada = !avaliarAcessoAoItem(course, req.user, lesson.cargosPermitidos).permitido;
+      // Rota pública: senha do Zoom nunca sai, e aula bloqueada não expõe
+      // reunião nem vídeo.
+      return { ...ocultarDadosPrivados(lesson.toObject(), req.user, { bloqueada }), bloqueada };
     });
 
     res.json(lessonsComAcesso);
@@ -78,7 +76,8 @@ export const getLessonById = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    res.json(lesson);
+    // A senha do Zoom é entregue só no momento do join (/api/zoom/signature).
+    res.json(ocultarDadosPrivados(lesson.toObject(), req.user));
   } catch (error) {
     console.error('Erro ao buscar aula:', error);
     res.status(500).json({ message: 'Erro ao buscar aula' });
@@ -129,16 +128,12 @@ export const createLesson = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: 'Data/hora de início é obrigatória para aulas ao vivo' });
     }
 
-    // Validar formato do Meeting ID do Zoom se fornecido
-    if (zoomMeetingId) {
-      const meetingIdClean = zoomMeetingId.replace(/\s|-/g, '');
-      const meetingIdPattern = /^\d{9,11}$/;
-
-      if (!meetingIdPattern.test(meetingIdClean)) {
-        return res.status(400).json({
-          message: 'Meeting ID inválido. Deve conter 9-11 dígitos numéricos.'
-        });
-      }
+    // Meeting ID do Zoom: aceita o número ou o link do convite; salva só os dígitos
+    const meetingIdNormalizado = normalizarMeetingId(zoomMeetingId);
+    if (zoomMeetingId && String(zoomMeetingId).trim() && !meetingIdNormalizado) {
+      return res.status(400).json({
+        message: 'Meeting ID do Zoom inválido. Informe os 9 a 11 dígitos ou cole o link do convite.'
+      });
     }
 
     // Obter próxima ordem (baseado no subtópico, tópico ou curso)
@@ -174,8 +169,8 @@ export const createLesson = async (req: AuthRequest, res: Response) => {
       criadorId: req.user?._id,
       exerciciosAnexados: exerciciosAnexados || [],
       provasAnexadas: provasAnexadas || [],
-      zoomMeetingId: zoomMeetingId || undefined,
-      zoomMeetingPassword: zoomMeetingPassword || undefined
+      zoomMeetingId: meetingIdNormalizado || undefined,
+      zoomMeetingPassword: (meetingIdNormalizado && zoomMeetingPassword?.trim()) || undefined
     });
 
     // Adicionar aula ao curso
@@ -221,6 +216,13 @@ export const updateLesson = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Aula não encontrada' });
     }
 
+    const meetingIdNormalizado = normalizarMeetingId(zoomMeetingId);
+    if (zoomMeetingId && String(zoomMeetingId).trim() && !meetingIdNormalizado) {
+      return res.status(400).json({
+        message: 'Meeting ID do Zoom inválido. Informe os 9 a 11 dígitos ou cole o link do convite.'
+      });
+    }
+
     if (titulo) lesson.titulo = titulo;
     if (descricao) lesson.descricao = descricao;
     if (tipo) lesson.tipo = tipo;
@@ -238,8 +240,8 @@ export const updateLesson = async (req: Request, res: Response) => {
     if (botoesPersonalizados !== undefined) lesson.botoesPersonalizados = botoesPersonalizados;
     if (exerciciosAnexados !== undefined) lesson.exerciciosAnexados = exerciciosAnexados;
     if (provasAnexadas !== undefined) lesson.provasAnexadas = provasAnexadas;
-    if (zoomMeetingId !== undefined) lesson.zoomMeetingId = zoomMeetingId || undefined;
-    if (zoomMeetingPassword !== undefined) lesson.zoomMeetingPassword = zoomMeetingPassword || undefined;
+    if (zoomMeetingId !== undefined) lesson.zoomMeetingId = meetingIdNormalizado || undefined;
+    if (zoomMeetingPassword !== undefined) lesson.zoomMeetingPassword = zoomMeetingPassword?.trim() || undefined;
 
     await lesson.save();
 
@@ -535,7 +537,7 @@ export const getLiveLessonsToday = async (req: AuthRequest, res: Response) => {
       cargoPermitido(lesson.cargosPermitidos, cargoEfetivoNoCurso(lesson.cursoId as any, user))
     );
 
-    res.json({ lessons: filteredLessons });
+    res.json({ lessons: filteredLessons.map((l) => ocultarDadosPrivados(l.toObject(), user)) });
   } catch (error) {
     console.error('Erro ao buscar aulas ao vivo:', error);
     res.status(500).json({ message: 'Erro ao buscar aulas ao vivo' });
@@ -578,7 +580,7 @@ export const getUpcomingLiveLessons = async (req: AuthRequest, res: Response) =>
       cargoPermitido(lesson.cargosPermitidos, cargoEfetivoNoCurso(lesson.cursoId as any, user))
     );
 
-    res.json({ lessons: filteredLessons });
+    res.json({ lessons: filteredLessons.map((l) => ocultarDadosPrivados(l.toObject(), user)) });
   } catch (error) {
     console.error('Erro ao buscar próximas aulas ao vivo:', error);
     res.status(500).json({ message: 'Erro ao buscar próximas aulas ao vivo' });

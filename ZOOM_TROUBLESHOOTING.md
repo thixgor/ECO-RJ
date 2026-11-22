@@ -1,4 +1,20 @@
-# 🔍 Zoom Meeting SDK - Troubleshooting Erro 3712
+# 🔍 Zoom Meeting SDK - Troubleshooting
+
+## Como a aula ao vivo funciona (fluxo atual)
+
+1. O aluno abre `/aulas/:id` e clica em **Entrar na aula** — o Zoom é montado na própria página (`frontend/src/components/lesson/LiveClassRoom.tsx`).
+2. O frontend chama `POST /api/zoom/signature` com `{ lessonId }`. O backend confere o acesso à aula (mesma regra de `GET /api/lessons/:id`) e devolve `signature` (role 0), `meetingNumber` e `password`.
+3. A senha da reunião **não** é mais enviada nas listagens/detalhes da aula para quem não é admin; ela só sai no momento do join.
+4. Mensagens que o aluno pode ver e o que significam:
+   - *"O professor ainda não abriu a sala"* → erro 3008; a página tenta de novo a cada 15 s.
+   - *"Não conseguimos validar a sala"* → erro 3712 (veja abaixo).
+   - *"Senha da sala incorreta"* → erro 3004: revise a senha cadastrada na aula (use a senha curta do convite, não o `pwd=` do link).
+   - *"Sala temporariamente indisponível"* → `ZOOM_SDK_KEY`/`ZOOM_SDK_SECRET` ausentes no servidor.
+5. No admin, o campo **Meeting ID** aceita o número ou o link do convite; o backend salva só os dígitos.
+
+---
+
+## Erro 3712
 
 ## ❌ Erro Atual
 ```
